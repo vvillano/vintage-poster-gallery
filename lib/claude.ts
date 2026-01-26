@@ -43,14 +43,66 @@ ${imageAnalysisPreview}`
   }
 }
 
-// Brand voice guidelines (to be customized based on client examples)
+// Brand voice guidelines - Based on Authentic Vintage Posters' current evolved style (2024-2026)
 const BRAND_VOICE_GUIDELINES = `
-BRAND VOICE: Authentic Vintage Posters
-- Tone: Sophisticated yet accessible, knowledgeable but not pretentious
-- Style: Engaging storytelling that highlights historical context and artistic significance
-- Format: 2-3 paragraphs that flow naturally
-- Focus: Historical context, artistic merit, cultural significance, and collectability
-- Language: Use specific art historical terms but explain them naturally
+BRAND VOICE: Authentic Vintage Posters (Current Style)
+
+EVOLVED TONE & SOPHISTICATION:
+- Gallery-quality writing with accessible intelligence
+- Measured enthusiasm - sophisticated rather than exclamatory
+- Art-historically grounded with deep contextual research
+- Educational storytelling that positions pieces as cultural artifacts
+- Bridge fine art and popular culture through informed analysis
+
+STRUCTURE (2-3 tight paragraphs):
+1. OPENING: Punchy, confident statement establishing significance
+   - Short, powerful opening sentences: "Truth, justice, and pure graphic power."
+   - Or sophisticated framing: "A striking blend of spectacle and satire..."
+   - Immediately identify artist, date, and cultural context
+   - Use "Titled [Name]" or "Created in [Year]" for formal grounding
+
+2. MIDDLE: Deep dive into artistic/historical significance
+   - Technical art details: printing methods, artistic techniques, composition
+   - Historical provenance and cultural context
+   - Artist biography and career context when relevant
+   - Explain WHY it matters - movement, influence, innovation
+   - Use phrases like "bridges X and Y", "equal parts X and Y"
+
+3. CLOSING: Sophisticated collector positioning
+   - "A must-have for collectors of..." (not "perfect addition")
+   - "A bold addition to any collection of..."
+   - Position within collecting categories (genre, artist, movement)
+   - End with curatorial framing, not emotional appeals
+
+CURRENT LANGUAGE PATTERNS:
+- "expressive language of", "painterly compositions", "pure visual energy"
+- "theatrical stillness", "pageantry and absurdity", "cultural document"
+- "bridges the classical tradition", "equal parts X and contemporary Y"
+- "instantly recognizable style", "signature [element]"
+- Technical terms: "stone lithography", "offset printing", "caricatural flair"
+- Art movements: cite specific styles, periods, influences
+
+SOPHISTICATED VOCABULARY TO USE:
+- "rendered with", "formed through", "emerges from"
+- "charged with drama", "rooted in", "vehicle for"
+- "captures the transformation", "honors creators"
+- "distinct vibrancy", "landmark of", "groundbreaking blend"
+
+AVOID:
+- Excessive exclamation points (use sparingly, if at all)
+- Overly casual language ("Wow!", "What a work of art!")
+- Size and condition details (handled separately)
+- Generic collector appeals ("perfect for your wall")
+- Cutesy or overly enthusiastic phrasing
+
+STRUCTURE EXAMPLES FROM RECENT WORK:
+Opening: "Truth, justice, and pure graphic power. Issued in 1988..."
+Opening: "A striking blend of spectacle and satire, this original 1999..."
+Opening: "Created in 1967, this poster by LeRoy Neiman presents the matador through his signature expressive language..."
+
+Closing: "A must-have for collectors of superhero history, DC Comics memorabilia, or vintage comic-inspired poster art."
+Closing: "A bold addition to any collection of bullfighting ephemera, Spanish art, or Botero originals."
+Closing: "Equal parts cultural document and contemporary art, this poster bridges the classical tradition..."
 `;
 
 // Construct analysis prompt with optional initial information and research context
