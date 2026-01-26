@@ -72,11 +72,12 @@ export function validateImageFile(file: File): {
   }
 
   // Check file size (5MB limit - Claude API requirement)
+  // Note: Client compresses images before upload if they're over 5MB
   const maxSize = 5 * 1024 * 1024; // 5MB in bytes
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: 'File size exceeds 5MB limit. Please compress or resize your image.',
+      error: 'File size exceeds 5MB limit. Image should have been compressed on client. Please try again.',
     };
   }
 

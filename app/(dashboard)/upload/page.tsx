@@ -16,6 +16,8 @@ export default function UploadPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState('');
 
   // Handle clipboard paste
   useEffect(() => {
@@ -68,28 +70,132 @@ export default function UploadPage() {
     }
   };
 
-  const handleFile = (file: File) => {
+  /**
+   * Compress image if it exceeds 5MB while maintaining quality for detail analysis
+   * Uses high quality settings (0.92) to preserve small text and printer marks
+   */
+  const compressImage = async (file: File, targetSizeMB: number = 4.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+
+          // Keep original dimensions to preserve detail
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          // Use high quality settings
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0);
+
+          // Start with high quality and reduce if needed
+          let quality = 0.92;
+          const targetBytes = targetSizeMB * 1024 * 1024;
+
+          const tryCompress = () => {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error('Compression failed'));
+                  return;
+                }
+
+                // If still too large and we can reduce quality more, try again
+                if (blob.size > targetBytes && quality > 0.7) {
+                  quality -= 0.05;
+                  tryCompress();
+                  return;
+                }
+
+                // Create compressed file
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+
+                const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+                const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+                setCompressionInfo(
+                  `Compressed from ${originalSizeMB}MB to ${compressedSizeMB}MB (quality: ${Math.round(quality * 100)}%)`
+                );
+
+                resolve(compressedFile);
+              },
+              'image/jpeg',
+              quality
+            );
+          };
+
+          tryCompress();
+        };
+
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFile = async (selectedFile: File) => {
     // Validate file type
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(selectedFile.type)) {
       setError('Please select a JPG or PNG image file.');
       return;
     }
 
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB.');
+    // Allow larger files initially (we'll compress them)
+    if (selectedFile.size > 20 * 1024 * 1024) {
+      setError('File size must be less than 20MB.');
       return;
     }
 
     setError('');
-    setFile(file);
+    setCompressionInfo('');
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      let processedFile = selectedFile;
+
+      // Compress if over 5MB to meet Claude API requirements
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (selectedFile.size > maxSize) {
+        setCompressing(true);
+        const sizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
+        setCompressionInfo(`Compressing ${sizeMB}MB image to preserve quality while meeting API requirements...`);
+
+        try {
+          processedFile = await compressImage(selectedFile);
+        } catch (err) {
+          setError('Failed to compress image. Please try a smaller file.');
+          setCompressing(false);
+          return;
+        }
+
+        setCompressing(false);
+      }
+
+      setFile(processedFile);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(processedFile);
+    } catch (err) {
+      setError('Failed to process image.');
+      setCompressing(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -208,7 +314,7 @@ export default function UploadPage() {
               Browse Files
             </button>
             <p className="text-sm text-slate-500 mt-4">
-              Accepted formats: JPG, PNG (Max 10MB)
+              Accepted formats: JPG, PNG (Max 20MB - automatically compressed if needed)
             </p>
           </div>
         ) : (
@@ -227,12 +333,23 @@ export default function UploadPage() {
                   <h3 className="font-semibold text-slate-900 mb-2">
                     {file.name}
                   </h3>
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-sm text-slate-600 mb-2">
                     Size: {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
+                  {compressionInfo && (
+                    <p className="text-sm text-green-600 mb-3 bg-green-50 p-2 rounded">
+                      ✓ {compressionInfo}
+                    </p>
+                  )}
+                  {compressing && (
+                    <p className="text-sm text-blue-600 mb-3 bg-blue-50 p-2 rounded animate-pulse">
+                      ⏳ Compressing image...
+                    </p>
+                  )}
                   <button
                     onClick={resetForm}
                     className="text-sm text-red-600 hover:text-red-700"
+                    disabled={compressing}
                   >
                     Remove & Select Different File
                   </button>
@@ -292,10 +409,12 @@ export default function UploadPage() {
             <div className="flex gap-4">
               <button
                 onClick={handleUpload}
-                disabled={uploading || analyzing}
+                disabled={uploading || analyzing || compressing}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploading
+                {compressing
+                  ? 'Compressing Image...'
+                  : uploading
                   ? 'Uploading...'
                   : analyzing
                   ? 'Analyzing with Claude AI...'
@@ -303,7 +422,7 @@ export default function UploadPage() {
               </button>
               <button
                 onClick={resetForm}
-                disabled={uploading || analyzing}
+                disabled={uploading || analyzing || compressing}
                 className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
               >
                 Cancel
