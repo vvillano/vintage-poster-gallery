@@ -15,7 +15,7 @@ async function researchPoster(imageAnalysisPreview: string): Promise<string> {
   try {
     // First, do a quick visual analysis to identify key search terms
     const quickAnalysis = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       messages: [{
         role: 'user',
@@ -204,6 +204,9 @@ export async function analyzePoster(
 
     const prompt = buildAnalysisPrompt(initialInformation, undefined, productType);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
+    console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
+    console.log('[analyzePoster] Product type:', productType);
+    console.log('[analyzePoster] Image URL:', imageUrl);
     console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
@@ -211,8 +214,8 @@ export async function analyzePoster(
     let response;
     try {
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 6000,
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8000,
         messages: [
           {
             role: 'user',
@@ -262,10 +265,16 @@ export async function analyzePoster(
     console.log('[analyzePoster] Raw response preview (first 500 chars):', textContent.text.substring(0, 500));
     console.log('[analyzePoster] Response length:', textContent.text.length);
 
-    // Check if response looks like an error message
-    if (textContent.text.startsWith('Request') || textContent.text.startsWith('Error')) {
-      console.error('[analyzePoster] Response appears to be an error message:', textContent.text);
-      throw new Error(`Claude API returned an error: ${textContent.text.substring(0, 200)}`);
+    // Trim whitespace for error checking
+    const trimmedText = textContent.text.trim();
+
+    // Check if response looks like an error message (with various patterns)
+    const errorPatterns = ['Request', 'Error', 'Exception', 'Failed', 'Invalid'];
+    const startsWithError = errorPatterns.some(pattern => trimmedText.startsWith(pattern));
+
+    if (startsWithError || trimmedText.length < 100) {
+      console.error('[analyzePoster] Response appears to be an error message or too short:', trimmedText);
+      throw new Error(`Claude API returned an error: ${trimmedText.substring(0, 200)}`);
     }
 
     // Parse the JSON response - find the first { and last } to extract clean JSON
@@ -274,13 +283,21 @@ export async function analyzePoster(
 
     if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
       console.error('[analyzePoster] No valid JSON structure found in response');
-      console.error('[analyzePoster] Full response:', textContent.text.substring(0, 2000));
-      throw new Error('No valid JSON found in Claude response. Response may be truncated or malformed.');
+      console.error('[analyzePoster] Full response (first 2000 chars):', textContent.text.substring(0, 2000));
+      console.error('[analyzePoster] Response length:', textContent.text.length);
+      console.error('[analyzePoster] First 200 chars (raw):', JSON.stringify(textContent.text.substring(0, 200)));
+      throw new Error('No valid JSON found in Claude response. Response may be truncated or malformed. Check logs for details.');
     }
 
     const jsonString = textContent.text.substring(firstBrace, lastBrace + 1);
     console.log('[analyzePoster] Extracted JSON preview (first 300 chars):', jsonString.substring(0, 300));
     console.log('[analyzePoster] JSON string length:', jsonString.length);
+
+    // Validate JSON string looks reasonable
+    if (jsonString.length < 500) {
+      console.warn('[analyzePoster] JSON string suspiciously short:', jsonString.length, 'chars');
+      console.warn('[analyzePoster] Full extracted JSON:', jsonString);
+    }
 
     let analysis: PosterAnalysis;
     try {
