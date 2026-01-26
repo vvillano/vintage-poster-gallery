@@ -23,6 +23,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify Anthropic API key is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not configured');
+      return NextResponse.json(
+        {
+          error: 'Analysis service not configured',
+          details: 'ANTHROPIC_API_KEY environment variable is missing',
+        },
+        { status: 500 }
+      );
+    }
+
     // Get poster from database
     const poster = await getPosterById(posterId);
     if (!poster) {
@@ -37,11 +49,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`Starting analysis for poster ${posterId}, image URL: ${poster.imageUrl}`);
+
     // Analyze with Claude
     const analysis = await analyzePoster(
       poster.imageUrl,
       poster.initialInformation || undefined
     );
+
+    console.log('Analysis completed successfully');
 
     // Flatten analysis for database storage
     const flattenedAnalysis = flattenAnalysis(analysis);
@@ -59,10 +75,29 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Analysis error:', error);
+
+    // Provide more specific error messages
+    let errorMessage = 'Failed to analyze poster';
+    let errorDetails = error instanceof Error ? error.message : 'Unknown error';
+
+    // Check for specific error types
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        errorMessage = 'Invalid API key';
+        errorDetails = 'The Anthropic API key is invalid or expired';
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'Rate limit exceeded';
+        errorDetails = 'Too many requests to the analysis service';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Analysis timeout';
+        errorDetails = 'The analysis took too long to complete';
+      }
+    }
+
     return NextResponse.json(
       {
-        error: 'Failed to analyze poster',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
+        details: errorDetails,
       },
       { status: 500 }
     );
