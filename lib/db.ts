@@ -61,15 +61,22 @@ export async function getAllPosters(options?: {
 }): Promise<Poster[]> {
   const { limit = 50, offset = 0, onlyAnalyzed = false } = options || {};
 
-  let query = sql`SELECT * FROM posters`;
+  let result;
 
   if (onlyAnalyzed) {
-    query = sql`SELECT * FROM posters WHERE analysis_completed = true`;
+    result = await sql`
+      SELECT * FROM posters
+      WHERE analysis_completed = true
+      ORDER BY upload_date DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+  } else {
+    result = await sql`
+      SELECT * FROM posters
+      ORDER BY upload_date DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
   }
-
-  query = sql`${query} ORDER BY upload_date DESC LIMIT ${limit} OFFSET ${offset}`;
-
-  const result = await query;
 
   return result.rows.map(dbRowToPoster);
 }
