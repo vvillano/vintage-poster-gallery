@@ -43,170 +43,51 @@ ${imageAnalysisPreview}`
   }
 }
 
-// Brand voice - Comprehensive analysis of 500+ products across all categories (2024-2026)
+// Brand voice - Concise guidelines based on 500+ product analysis (2024-2026)
 const BRAND_VOICE_GUIDELINES = `
-BRAND VOICE: Authentic Vintage Posters (Comprehensive Style Guide)
+BRAND VOICE: Gallery-quality, art-historically grounded, adapts by product type.
 
-CORE SOPHISTICATION:
-- Gallery-quality writing with narrative confidence
-- Art-historically grounded yet accessible storytelling
-- Adapts tone by product type while maintaining authority
-- Educational without being academic or stuffy
-- Positions items as cultural artifacts and visual history
+STRUCTURE: Start with scene-setting or direct authority → Technical/historical details → Significance → Curatorial closing.
 
-OPENING STRATEGIES (vary by impact):
-1. Scene-setting: "Somewhere between slapstick and noir..." / "Step back in time..."
-2. Direct authority: "This original poster was created for..." / "Published in 1900..."
-3. Confident statement: "Victor Moscoso's Neon Rose posters defined the look..."
-4. Evocative framing: "This bold 1973 Cuban silkscreen turns political graphics into..."
-5. Time-travel invitation: "Travel to a moment of American economic ambition..."
+KEY VOCABULARY: "marked a turning point", "golden era", "captures the spirit", "transforms", "bridges", "embodies", "A standout piece for..."
 
-MIDDLE SECTION ARCHITECTURE:
-- Technical details: printing methods (steel engraving, chromolithograph, silkscreen)
-- Historical context: movements, periods, cultural moments
-- Artist/publisher biography: "One of France's most respected cartographers..."
-- Significance: "marked a turning point", "defined the visual identity", "golden era"
-- Use "bridges", "captures", "transforms", "distills", "embodies"
+ADAPT BY TYPE:
+- Posters: Most sophisticated, art-historical depth, printing techniques
+- Cover Art: Playful but informed, publication context
+- Antique Prints: Scholarly, provenance-focused, scientific accuracy
+- Illustrations: Witty, culturally observant, narrative freedom
 
-CLOSING FORMULAS (sophisticated positioning):
-- "A standout piece for [specific collectors]..."
-- "A must-have for collectors of [categories]..."
-- "Perfect for anyone drawn to [aesthetic/era/genre]..."
-- End with curatorial framing, not generic appeals
+AVOID: Exclamation points, generic phrases ("perfect for your wall"), casual language ("Wow!", "Amazing!"), size/condition details.
 
-SOPHISTICATED VOCABULARY PATTERNS:
-- TRANSFORMATIVE: "transforms", "distills", "reimagines", "turns [X] into [Y]"
-- CULTURAL: "emblems of", "spirit of", "defined the look of", "embodied"
-- ARTISTIC: "rendered with", "captures", "showcases", "reflects"
-- HISTORICAL: "marked a turning point", "golden era", "landmark", "revolutionary"
-- DESCRIPTIVE: "charged with", "infused with", "dripping in", "saturated"
-
-PRODUCT TYPE ADAPTATIONS:
-
-VINTAGE POSTERS (most sophisticated):
-- Art-historical depth, movement analysis
-- "signature mastery of", "deliberately played with limits"
-- Technical printing details emphasized
-- Cultural/political context when relevant
-
-COVER ART (playful but informed):
-- More personality: "dripping in vintage decorum", "cheeky sophistication"
-- Magazine/publication context always included
-- Balance wit with historical grounding
-- "Experience the charm of..." / "Established in 1925..."
-
-ANTIQUE PRINTS (scholarly, provenance-focused):
-- Formal tone with scientific accuracy
-- Publication details, artist credits, engraving methods
-- "exquisite botanical print", "exceptional skill", "finest examples"
-- Emphasize rarity and historical significance
-
-ILLUSTRATIONS (witty, culturally observant):
-- More narrative freedom, scene descriptions
-- Political/social commentary welcome
-- "Step back in time...", "where wit and artistry collide"
-- Cultural treasures framing
-
-AVOID COMPLETELY:
-- Excessive exclamation points in formal descriptions
-- Generic phrases: "perfect for your wall", "great conversation starter"
-- Size/condition details (handled separately in product specs)
-- Overly casual: "Wow!", "How cool!", "Amazing!"
-- Corporate/stiff language
-
-SIGNATURE PHRASES (use often):
-- "A standout piece for..."
-- "Golden era of..."
-- "Marked a turning point in..."
-- "Defined the visual identity of..."
-- "Embodies the spirit of..."
-- "Bridges [X] and [Y]"
-- "Equal parts [X] and [Y]"
-- "Capturing the [quality] at the heart of..."
-
-REAL EXAMPLES FROM YOUR CATALOG:
-
-Olympic Poster: "marked a turning point in modern design...influenced international design standards for decades"
-Cuban Poster: "turns political graphics into something sharp, symbolic, and unforgettable"
-Travel Poster: "captures the spirit of the era with bold geometric forms, saturated color, and playful modernist figures"
-Egyptian Poster: "captures the chaos at the heart of one of cinema's most inventive hybrids"
-Blues Project: "The design showcases Moscoso's signature mastery of vibrating colors..."
+EXAMPLES: "marked a turning point in modern design", "turns political graphics into something sharp and unforgettable", "captures the spirit of the era with bold geometric forms"
 `;
 
 
 // Construct analysis prompt with optional initial information and research context
 function buildAnalysisPrompt(initialInfo?: string, researchContext?: string): string {
-  const basePrompt = `You are an expert art historian and vintage poster specialist with decades of experience in poster authentication, valuation, and historical analysis.
+  const basePrompt = `Expert art historian: Analyze this vintage poster and provide detailed JSON.
 
-Analyze this vintage poster image and provide detailed, factual information in a structured JSON format.
+${researchContext ? `CONTEXT: ${researchContext}\n\n` : ''}
 
-${researchContext ? `RESEARCH CONTEXT:\n${researchContext}\n\n` : ''}
-
-Your analysis should include:
-
-1. IDENTIFICATION
-   - Artist/Designer: Provide the artist's name if identifiable, or "Unknown" if uncertain
-   - Title: The poster's title or a clear description of the subject matter
-   - Estimated Date: Year or decade of creation
-   - Estimated Dimensions: Based on visual proportions and typical poster sizes of the period
-
-2. HISTORICAL CONTEXT
-   - Period/Movement: Art movement, historical period, or style (Art Nouveau, Art Deco, Constructivism, etc.)
-   - Cultural Significance: Why this poster matters historically or culturally
-   - Original Purpose: Advertising, propaganda, event promotion, political campaign, etc.
-
-3. TECHNICAL ANALYSIS
-   - Printing Technique: Lithography, screen printing, offset printing, letterpress, etc. - be specific
-   - Color Palette: Notable color choices, number of colors, and what they suggest about the printing process
-   - Typography: Font styles, hand-lettering, and their significance to the period
-   - Composition: Layout principles, visual hierarchy, artistic techniques employed
-
-4. CONDITION & AUTHENTICITY
-   - Age Indicators: What visual elements suggest this is period-original vs. a reproduction
-   - Condition Issues: Typical wear patterns, fading, creasing, restoration to look for
-
-5. RARITY & VALUE
-   - Rarity Assessment: Common, Scarce, Rare, or Very Rare - with reasoning
-   - Value Factors: What affects this poster's market value
-   - Comparable Examples: Reference similar posters or artists for context
-   - Collector Interest: Current market demand and collector appeal
+SECTIONS:
+1. IDENTIFICATION: Artist, title, date, dimensions
+2. HISTORICAL CONTEXT: Period/movement, cultural significance, original purpose
+3. TECHNICAL: Printing technique, color palette, typography, composition
+4. CONDITION & AUTHENTICITY: Age indicators, condition issues
+5. RARITY & VALUE: Assessment (Common/Scarce/Rare/Very Rare), value factors, comparables, collector interest
 
 ${initialInfo ? `
-IMPORTANT VALIDATION TASK:
-The user has provided the following preliminary information about this poster:
-
-"${initialInfo}"
-
-Please cross-reference this information with what you observe in the image:
-- Validate the accuracy of any claims made in the preliminary information
-- Correct any inaccuracies you identify with clear reasoning
-- Add context or clarification where the information is incomplete or vague
-- Indicate your confidence level (High/Medium/Low) in any corrections you make
-- Note specific discrepancies between the provided info and your visual analysis
-
-Include a "VALIDATION NOTES" section specifically addressing how the provided information compares to your analysis.
+6. VALIDATE USER INFO: "${initialInfo}" - Cross-check with image, note discrepancies & confidence levels.
 ` : ''}
 
-6. PRODUCT DESCRIPTION
-   ${BRAND_VOICE_GUIDELINES}
-   - Write a 2-3 paragraph marketing description suitable for an e-commerce listing
-   - Emphasize historical significance, artistic merit, and collectability
-   - Make it engaging and informative while maintaining authenticity
+7. PRODUCT DESCRIPTION (2-3 paragraphs for e-commerce):
+${BRAND_VOICE_GUIDELINES}
 
-7. SOURCE CITATIONS
-   - For each major claim (artist attribution, date, historical facts), provide sources
-   - Include museum websites, auction records, art history references, or scholarly sources
-   - Rate reliability: high (museums, academic), medium (established dealers), low (unverified)
-   - Format: Array of {claim, source, url, reliability}
+8. SOURCES: Cite claims (artist, date, facts) with museum/auction/scholarly sources. Format: {claim, source, url, reliability: high/medium/low}
 
-8. SIMILAR PRODUCTS
-   - Identify where collectors might find similar posters online
-   - Search terms for eBay, Heritage Auctions, other galleries
-   - Include specific recommendations with reasoning
-   - Format: Array of {title, site, url, price, condition} where available
+9. SIMILAR PRODUCTS: List comparables on eBay/Heritage/galleries. Format: {title, site, url, price?, condition?}
 
-RESPONSE FORMAT:
-Provide your analysis as a valid JSON object with this exact structure:
+JSON FORMAT:
 {
   "identification": {
     "artist": string,
@@ -256,7 +137,7 @@ Provide your analysis as a valid JSON object with this exact structure:
   ]
 }
 
-Be specific, detailed, and scholarly in your analysis. When uncertain, indicate your confidence level and explain your reasoning. Provide real, verifiable URLs for citations and similar products.`;
+Be specific and scholarly. Indicate confidence levels when uncertain. Use real, verifiable URLs.`;
 
   return basePrompt;
 }
@@ -286,7 +167,7 @@ export async function analyzePoster(
     // Using Claude Sonnet 4.5 (current model as of 2026)
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4096,
+      max_tokens: 6000,
       messages: [
         {
           role: 'user',

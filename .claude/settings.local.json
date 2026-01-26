@@ -11,7 +11,9 @@
       "Bash(\"/c/Program Files/nodejs/npm\" run build)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "WebFetch(domain:www.authenticvintageposters.com)"
+      "WebFetch(domain:www.authenticvintageposters.com)",
+      "Bash(python:*)",
+      "Bash(pip install:*)"
     ]
   }
 }
