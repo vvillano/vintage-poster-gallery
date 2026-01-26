@@ -69,10 +69,15 @@ function buildAnalysisPrompt(initialInfo?: string, researchContext?: string): st
 
 ${researchContext ? `CONTEXT: ${researchContext}\n\n` : ''}
 
+ACCURACY REQUIREMENTS:
+- ARTIST NAME: Use EXACTLY what's visible on poster. If poster shows "Frank Horr" do NOT expand to "Frank Horrabin" unless cited. If uncertain, use "Unknown" or "Attributed to [Name]".
+- PRINTING TECHNIQUE: Be conservative. Only state specific methods if definitively visible. Use qualifiers: "likely lithography", "appears to be offset printing", "possibly screen-printed". Cite sources for technique claims.
+- EVERY specific claim (full names, printing methods, dates, historical facts) must have a citation in sourceCitations.
+
 SECTIONS:
-1. IDENTIFICATION: Artist, title, date, dimensions
+1. IDENTIFICATION: Artist (EXACTLY as shown, or "Unknown"), title, date, dimensions
 2. HISTORICAL CONTEXT: Period/movement, cultural significance, original purpose
-3. TECHNICAL: Printing technique, color palette, typography, composition
+3. TECHNICAL: Printing technique (use qualifiers unless certain), color palette, typography, composition
 4. CONDITION & AUTHENTICITY: Age indicators, condition issues
 5. RARITY & VALUE: Assessment (Common/Scarce/Rare/Very Rare), value factors, comparables, collector interest
 
@@ -83,7 +88,11 @@ ${initialInfo ? `
 7. PRODUCT DESCRIPTION (2-3 paragraphs for e-commerce):
 ${BRAND_VOICE_GUIDELINES}
 
-8. SOURCES: Cite claims (artist, date, facts) with museum/auction/scholarly sources. Format: {claim, source, url, reliability: high/medium/low}
+8. SOURCES: REQUIRED for all specific claims. Cite:
+   - Full artist names (if expanded beyond what's visible)
+   - Specific printing techniques (not general era assumptions)
+   - Historical facts, dates, provenance
+   Must include verifiable URLs. Format: {claim, source, url, reliability: high/medium/low}
 
 9. SIMILAR PRODUCTS: List comparables on eBay/Heritage/galleries. Format: {title, site, url, price?, condition?}
 
