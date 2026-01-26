@@ -72,9 +72,10 @@ export default function UploadPage() {
 
   /**
    * Compress image if it exceeds 5MB while maintaining quality for detail analysis
-   * Uses high quality settings (0.92) to preserve small text and printer marks
+   * Uses high quality settings (0.95) to preserve small text and printer marks
+   * Target is 4.95MB to stay just under the 5MB API limit
    */
-  const compressImage = async (file: File, targetSizeMB: number = 4.8): Promise<File> => {
+  const compressImage = async (file: File, targetSizeMB: number = 4.95): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -97,9 +98,10 @@ export default function UploadPage() {
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0);
 
-          // Start with high quality and reduce if needed
-          let quality = 0.92;
+          // Start with very high quality (95%) and reduce in small steps
+          let quality = 0.95;
           const targetBytes = targetSizeMB * 1024 * 1024;
+          const minQuality = 0.75; // Never go below 75% quality
 
           const tryCompress = () => {
             canvas.toBlob(
@@ -110,8 +112,9 @@ export default function UploadPage() {
                 }
 
                 // If still too large and we can reduce quality more, try again
-                if (blob.size > targetBytes && quality > 0.7) {
-                  quality -= 0.05;
+                // Use smaller steps (2%) to find optimal quality
+                if (blob.size > targetBytes && quality > minQuality) {
+                  quality -= 0.02;
                   tryCompress();
                   return;
                 }

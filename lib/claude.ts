@@ -67,19 +67,56 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string): string {
   const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.
 
-ACCURACY: Artist name EXACTLY as visible. Use "likely/appears" for uncertain printing technique. Only cite specific pages, no generic collections.
+CRITICAL - ARTIST IDENTIFICATION:
+1. CAREFULLY examine the ENTIRE image for signatures, monograms, or artist marks (often in corners, margins, or integrated into the design)
+2. Look for printed artist credits, typically near the title or in small text
+3. Recognize famous poster artists by style (Mucha, Cappiello, Chéret, Toulouse-Lautrec, Cassandre, etc.)
+4. Record EXACTLY what you see - if signed "H. Monnier" report "Henri Monnier" (full name when identifiable)
+5. Set artistConfidence: "confirmed" if clearly signed/printed, "likely" if style strongly suggests, "uncertain" if unsure, "unknown" if cannot determine
+6. Set artistSource: describe WHERE you found the name (e.g., "signed lower right corner", "printed below image", "style attribution")
 
-SEARCH: "${productType || 'item'} [Artist] [Title] [Year] original" to find exact listings.${initialInfo ? `\nUSER INFO: "${initialInfo}" - validate.` : ''}
+DATE IDENTIFICATION:
+1. Look for dates printed on the piece (often near printer info or copyright)
+2. Check for exhibition dates, event dates, or publication years
+3. Use style/technique to estimate period if no date visible
+4. Set dateConfidence and dateSource similarly to artist
 
-DESCRIPTION (150-175 words, 1 para): ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ')}
+PRINTER/PUBLISHER:
+- Look for printer marks, typically at bottom: "Imp.", "Imprimerie", "Printed by", etc.
+- Common printers: Chaix, Lemercier, Verneau, etc.
 
-LISTINGS: THIS EXACT item only (same title/artist/date). Empty array if none.
+PRINTING TECHNIQUE - Be precise:
+- Stone lithograph (litho from limestone, often visible texture)
+- Chromolithograph (multi-color litho, typically 5+ color runs)
+- Offset lithograph (modern, smoother appearance)
+- Photolithograph, screenprint, etc.
+- Look for registration marks, dot patterns, stone texture
+${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
+
+PRODUCT DESCRIPTION: Write 2-3 paragraphs (150-200 words total). ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ')}
+
+LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 
 JSON:
 {
-  "identification": {"artist": "", "title": "", "estimatedDate": "", "estimatedDimensions": ""},
+  "identification": {
+    "artist": "",
+    "artistConfidence": "confirmed|likely|uncertain|unknown",
+    "artistSource": "",
+    "title": "",
+    "estimatedDate": "",
+    "dateConfidence": "confirmed|likely|uncertain|unknown",
+    "dateSource": "",
+    "estimatedDimensions": ""
+  },
   "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": ""},
-  "technicalAnalysis": {"printingTechnique": "", "colorPalette": "", "typography": "", "composition": ""},
+  "technicalAnalysis": {
+    "printingTechnique": "",
+    "printer": "",
+    "colorPalette": "",
+    "typography": "",
+    "composition": ""
+  },
   "conditionAuthenticity": {"ageIndicators": [], "conditionIssues": []},
   "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
   "productDescription": "",
@@ -260,12 +297,17 @@ export async function analyzePoster(
 export function flattenAnalysis(analysis: PosterAnalysis) {
   return {
     artist: analysis.identification.artist,
+    artistConfidence: analysis.identification.artistConfidence,
+    artistSource: analysis.identification.artistSource,
     title: analysis.identification.title,
     estimatedDate: analysis.identification.estimatedDate,
+    dateConfidence: analysis.identification.dateConfidence,
+    dateSource: analysis.identification.dateSource,
     dimensionsEstimate: analysis.identification.estimatedDimensions,
     historicalContext: `${analysis.historicalContext.periodMovement}\n\n${analysis.historicalContext.culturalSignificance}\n\nOriginal Purpose: ${analysis.historicalContext.originalPurpose}`,
     significance: analysis.historicalContext.culturalSignificance,
     printingTechnique: analysis.technicalAnalysis.printingTechnique,
+    printer: analysis.technicalAnalysis.printer || undefined,
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
     validationNotes: analysis.validationNotes || undefined,

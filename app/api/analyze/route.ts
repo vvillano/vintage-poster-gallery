@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { posterId } = body;
+    const { posterId, additionalContext, forceReanalyze } = body;
 
     if (!posterId) {
       return NextResponse.json(
@@ -41,20 +41,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Poster not found' }, { status: 404 });
     }
 
-    // Check if already analyzed
-    if (poster.analysisCompleted) {
+    // Check if already analyzed (unless forceReanalyze is true)
+    if (poster.analysisCompleted && !forceReanalyze) {
       return NextResponse.json(
-        { error: 'Poster has already been analyzed' },
+        { error: 'Poster has already been analyzed. Use forceReanalyze to re-analyze with new context.' },
         { status: 400 }
       );
     }
 
     console.log(`Starting analysis for poster ${posterId}, image URL: ${poster.imageUrl}`);
 
+    // Combine initial information with any additional context
+    let combinedInfo = poster.initialInformation || '';
+    if (additionalContext) {
+      combinedInfo = combinedInfo
+        ? `${combinedInfo}\n\nADDITIONAL CONTEXT PROVIDED BY USER:\n${additionalContext}`
+        : additionalContext;
+    }
+
     // Analyze with Claude
     const analysis = await analyzePoster(
       poster.imageUrl,
-      poster.initialInformation || undefined,
+      combinedInfo || undefined,
       poster.productType || undefined
     );
 

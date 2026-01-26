@@ -16,12 +16,17 @@ export interface Poster {
 
   // AI Analysis Results
   artist?: string | null;
+  artistConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  artistSource?: string | null;  // Where the artist name was found
   title?: string | null;
   estimatedDate?: string | null;
+  dateConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  dateSource?: string | null;  // Where the date was found
   dimensionsEstimate?: string | null;
   historicalContext?: string | null;
   significance?: string | null;
   printingTechnique?: string | null;
+  printer?: string | null;  // Printer/publisher if known
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
   validationNotes?: string | null;  // AI notes on validating initial information
@@ -78,8 +83,12 @@ export interface SimilarProduct {
 export interface PosterAnalysis {
   identification: {
     artist: string;
+    artistConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // How confident is the identification
+    artistSource: string;  // Where the artist name was found (e.g., "signed bottom right", "visible in image", "research")
     title: string;
     estimatedDate: string;
+    dateConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // How confident is the date
+    dateSource: string;  // Where the date was found (e.g., "printed on piece", "research", "style analysis")
     estimatedDimensions: string;
   };
   historicalContext: {
@@ -89,6 +98,7 @@ export interface PosterAnalysis {
   };
   technicalAnalysis: {
     printingTechnique: string;
+    printer?: string;  // Printer/publisher if visible or known
     colorPalette: string;
     typography: string;
     composition: string;
@@ -104,7 +114,7 @@ export interface PosterAnalysis {
     collectorInterest: string;
   };
   validationNotes?: string;  // Present when initial information was provided
-  productDescription: string;  // Marketing-ready product description
+  productDescription: string;  // Marketing-ready product description (2-3 paragraphs)
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
 }
@@ -149,12 +159,17 @@ export interface CreatePosterInput {
 
 export interface UpdatePosterInput {
   artist?: string;
+  artistConfidence?: string;
+  artistSource?: string;
   title?: string;
   estimatedDate?: string;
+  dateConfidence?: string;
+  dateSource?: string;
   dimensionsEstimate?: string;
   historicalContext?: string;
   significance?: string;
   printingTechnique?: string;
+  printer?: string;
   rarityAnalysis?: string;
   valueInsights?: string;
   validationNotes?: string;
