@@ -203,42 +203,70 @@ export async function analyzePoster(
     }
 
     const prompt = buildAnalysisPrompt(initialInformation, undefined, productType);
+    console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
     // Using Claude Sonnet 4.5 (current model as of 2026)
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 6000,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'url',
-                url: imageUrl,
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 6000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'url',
+                  url: imageUrl,
+                },
               },
-            },
-            {
-              type: 'text',
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
+              {
+                type: 'text',
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      });
+    } catch (apiError: any) {
+      console.error('[analyzePoster] Claude API call failed:', apiError);
+      console.error('[analyzePoster] Error details:', {
+        message: apiError.message,
+        status: apiError.status,
+        type: apiError.type,
+        error: apiError.error,
+      });
+      throw new Error(`Claude API error: ${apiError.message || 'Unknown API error'}`);
+    }
 
     console.log('[analyzePoster] Claude API response received');
+    console.log('[analyzePoster] Response object:', JSON.stringify(response, null, 2).substring(0, 1000));
+
+    // Check if response has the expected structure
+    if (!response.content || !Array.isArray(response.content)) {
+      console.error('[analyzePoster] Unexpected response structure:', response);
+      throw new Error('Unexpected response structure from Claude API');
+    }
 
     // Extract the text response
     const textContent = response.content.find((block) => block.type === 'text');
     if (!textContent || textContent.type !== 'text') {
+      console.error('[analyzePoster] No text block in response:', response.content);
       throw new Error('No text response from Claude');
     }
 
-    console.log('[analyzePoster] Raw response preview:', textContent.text.substring(0, 500));
+    console.log('[analyzePoster] Raw response preview (first 500 chars):', textContent.text.substring(0, 500));
+    console.log('[analyzePoster] Response length:', textContent.text.length);
+
+    // Check if response looks like an error message
+    if (textContent.text.startsWith('Request') || textContent.text.startsWith('Error')) {
+      console.error('[analyzePoster] Response appears to be an error message:', textContent.text);
+      throw new Error(`Claude API returned an error: ${textContent.text.substring(0, 200)}`);
+    }
 
     // Parse the JSON response - find the first { and last } to extract clean JSON
     const firstBrace = textContent.text.indexOf('{');
@@ -246,20 +274,22 @@ export async function analyzePoster(
 
     if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
       console.error('[analyzePoster] No valid JSON structure found in response');
-      console.error('[analyzePoster] Full response:', textContent.text);
-      throw new Error('No valid JSON found in Claude response');
+      console.error('[analyzePoster] Full response:', textContent.text.substring(0, 2000));
+      throw new Error('No valid JSON found in Claude response. Response may be truncated or malformed.');
     }
 
     const jsonString = textContent.text.substring(firstBrace, lastBrace + 1);
-    console.log('[analyzePoster] Extracted JSON preview:', jsonString.substring(0, 200));
+    console.log('[analyzePoster] Extracted JSON preview (first 300 chars):', jsonString.substring(0, 300));
+    console.log('[analyzePoster] JSON string length:', jsonString.length);
 
     let analysis: PosterAnalysis;
     try {
       analysis = JSON.parse(jsonString);
     } catch (parseError) {
       console.error('[analyzePoster] JSON parse error:', parseError);
-      console.error('[analyzePoster] Attempted to parse:', jsonString.substring(0, 1000));
-      throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+      console.error('[analyzePoster] Attempted to parse (first 1500 chars):', jsonString.substring(0, 1500));
+      console.error('[analyzePoster] Last 500 chars:', jsonString.substring(Math.max(0, jsonString.length - 500)));
+      throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}. Check logs for full response.`);
     }
 
     // Validate the structure
