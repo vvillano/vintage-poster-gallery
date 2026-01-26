@@ -118,14 +118,18 @@ export default function PosterDetailPage() {
         >
           ← Back to Dashboard
         </Link>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExportJSON}
-            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+        {poster?.artist && poster?.title && poster?.estimatedDate && (
+          <a
+            href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(
+              `${poster.productType || 'vintage poster'} ${poster.artist} ${poster.title} ${poster.estimatedDate} original`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2"
           >
-            Export JSON
-          </button>
-        </div>
+            🔍 Search Google Images
+          </a>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -140,6 +144,13 @@ export default function PosterDetailPage() {
               />
             </div>
             <div className="mt-4 text-sm text-slate-600">
+              {poster.productType && (
+                <div className="mb-3">
+                  <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                    {poster.productType}
+                  </span>
+                </div>
+              )}
               <p>
                 <strong>Uploaded:</strong> {formatDate(poster.uploadDate)}
               </p>
@@ -352,12 +363,15 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
-              {/* Similar Products */}
+              {/* Available Listings */}
               {poster.similarProducts && Array.isArray(poster.similarProducts) && poster.similarProducts.length > 0 && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-xl font-bold text-slate-900 mb-4">
-                    Similar Products Available
+                    Available Listings
                   </h3>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Exact matches of this specific item currently available for purchase
+                  </p>
                   <div className="space-y-3">
                     {poster.similarProducts.map((product: any, idx: number) => (
                       <div key={idx} className="border border-slate-200 rounded-lg p-4 hover:border-blue-400 transition">

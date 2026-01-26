@@ -63,38 +63,70 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 `;
 
 
-// Construct analysis prompt with optional initial information and research context
-function buildAnalysisPrompt(initialInfo?: string, researchContext?: string): string {
-  const basePrompt = `Expert art historian: Analyze this vintage poster and provide detailed JSON.
+// Construct analysis prompt with optional initial information, research context, and product type
+function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string): string {
+  const basePrompt = `Expert art historian: Analyze this ${productType || 'vintage item'} and provide detailed JSON.
 
 ${researchContext ? `CONTEXT: ${researchContext}\n\n` : ''}
 
-ACCURACY REQUIREMENTS:
-- ARTIST NAME: Use EXACTLY what's visible on poster. If poster shows "Frank Horr" do NOT expand to "Frank Horrabin" unless cited. If uncertain, use "Unknown" or "Attributed to [Name]".
-- PRINTING TECHNIQUE: Be conservative. Only state specific methods if definitively visible. Use qualifiers: "likely lithography", "appears to be offset printing", "possibly screen-printed". Cite sources for technique claims.
-- EVERY specific claim (full names, printing methods, dates, historical facts) must have a citation in sourceCitations.
-
-SECTIONS:
-1. IDENTIFICATION: Artist (EXACTLY as shown, or "Unknown"), title, date, dimensions
-2. HISTORICAL CONTEXT: Period/movement, cultural significance, original purpose
-3. TECHNICAL: Printing technique (use qualifiers unless certain), color palette, typography, composition
-4. CONDITION & AUTHENTICITY: Age indicators, condition issues
-5. RARITY & VALUE: Assessment (Common/Scarce/Rare/Very Rare), value factors, comparables, collector interest
-
-${initialInfo ? `
-6. VALIDATE USER INFO: "${initialInfo}" - Cross-check with image, note discrepancies & confidence levels.
+${productType ? `PRODUCT TYPE: ${productType}
+Use this to guide your search strategy and analysis focus. Different product types require different approaches:
+- Posters: Focus on artist, printing method, promotional context
+- Window Cards: Note card stock material, display purpose
+- Cover Art: Identify publication name and date
+- Illustration: Determine if magazine/book illustration
+- Antique Print: Check if book plate or portfolio print (100+ years)
+- Product Label: Identify product and packaging context
 ` : ''}
 
-7. PRODUCT DESCRIPTION (2-3 paragraphs for e-commerce):
-${BRAND_VOICE_GUIDELINES}
+ACCURACY REQUIREMENTS:
+- ARTIST NAME: Use EXACTLY what's visible. "Frank Horr" ≠ "Frank Horrabin" unless you cite a source proving the connection.
+- PRINTING TECHNIQUE: Be conservative. Use "likely offset lithography" or "appears to be screen-printed" unless definitively visible.
+- CITATIONS: Every specific claim MUST have a source. No generic collection pages or broken links.
 
-8. SOURCES: REQUIRED for all specific claims. Cite:
-   - Full artist names (if expanded beyond what's visible)
-   - Specific printing techniques (not general era assumptions)
-   - Historical facts, dates, provenance
-   Must include verifiable URLs. Format: {claim, source, url, reliability: high/medium/low}
+SEARCH STRATEGY FOR FINDING EXACT MATCHES:
+Construct a Google Image search query: "${productType || 'vintage item'} [Artist Name] [Title/Subject] [Year] original"
+Examples:
+- Poster: "poster Raymond Savignac Verigoud 1955 original"
+- Window Card: "window card Bataan 1943 Jacques Kapralik original"
+- Cover Art: "cover art Fortune magazine October 1952 original"
 
-9. SIMILAR PRODUCTS: List comparables on eBay/Heritage/galleries. Format: {title, site, url, price?, condition?}
+Use this search strategy to find EXACT LISTINGS of THIS specific item currently for sale.
+
+SECTIONS:
+1. IDENTIFICATION: Artist (exactly as shown), title, date, dimensions
+2. HISTORICAL CONTEXT: Period/movement, significance, original purpose
+3. TECHNICAL: Printing (with qualifiers), color palette, typography, composition
+4. CONDITION & AUTHENTICITY: Age indicators, condition issues
+5. RARITY & VALUE: Assessment, value factors, comparables, collector interest
+
+${initialInfo ? `
+6. VALIDATION: User provided: "${initialInfo}"
+   Cross-check with image. Note discrepancies with confidence levels (High/Medium/Low).
+` : ''}
+
+7. PRODUCT DESCRIPTION - CRITICAL REQUIREMENTS:
+   ${BRAND_VOICE_GUIDELINES}
+
+   LENGTH: Single paragraph, 150-175 words (NOT 2-3 paragraphs!)
+   STRUCTURE: Opening hook → Technical/historical details → Significance → Curatorial closing
+   VOICE: ${productType ? `Use ${productType} voice adaptation from guidelines above` : 'Gallery-quality, sophisticated'}
+
+8. SOURCE CITATIONS - STRICT REQUIREMENTS:
+   - Only cite SPECIFIC pages about THIS artist/work/series
+   - NO homepage URLs, NO search pages, NO collection indexes
+   - NO broken links - verify URLs work
+   - Each citation must prove a specific claim
+   - Format: {claim: "specific fact", source: "Source Name", url: "https://...", reliability: "high/medium/low"}
+   - If you cannot find a verifiable source, mark reliability as "low" or omit the claim
+
+9. AVAILABLE LISTINGS - EXACT MATCHES ONLY:
+   - Find THIS EXACT item (same title, artist, date) currently for sale
+   - Search: eBay active + sold listings, Invaluable, Heritage Auctions, poster dealers
+   - Include ONLY direct links to THIS specific piece
+   - NO generic searches, NO similar items, NO stylistically related works
+   - If no exact matches found, return EMPTY array []
+   - Format: {title: "Full title", site: "eBay/Invaluable/etc", url: "direct link", price: "if available", condition: "if noted"}
 
 JSON FORMAT:
 {
@@ -159,7 +191,8 @@ Be specific and scholarly. Indicate confidence levels when uncertain. Use real, 
  */
 export async function analyzePoster(
   imageUrl: string,
-  initialInformation?: string
+  initialInformation?: string,
+  productType?: string
 ): Promise<PosterAnalysis> {
   try {
     console.log('[analyzePoster] Starting analysis for image:', imageUrl);
@@ -169,7 +202,7 @@ export async function analyzePoster(
       throw new Error('ANTHROPIC_API_KEY is not configured');
     }
 
-    const prompt = buildAnalysisPrompt(initialInformation);
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType);
     console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
