@@ -65,120 +65,27 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 
 // Construct analysis prompt with optional initial information, research context, and product type
 function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string): string {
-  const basePrompt = `Expert art historian: Analyze this ${productType || 'vintage item'} and provide detailed JSON.
+  const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.
 
-${researchContext ? `CONTEXT: ${researchContext}\n\n` : ''}
+ACCURACY: Artist name EXACTLY as visible. Use "likely/appears" for uncertain printing technique. Only cite specific pages, no generic collections.
 
-${productType ? `PRODUCT TYPE: ${productType}
-Use this to guide your search strategy and analysis focus. Different product types require different approaches:
-- Posters: Focus on artist, printing method, promotional context
-- Window Cards: Note card stock material, display purpose
-- Cover Art: Identify publication name and date
-- Illustration: Determine if magazine/book illustration
-- Antique Print: Check if book plate or portfolio print (100+ years)
-- Product Label: Identify product and packaging context
-` : ''}
+SEARCH: "${productType || 'item'} [Artist] [Title] [Year] original" to find exact listings.${initialInfo ? `\nUSER INFO: "${initialInfo}" - validate.` : ''}
 
-ACCURACY REQUIREMENTS:
-- ARTIST NAME: Use EXACTLY what's visible. "Frank Horr" ≠ "Frank Horrabin" unless you cite a source proving the connection.
-- PRINTING TECHNIQUE: Be conservative. Use "likely offset lithography" or "appears to be screen-printed" unless definitively visible.
-- CITATIONS: Every specific claim MUST have a source. No generic collection pages or broken links.
+DESCRIPTION (150-175 words, 1 para): ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ')}
 
-SEARCH STRATEGY FOR FINDING EXACT MATCHES:
-Construct a Google Image search query: "${productType || 'vintage item'} [Artist Name] [Title/Subject] [Year] original"
-Examples:
-- Poster: "poster Raymond Savignac Verigoud 1955 original"
-- Window Card: "window card Bataan 1943 Jacques Kapralik original"
-- Cover Art: "cover art Fortune magazine October 1952 original"
+LISTINGS: THIS EXACT item only (same title/artist/date). Empty array if none.
 
-Use this search strategy to find EXACT LISTINGS of THIS specific item currently for sale.
-
-SECTIONS:
-1. IDENTIFICATION: Artist (exactly as shown), title, date, dimensions
-2. HISTORICAL CONTEXT: Period/movement, significance, original purpose
-3. TECHNICAL: Printing (with qualifiers), color palette, typography, composition
-4. CONDITION & AUTHENTICITY: Age indicators, condition issues
-5. RARITY & VALUE: Assessment, value factors, comparables, collector interest
-
-${initialInfo ? `
-6. VALIDATION: User provided: "${initialInfo}"
-   Cross-check with image. Note discrepancies with confidence levels (High/Medium/Low).
-` : ''}
-
-7. PRODUCT DESCRIPTION - CRITICAL REQUIREMENTS:
-   ${BRAND_VOICE_GUIDELINES}
-
-   LENGTH: Single paragraph, 150-175 words (NOT 2-3 paragraphs!)
-   STRUCTURE: Opening hook → Technical/historical details → Significance → Curatorial closing
-   VOICE: ${productType ? `Use ${productType} voice adaptation from guidelines above` : 'Gallery-quality, sophisticated'}
-
-8. SOURCE CITATIONS - STRICT REQUIREMENTS:
-   - Only cite SPECIFIC pages about THIS artist/work/series
-   - NO homepage URLs, NO search pages, NO collection indexes
-   - NO broken links - verify URLs work
-   - Each citation must prove a specific claim
-   - Format: {claim: "specific fact", source: "Source Name", url: "https://...", reliability: "high/medium/low"}
-   - If you cannot find a verifiable source, mark reliability as "low" or omit the claim
-
-9. AVAILABLE LISTINGS - EXACT MATCHES ONLY:
-   - Find THIS EXACT item (same title, artist, date) currently for sale
-   - Search: eBay active + sold listings, Invaluable, Heritage Auctions, poster dealers
-   - Include ONLY direct links to THIS specific piece
-   - NO generic searches, NO similar items, NO stylistically related works
-   - If no exact matches found, return EMPTY array []
-   - Format: {title: "Full title", site: "eBay/Invaluable/etc", url: "direct link", price: "if available", condition: "if noted"}
-
-JSON FORMAT:
+JSON:
 {
-  "identification": {
-    "artist": string,
-    "title": string,
-    "estimatedDate": string,
-    "estimatedDimensions": string
-  },
-  "historicalContext": {
-    "periodMovement": string,
-    "culturalSignificance": string,
-    "originalPurpose": string
-  },
-  "technicalAnalysis": {
-    "printingTechnique": string,
-    "colorPalette": string,
-    "typography": string,
-    "composition": string
-  },
-  "conditionAuthenticity": {
-    "ageIndicators": string[],
-    "conditionIssues": string[]
-  },
-  "rarityValue": {
-    "rarityAssessment": string,
-    "valueFactors": string[],
-    "comparableExamples": string,
-    "collectorInterest": string
-  }${initialInfo ? `,
-  "validationNotes": string` : ''},
-  "productDescription": string,
-  "sourceCitations": [
-    {
-      "claim": string,
-      "source": string,
-      "url": string,
-      "reliability": "high" | "medium" | "low"
-    }
-  ],
-  "similarProducts": [
-    {
-      "title": string,
-      "site": string,
-      "url": string,
-      "price": string (optional),
-      "condition": string (optional)
-    }
-  ]
-}
-
-Be specific and scholarly. Indicate confidence levels when uncertain. Use real, verifiable URLs.`;
+  "identification": {"artist": "", "title": "", "estimatedDate": "", "estimatedDimensions": ""},
+  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": ""},
+  "technicalAnalysis": {"printingTechnique": "", "colorPalette": "", "typography": "", "composition": ""},
+  "conditionAuthenticity": {"ageIndicators": [], "conditionIssues": []},
+  "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
+  "productDescription": "",
+  "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
+  "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]
+}`;
 
   return basePrompt;
 }
