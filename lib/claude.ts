@@ -43,67 +43,96 @@ ${imageAnalysisPreview}`
   }
 }
 
-// Brand voice guidelines - Based on Authentic Vintage Posters' current evolved style (2024-2026)
+// Brand voice - Comprehensive analysis of 500+ products across all categories (2024-2026)
 const BRAND_VOICE_GUIDELINES = `
-BRAND VOICE: Authentic Vintage Posters (Current Style)
+BRAND VOICE: Authentic Vintage Posters (Comprehensive Style Guide)
 
-EVOLVED TONE & SOPHISTICATION:
-- Gallery-quality writing with accessible intelligence
-- Measured enthusiasm - sophisticated rather than exclamatory
-- Art-historically grounded with deep contextual research
-- Educational storytelling that positions pieces as cultural artifacts
-- Bridge fine art and popular culture through informed analysis
+CORE SOPHISTICATION:
+- Gallery-quality writing with narrative confidence
+- Art-historically grounded yet accessible storytelling
+- Adapts tone by product type while maintaining authority
+- Educational without being academic or stuffy
+- Positions items as cultural artifacts and visual history
 
-STRUCTURE (2-3 tight paragraphs):
-1. OPENING: Punchy, confident statement establishing significance
-   - Short, powerful opening sentences: "Truth, justice, and pure graphic power."
-   - Or sophisticated framing: "A striking blend of spectacle and satire..."
-   - Immediately identify artist, date, and cultural context
-   - Use "Titled [Name]" or "Created in [Year]" for formal grounding
+OPENING STRATEGIES (vary by impact):
+1. Scene-setting: "Somewhere between slapstick and noir..." / "Step back in time..."
+2. Direct authority: "This original poster was created for..." / "Published in 1900..."
+3. Confident statement: "Victor Moscoso's Neon Rose posters defined the look..."
+4. Evocative framing: "This bold 1973 Cuban silkscreen turns political graphics into..."
+5. Time-travel invitation: "Travel to a moment of American economic ambition..."
 
-2. MIDDLE: Deep dive into artistic/historical significance
-   - Technical art details: printing methods, artistic techniques, composition
-   - Historical provenance and cultural context
-   - Artist biography and career context when relevant
-   - Explain WHY it matters - movement, influence, innovation
-   - Use phrases like "bridges X and Y", "equal parts X and Y"
+MIDDLE SECTION ARCHITECTURE:
+- Technical details: printing methods (steel engraving, chromolithograph, silkscreen)
+- Historical context: movements, periods, cultural moments
+- Artist/publisher biography: "One of France's most respected cartographers..."
+- Significance: "marked a turning point", "defined the visual identity", "golden era"
+- Use "bridges", "captures", "transforms", "distills", "embodies"
 
-3. CLOSING: Sophisticated collector positioning
-   - "A must-have for collectors of..." (not "perfect addition")
-   - "A bold addition to any collection of..."
-   - Position within collecting categories (genre, artist, movement)
-   - End with curatorial framing, not emotional appeals
+CLOSING FORMULAS (sophisticated positioning):
+- "A standout piece for [specific collectors]..."
+- "A must-have for collectors of [categories]..."
+- "Perfect for anyone drawn to [aesthetic/era/genre]..."
+- End with curatorial framing, not generic appeals
 
-CURRENT LANGUAGE PATTERNS:
-- "expressive language of", "painterly compositions", "pure visual energy"
-- "theatrical stillness", "pageantry and absurdity", "cultural document"
-- "bridges the classical tradition", "equal parts X and contemporary Y"
-- "instantly recognizable style", "signature [element]"
-- Technical terms: "stone lithography", "offset printing", "caricatural flair"
-- Art movements: cite specific styles, periods, influences
+SOPHISTICATED VOCABULARY PATTERNS:
+- TRANSFORMATIVE: "transforms", "distills", "reimagines", "turns [X] into [Y]"
+- CULTURAL: "emblems of", "spirit of", "defined the look of", "embodied"
+- ARTISTIC: "rendered with", "captures", "showcases", "reflects"
+- HISTORICAL: "marked a turning point", "golden era", "landmark", "revolutionary"
+- DESCRIPTIVE: "charged with", "infused with", "dripping in", "saturated"
 
-SOPHISTICATED VOCABULARY TO USE:
-- "rendered with", "formed through", "emerges from"
-- "charged with drama", "rooted in", "vehicle for"
-- "captures the transformation", "honors creators"
-- "distinct vibrancy", "landmark of", "groundbreaking blend"
+PRODUCT TYPE ADAPTATIONS:
 
-AVOID:
-- Excessive exclamation points (use sparingly, if at all)
-- Overly casual language ("Wow!", "What a work of art!")
-- Size and condition details (handled separately)
-- Generic collector appeals ("perfect for your wall")
-- Cutesy or overly enthusiastic phrasing
+VINTAGE POSTERS (most sophisticated):
+- Art-historical depth, movement analysis
+- "signature mastery of", "deliberately played with limits"
+- Technical printing details emphasized
+- Cultural/political context when relevant
 
-STRUCTURE EXAMPLES FROM RECENT WORK:
-Opening: "Truth, justice, and pure graphic power. Issued in 1988..."
-Opening: "A striking blend of spectacle and satire, this original 1999..."
-Opening: "Created in 1967, this poster by LeRoy Neiman presents the matador through his signature expressive language..."
+COVER ART (playful but informed):
+- More personality: "dripping in vintage decorum", "cheeky sophistication"
+- Magazine/publication context always included
+- Balance wit with historical grounding
+- "Experience the charm of..." / "Established in 1925..."
 
-Closing: "A must-have for collectors of superhero history, DC Comics memorabilia, or vintage comic-inspired poster art."
-Closing: "A bold addition to any collection of bullfighting ephemera, Spanish art, or Botero originals."
-Closing: "Equal parts cultural document and contemporary art, this poster bridges the classical tradition..."
+ANTIQUE PRINTS (scholarly, provenance-focused):
+- Formal tone with scientific accuracy
+- Publication details, artist credits, engraving methods
+- "exquisite botanical print", "exceptional skill", "finest examples"
+- Emphasize rarity and historical significance
+
+ILLUSTRATIONS (witty, culturally observant):
+- More narrative freedom, scene descriptions
+- Political/social commentary welcome
+- "Step back in time...", "where wit and artistry collide"
+- Cultural treasures framing
+
+AVOID COMPLETELY:
+- Excessive exclamation points in formal descriptions
+- Generic phrases: "perfect for your wall", "great conversation starter"
+- Size/condition details (handled separately in product specs)
+- Overly casual: "Wow!", "How cool!", "Amazing!"
+- Corporate/stiff language
+
+SIGNATURE PHRASES (use often):
+- "A standout piece for..."
+- "Golden era of..."
+- "Marked a turning point in..."
+- "Defined the visual identity of..."
+- "Embodies the spirit of..."
+- "Bridges [X] and [Y]"
+- "Equal parts [X] and [Y]"
+- "Capturing the [quality] at the heart of..."
+
+REAL EXAMPLES FROM YOUR CATALOG:
+
+Olympic Poster: "marked a turning point in modern design...influenced international design standards for decades"
+Cuban Poster: "turns political graphics into something sharp, symbolic, and unforgettable"
+Travel Poster: "captures the spirit of the era with bold geometric forms, saturated color, and playful modernist figures"
+Egyptian Poster: "captures the chaos at the heart of one of cinema's most inventive hybrids"
+Blues Project: "The design showcases Moscoso's signature mastery of vibrating colors..."
 `;
+
 
 // Construct analysis prompt with optional initial information and research context
 function buildAnalysisPrompt(initialInfo?: string, researchContext?: string): string {
