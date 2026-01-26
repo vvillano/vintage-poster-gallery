@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function UploadPage() {
@@ -14,6 +14,31 @@ export default function UploadPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
+
+  // Handle clipboard paste
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            // Create a File object from the blob with a default name
+            const pastedFile = new File([blob], `pasted-image-${Date.now()}.png`, {
+              type: blob.type,
+            });
+            handleFile(pastedFile);
+          }
+          break;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -90,7 +115,10 @@ export default function UploadPage() {
 
       if (!uploadRes.ok) {
         const errorData = await uploadRes.json();
-        throw new Error(errorData.error || 'Upload failed');
+        const errorMsg = errorData.details
+          ? `${errorData.error}: ${errorData.details}`
+          : errorData.error || 'Upload failed';
+        throw new Error(errorMsg);
       }
 
       const uploadData = await uploadRes.json();
@@ -152,9 +180,11 @@ export default function UploadPage() {
           >
             <div className="text-6xl mb-4">📤</div>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Drop your poster image here
+              Drop, paste, or browse for your poster image
             </h3>
-            <p className="text-slate-600 mb-4">or</p>
+            <p className="text-slate-600 mb-4 text-sm">
+              Drag & drop, Ctrl+V to paste, or click below
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -263,11 +293,11 @@ export default function UploadPage() {
       </div>
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-semibold text-blue-900 mb-2">💡 Pro Tip</h4>
-        <p className="text-sm text-blue-800">
-          The more initial information you provide, the better Claude can validate and enhance
-          your poster details. Even partial information helps!
-        </p>
+        <h4 className="font-semibold text-blue-900 mb-2">💡 Pro Tips</h4>
+        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <li>You can paste images directly from your clipboard (Ctrl+V or Cmd+V)</li>
+          <li>The more initial information you provide, the better Claude can validate and enhance your poster details</li>
+        </ul>
       </div>
     </div>
   );
