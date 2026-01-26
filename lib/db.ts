@@ -19,6 +19,7 @@ export async function createPoster(
       file_size,
       uploaded_by,
       initial_information,
+      product_type,
       analysis_completed
     )
     VALUES (
@@ -28,6 +29,7 @@ export async function createPoster(
       ${input.fileSize},
       ${input.uploadedBy},
       ${input.initialInformation || null},
+      ${input.productType || null},
       false
     )
     RETURNING *
@@ -234,6 +236,7 @@ function dbRowToPoster(row: any): Poster {
     uploadDate: new Date(row.upload_date),
     uploadedBy: row.uploaded_by,
     initialInformation: row.initial_information,
+    productType: row.product_type,
     artist: row.artist,
     title: row.title,
     estimatedDate: row.estimated_date,

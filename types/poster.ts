@@ -11,6 +11,9 @@ export interface Poster {
   // Initial information provided at upload (optional)
   initialInformation?: string | null;
 
+  // Product classification
+  productType?: string | null;
+
   // AI Analysis Results
   artist?: string | null;
   title?: string | null;
@@ -33,6 +36,26 @@ export interface Poster {
   userNotes?: string | null;
   lastModified: Date;
 }
+
+// Product type classifications from Product Classification Guide - 2025
+export const PRODUCT_TYPES = [
+  'Poster',
+  'Window Card',
+  'Product Label',
+  'Illustration',
+  'Antique Print',
+  'Cover Art',
+  'Vintage Ad',
+  'Map',
+  'Postcard',
+  'Trade Card',
+  'Victorian Trade Card',
+  'Magazine/Book',
+  'Merchandise',
+  'Ephemera',
+] as const;
+
+export type ProductType = typeof PRODUCT_TYPES[number];
 
 // Source citation with link
 export interface SourceCitation {
@@ -103,6 +126,7 @@ export interface AnalysisResponse {
 export interface UploadRequest {
   file: File;
   initialInformation?: string;
+  productType: string;  // Required: Product classification
 }
 
 export interface UploadResponse {
@@ -120,6 +144,7 @@ export interface CreatePosterInput {
   fileSize: number;
   uploadedBy: string;
   initialInformation?: string;
+  productType?: string;
 }
 
 export interface UpdatePosterInput {

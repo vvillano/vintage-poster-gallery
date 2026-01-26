@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
     // Analyze with Claude
     const analysis = await analyzePoster(
       poster.imageUrl,
-      poster.initialInformation || undefined
+      poster.initialInformation || undefined,
+      poster.productType || undefined
     );
 
     console.log('Analysis completed successfully');

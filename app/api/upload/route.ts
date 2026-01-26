@@ -15,10 +15,15 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const productType = formData.get('productType') as string;
     const initialInformation = formData.get('initialInformation') as string;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    if (!productType) {
+      return NextResponse.json({ error: 'Product type is required' }, { status: 400 });
     }
 
     // Validate file
@@ -44,6 +49,7 @@ export async function POST(request: NextRequest) {
       fileSize: file.size,
       uploadedBy: session.user.name || 'unknown',
       initialInformation: initialInformation || undefined,
+      productType: productType || undefined,
     });
 
     return NextResponse.json({

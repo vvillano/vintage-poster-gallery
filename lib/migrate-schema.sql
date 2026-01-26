@@ -21,6 +21,9 @@ CREATE TABLE posters (
   -- Initial information provided at upload (optional)
   initial_information TEXT,
 
+  -- Product classification
+  product_type TEXT,  -- Poster, Window Card, Illustration, Cover Art, etc.
+
   -- AI Analysis Results
   artist TEXT,
   title TEXT,
@@ -51,3 +54,4 @@ CREATE INDEX idx_posters_upload_date ON posters(upload_date DESC);
 CREATE INDEX idx_posters_analysis_completed ON posters(analysis_completed);
 CREATE INDEX idx_posters_artist ON posters(artist);
 CREATE INDEX idx_posters_uploaded_by ON posters(uploaded_by);
+CREATE INDEX idx_posters_product_type ON posters(product_type);

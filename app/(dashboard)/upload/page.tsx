@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { PRODUCT_TYPES } from '@/types/poster';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -9,6 +10,7 @@ export default function UploadPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [productType, setProductType] = useState('');
   const [initialInformation, setInitialInformation] = useState('');
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -96,6 +98,11 @@ export default function UploadPage() {
       return;
     }
 
+    if (!productType) {
+      setError('Please select a product type.');
+      return;
+    }
+
     try {
       setUploading(true);
       setError('');
@@ -103,6 +110,7 @@ export default function UploadPage() {
       // Create form data
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('productType', productType);
       if (initialInformation.trim()) {
         formData.append('initialInformation', initialInformation.trim());
       }
@@ -152,6 +160,7 @@ export default function UploadPage() {
   const resetForm = () => {
     setFile(null);
     setPreview(null);
+    setProductType('');
     setInitialInformation('');
     setError('');
     if (fileInputRef.current) {
@@ -229,6 +238,29 @@ export default function UploadPage() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Product Type */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Product Type <span className="text-red-500">*</span>
+              </label>
+              <p className="text-sm text-slate-600 mb-3">
+                Select the type of item you're uploading. This helps guide the analysis and ensures accurate descriptions.
+              </p>
+              <select
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                required
+              >
+                <option value="">-- Select Product Type --</option>
+                {PRODUCT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Initial Information */}
