@@ -71,12 +71,12 @@ export function validateImageFile(file: File): {
     };
   }
 
-  // Check file size (10MB limit)
-  const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+  // Check file size (5MB limit - Claude API requirement)
+  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: 'File size exceeds 10MB limit.',
+      error: 'File size exceeds 5MB limit. Please compress or resize your image.',
     };
   }
 

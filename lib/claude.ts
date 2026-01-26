@@ -150,6 +150,12 @@ export async function analyzePoster(
         type: apiError.type,
         error: apiError.error,
       });
+
+      // Check for specific error types
+      if (apiError.status === 413 || apiError.message?.includes('too large') || apiError.message?.includes('size')) {
+        throw new Error('Image file is too large for analysis. Claude API accepts images up to 5MB. Please upload a smaller image.');
+      }
+
       throw new Error(`Claude API error: ${apiError.message || 'Unknown API error'}`);
     }
 
