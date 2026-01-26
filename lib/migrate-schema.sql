@@ -32,6 +32,9 @@ CREATE TABLE posters (
   rarity_analysis TEXT,
   value_insights TEXT,
   validation_notes TEXT,  -- AI notes on validating initial information
+  product_description TEXT,  -- Marketing-ready product description
+  source_citations JSONB,  -- Array of source links with descriptions
+  similar_products JSONB,  -- Array of similar products on other sites
 
   -- Analysis metadata
   analysis_completed BOOLEAN DEFAULT FALSE,

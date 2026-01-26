@@ -1,16 +1,65 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { PosterAnalysis } from '@/types/poster';
+import type { PosterAnalysis, SourceCitation, SimilarProduct } from '@/types/poster';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
-// Construct analysis prompt with optional initial information
-function buildAnalysisPrompt(initialInfo?: string): string {
+/**
+ * Perform web research on the poster to gather context and sources
+ */
+async function researchPoster(imageAnalysisPreview: string): Promise<string> {
+  console.log('[researchPoster] Starting web research');
+
+  try {
+    // First, do a quick visual analysis to identify key search terms
+    const quickAnalysis = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 500,
+      messages: [{
+        role: 'user',
+        content: `Analyze this poster and extract: artist name (if visible/identifiable), title/subject, approximate era, and any visible text. Format as: Artist: X, Subject: Y, Era: Z, Text: W. Be concise.
+
+${imageAnalysisPreview}`
+      }]
+    });
+
+    const analysisText = quickAnalysis.content.find(b => b.type === 'text');
+    if (!analysisText || analysisText.type !== 'text') {
+      return '';
+    }
+
+    // Extract search terms from the quick analysis
+    const searchContext = analysisText.text;
+    console.log('[researchPoster] Quick analysis:', searchContext);
+
+    // Note: The WebSearch tool would be called here in the actual implementation
+    // For now, we'll return the context to be used by Claude
+    return searchContext;
+  } catch (error) {
+    console.error('[researchPoster] Research error:', error);
+    return '';
+  }
+}
+
+// Brand voice guidelines (to be customized based on client examples)
+const BRAND_VOICE_GUIDELINES = `
+BRAND VOICE: Authentic Vintage Posters
+- Tone: Sophisticated yet accessible, knowledgeable but not pretentious
+- Style: Engaging storytelling that highlights historical context and artistic significance
+- Format: 2-3 paragraphs that flow naturally
+- Focus: Historical context, artistic merit, cultural significance, and collectability
+- Language: Use specific art historical terms but explain them naturally
+`;
+
+// Construct analysis prompt with optional initial information and research context
+function buildAnalysisPrompt(initialInfo?: string, researchContext?: string): string {
   const basePrompt = `You are an expert art historian and vintage poster specialist with decades of experience in poster authentication, valuation, and historical analysis.
 
 Analyze this vintage poster image and provide detailed, factual information in a structured JSON format.
+
+${researchContext ? `RESEARCH CONTEXT:\n${researchContext}\n\n` : ''}
 
 Your analysis should include:
 
@@ -57,6 +106,24 @@ Please cross-reference this information with what you observe in the image:
 Include a "VALIDATION NOTES" section specifically addressing how the provided information compares to your analysis.
 ` : ''}
 
+6. PRODUCT DESCRIPTION
+   ${BRAND_VOICE_GUIDELINES}
+   - Write a 2-3 paragraph marketing description suitable for an e-commerce listing
+   - Emphasize historical significance, artistic merit, and collectability
+   - Make it engaging and informative while maintaining authenticity
+
+7. SOURCE CITATIONS
+   - For each major claim (artist attribution, date, historical facts), provide sources
+   - Include museum websites, auction records, art history references, or scholarly sources
+   - Rate reliability: high (museums, academic), medium (established dealers), low (unverified)
+   - Format: Array of {claim, source, url, reliability}
+
+8. SIMILAR PRODUCTS
+   - Identify where collectors might find similar posters online
+   - Search terms for eBay, Heritage Auctions, other galleries
+   - Include specific recommendations with reasoning
+   - Format: Array of {title, site, url, price, condition} where available
+
 RESPONSE FORMAT:
 Provide your analysis as a valid JSON object with this exact structure:
 {
@@ -87,10 +154,28 @@ Provide your analysis as a valid JSON object with this exact structure:
     "comparableExamples": string,
     "collectorInterest": string
   }${initialInfo ? `,
-  "validationNotes": string` : ''}
+  "validationNotes": string` : ''},
+  "productDescription": string,
+  "sourceCitations": [
+    {
+      "claim": string,
+      "source": string,
+      "url": string,
+      "reliability": "high" | "medium" | "low"
+    }
+  ],
+  "similarProducts": [
+    {
+      "title": string,
+      "site": string,
+      "url": string,
+      "price": string (optional),
+      "condition": string (optional)
+    }
+  ]
 }
 
-Be specific, detailed, and scholarly in your analysis. When uncertain, indicate your confidence level and explain your reasoning.`;
+Be specific, detailed, and scholarly in your analysis. When uncertain, indicate your confidence level and explain your reasoning. Provide real, verifiable URLs for citations and similar products.`;
 
   return basePrompt;
 }
@@ -162,6 +247,17 @@ export async function analyzePoster(
       throw new Error('Invalid analysis structure returned from Claude');
     }
 
+    // Ensure new fields have defaults if missing
+    if (!analysis.productDescription) {
+      analysis.productDescription = '';
+    }
+    if (!analysis.sourceCitations) {
+      analysis.sourceCitations = [];
+    }
+    if (!analysis.similarProducts) {
+      analysis.similarProducts = [];
+    }
+
     console.log('[analyzePoster] Analysis parsed successfully');
     return analysis;
   } catch (error) {
@@ -193,5 +289,8 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
     validationNotes: analysis.validationNotes || undefined,
+    productDescription: analysis.productDescription,
+    sourceCitations: analysis.sourceCitations,
+    similarProducts: analysis.similarProducts,
   };
 }

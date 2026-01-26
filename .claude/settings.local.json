@@ -10,7 +10,8 @@
       "Bash(npm run build:*)",
       "Bash(\"/c/Program Files/nodejs/npm\" run build)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:www.authenticvintageposters.com)"
     ]
   }
 }

@@ -22,6 +22,9 @@ export interface Poster {
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
   validationNotes?: string | null;  // AI notes on validating initial information
+  productDescription?: string | null;  // Marketing-ready description for website
+  sourceCitations?: any | null;  // JSON array of source links with descriptions
+  similarProducts?: any | null;  // JSON array of similar products on other sites
 
   // Metadata
   analysisCompleted: boolean;
@@ -29,6 +32,23 @@ export interface Poster {
   rawAiResponse?: any | null;
   userNotes?: string | null;
   lastModified: Date;
+}
+
+// Source citation with link
+export interface SourceCitation {
+  claim: string;  // The specific claim being cited (e.g., "Artist: Leonetto Cappiello")
+  source: string;  // Name of source (e.g., "Museum of Modern Art")
+  url: string;  // URL to source
+  reliability: 'high' | 'medium' | 'low';  // Confidence in source
+}
+
+// Similar product listing on external site
+export interface SimilarProduct {
+  title: string;  // Product title
+  site: string;  // Site name (e.g., "eBay", "Heritage Auctions")
+  url: string;  // Direct link to listing
+  price?: string;  // Price if available
+  condition?: string;  // Condition note if available
 }
 
 // Structured analysis response from Claude
@@ -61,6 +81,9 @@ export interface PosterAnalysis {
     collectorInterest: string;
   };
   validationNotes?: string;  // Present when initial information was provided
+  productDescription: string;  // Marketing-ready product description
+  sourceCitations: SourceCitation[];  // Citations for key claims
+  similarProducts: SimilarProduct[];  // Similar products found on other sites
 }
 
 // Request/Response types for API routes
@@ -110,5 +133,8 @@ export interface UpdatePosterInput {
   rarityAnalysis?: string;
   valueInsights?: string;
   validationNotes?: string;
+  productDescription?: string;
+  sourceCitations?: any;
+  similarProducts?: any;
   userNotes?: string;
 }

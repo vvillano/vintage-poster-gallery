@@ -292,6 +292,105 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
+              {/* Product Description */}
+              {poster.productDescription && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-xl font-bold text-slate-900">
+                      Product Description
+                    </h3>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(poster.productDescription || '');
+                        alert('Description copied to clipboard!');
+                      }}
+                      className="ml-auto text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {poster.productDescription}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-4">
+                    Ready to use in your Shopify product listing
+                  </p>
+                </div>
+              )}
+
+              {/* Source Citations */}
+              {poster.sourceCitations && Array.isArray(poster.sourceCitations) && poster.sourceCitations.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-xl font-bold text-slate-900 mb-4">
+                    Source Citations
+                  </h3>
+                  <div className="space-y-3">
+                    {poster.sourceCitations.map((citation: any, idx: number) => (
+                      <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                        <p className="font-medium text-slate-900 mb-1">{citation.claim}</p>
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <span>{citation.source}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            citation.reliability === 'high' ? 'bg-green-100 text-green-800' :
+                            citation.reliability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {citation.reliability}
+                          </span>
+                        </div>
+                        <a
+                          href={citation.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline mt-1 inline-block"
+                        >
+                          {citation.url}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Similar Products */}
+              {poster.similarProducts && Array.isArray(poster.similarProducts) && poster.similarProducts.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-xl font-bold text-slate-900 mb-4">
+                    Similar Products Available
+                  </h3>
+                  <div className="space-y-3">
+                    {poster.similarProducts.map((product: any, idx: number) => (
+                      <div key={idx} className="border border-slate-200 rounded-lg p-4 hover:border-blue-400 transition">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 mb-1">{product.title}</h4>
+                            <p className="text-sm text-slate-600 mb-2">{product.site}</p>
+                            {(product.price || product.condition) && (
+                              <div className="flex gap-3 text-sm">
+                                {product.price && (
+                                  <span className="text-green-700 font-medium">{product.price}</span>
+                                )}
+                                {product.condition && (
+                                  <span className="text-slate-600">{product.condition}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <a
+                            href={product.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition whitespace-nowrap"
+                          >
+                            View →
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* User Notes */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">Notes</h3>
