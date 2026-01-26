@@ -174,6 +174,6 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     printingTechnique: analysis.technicalAnalysis.printingTechnique,
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
-    validationNotes: analysis.validationNotes || null,
+    validationNotes: analysis.validationNotes || undefined,
   };
 }
