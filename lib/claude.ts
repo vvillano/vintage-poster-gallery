@@ -106,7 +106,15 @@ export async function analyzePoster(
   initialInformation?: string
 ): Promise<PosterAnalysis> {
   try {
+    console.log('[analyzePoster] Starting analysis for image:', imageUrl);
+
+    // Verify API key is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
     const prompt = buildAnalysisPrompt(initialInformation);
+    console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
     // Using latest Claude 3.5 Sonnet model (Jan 2025 release)
@@ -133,6 +141,8 @@ export async function analyzePoster(
       ],
     });
 
+    console.log('[analyzePoster] Claude API response received');
+
     // Extract the text response
     const textContent = response.content.find((block) => block.type === 'text');
     if (!textContent || textContent.type !== 'text') {
@@ -152,9 +162,16 @@ export async function analyzePoster(
       throw new Error('Invalid analysis structure returned from Claude');
     }
 
+    console.log('[analyzePoster] Analysis parsed successfully');
     return analysis;
   } catch (error) {
-    console.error('Error analyzing poster with Claude:', error);
+    console.error('[analyzePoster] Error analyzing poster with Claude:', error);
+
+    // Log detailed error information
+    if (error && typeof error === 'object') {
+      console.error('[analyzePoster] Error details:', JSON.stringify(error, null, 2));
+    }
+
     throw new Error(
       `Failed to analyze poster: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

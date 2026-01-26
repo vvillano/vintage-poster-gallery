@@ -49,7 +49,11 @@ export default function PosterDetailPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Analysis failed');
+        console.error('Analysis failed:', errorData);
+        const errorMsg = errorData.details
+          ? `${errorData.error}: ${errorData.details}`
+          : errorData.error || 'Analysis failed';
+        throw new Error(errorMsg);
       }
 
       // Refresh poster data
@@ -162,7 +166,9 @@ export default function PosterDetailPage() {
               </p>
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
+                  <p className="font-semibold mb-1">Error</p>
+                  <p className="whitespace-pre-wrap">{error}</p>
+                  <p className="text-xs mt-2 text-red-600">Check browser console for more details</p>
                 </div>
               )}
               <button

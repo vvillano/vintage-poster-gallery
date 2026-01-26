@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git config:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Complete Vintage Poster Gallery application\n\n- Full authentication system with NextAuth.js\n- AI-powered poster analysis using Claude API\n- Dashboard with search and statistics\n- Upload system with drag-and-drop\n- Poster detail pages with comprehensive analysis display\n- Complete API routes for upload, analysis, and CRUD operations\n- Database schema for PostgreSQL\n- Vercel Blob Storage integration\n- Team-based access control\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh --version:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(npm run build:*)",
+      "Bash(\"/c/Program Files/nodejs/npm\" run build)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
