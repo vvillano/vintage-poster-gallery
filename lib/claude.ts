@@ -110,7 +110,7 @@ export async function analyzePoster(
 
     // Call Claude with vision capabilities
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-5-sonnet-20250107',
       max_tokens: 4096,
       messages: [
         {
