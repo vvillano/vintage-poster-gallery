@@ -222,7 +222,7 @@ export default function PosterDetailPage() {
                 </div>
               )}
               <button
-                onClick={triggerAnalysis}
+                onClick={() => triggerAnalysis()}
                 disabled={analyzing}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
