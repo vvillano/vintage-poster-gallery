@@ -117,9 +117,9 @@ export async function analyzePoster(
     console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
-    // Using latest Claude 3.5 Sonnet model (Jan 2025 release)
+    // Using Claude 3.5 Sonnet (latest stable version)
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20250107',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4096,
       messages: [
         {
