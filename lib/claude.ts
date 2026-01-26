@@ -315,13 +315,29 @@ export async function analyzePoster(
       throw new Error('No text response from Claude');
     }
 
-    // Parse the JSON response
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    console.log('[analyzePoster] Raw response preview:', textContent.text.substring(0, 500));
+
+    // Parse the JSON response - find the first { and last } to extract clean JSON
+    const firstBrace = textContent.text.indexOf('{');
+    const lastBrace = textContent.text.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
+      console.error('[analyzePoster] No valid JSON structure found in response');
+      console.error('[analyzePoster] Full response:', textContent.text);
       throw new Error('No valid JSON found in Claude response');
     }
 
-    const analysis: PosterAnalysis = JSON.parse(jsonMatch[0]);
+    const jsonString = textContent.text.substring(firstBrace, lastBrace + 1);
+    console.log('[analyzePoster] Extracted JSON preview:', jsonString.substring(0, 200));
+
+    let analysis: PosterAnalysis;
+    try {
+      analysis = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('[analyzePoster] JSON parse error:', parseError);
+      console.error('[analyzePoster] Attempted to parse:', jsonString.substring(0, 1000));
+      throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
 
     // Validate the structure
     if (!analysis.identification || !analysis.historicalContext) {
