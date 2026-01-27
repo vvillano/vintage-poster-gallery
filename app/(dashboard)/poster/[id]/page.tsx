@@ -568,35 +568,20 @@ export default function PosterDetailPage() {
               </div>
             )}
 
-            {/* Supplemental Images */}
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-slate-700">
-                  Supplemental Images ({poster.supplementalImages?.length || 0}/5)
+            {/* Supplemental Images Summary (read-only display) */}
+            {poster.supplementalImages && poster.supplementalImages.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                  Reference Images ({poster.supplementalImages.length})
                 </h4>
-              </div>
-              <p className="text-xs text-slate-500 mb-3">
-                Add additional photos to improve analysis (backs, close-ups, signatures, context)
-              </p>
-
-              {/* Existing supplemental images */}
-              {poster.supplementalImages && poster.supplementalImages.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-3 gap-2">
                   {poster.supplementalImages.map((img, idx) => (
-                    <div key={img.url} className="relative group">
+                    <div key={img.url} className="relative">
                       <img
                         src={img.url}
-                        alt={img.description || `Supplemental ${idx + 1}`}
-                        className="w-full h-20 object-cover rounded border border-slate-200"
+                        alt={img.description || `Reference ${idx + 1}`}
+                        className="w-full h-16 object-cover rounded border border-slate-200"
                       />
-                      <button
-                        onClick={() => deleteSupplementalImage(img.url)}
-                        disabled={deletingImage === img.url}
-                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
-                        title="Remove image"
-                      >
-                        {deletingImage === img.url ? '...' : '×'}
-                      </button>
                       {img.description && (
                         <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
                           {img.description}
@@ -605,65 +590,11 @@ export default function PosterDetailPage() {
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* Upload new supplemental image */}
-              {(!poster.supplementalImages || poster.supplementalImages.length < 5) && (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={supplementalDescription}
-                    onChange={(e) => setSupplementalDescription(e.target.value)}
-                    placeholder="What does this image show? (optional)"
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  />
-                  <div
-                    className={`block w-full px-3 py-3 text-sm text-center border-2 border-dashed rounded transition ${
-                      uploadingSupplemental || compressingSupplemental
-                        ? 'border-slate-300 bg-slate-50 text-slate-400'
-                        : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-slate-600 cursor-pointer'
-                    }`}
-                    onPaste={(e) => {
-                      if (uploadingSupplemental || compressingSupplemental) return;
-                      const items = e.clipboardData?.items;
-                      if (!items) return;
-                      for (let i = 0; i < items.length; i++) {
-                        if (items[i].type.indexOf('image') !== -1) {
-                          const blob = items[i].getAsFile();
-                          if (blob) {
-                            const pastedFile = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
-                            uploadSupplementalImage(pastedFile, supplementalDescription || undefined);
-                          }
-                          break;
-                        }
-                      }
-                    }}
-                    tabIndex={0}
-                  >
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png"
-                        disabled={uploadingSupplemental || compressingSupplemental}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            uploadSupplementalImage(file, supplementalDescription || undefined);
-                            e.target.value = '';
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      {compressingSupplemental
-                        ? 'Compressing...'
-                        : uploadingSupplemental
-                        ? 'Uploading...'
-                        : '+ Add Image (click or paste)'}
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  Manage reference images in the Re-analyze section
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Product Description */}
@@ -1027,34 +958,149 @@ export default function PosterDetailPage() {
                 </div>
                 {showReanalyze && (
                   <div className="mt-4">
-                    <p className="text-sm text-slate-600 mb-3">
-                      Run a fresh analysis with the upgraded model. Optionally provide additional context
-                      to guide the analysis (e.g., known artist, correct date, or anything the AI missed).
+                    <p className="text-sm text-slate-600 mb-4">
+                      Add reference images and/or text context, then click Re-analyze to run a fresh analysis.
                     </p>
-                    <textarea
-                      value={additionalContext}
-                      onChange={(e) => setAdditionalContext(e.target.value)}
-                      placeholder="Optional: The artist is Henri Monnier, clearly signed on the bottom right. This is a stone lithograph, not chromolithography."
-                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none mb-4"
-                      rows={3}
-                    />
+
+                    {/* Reference Images Section */}
+                    <div className="mb-4 p-3 bg-white rounded-lg border border-slate-200">
+                      <h4 className="text-sm font-medium text-slate-700 mb-2">
+                        Reference Images ({poster.supplementalImages?.length || 0}/5)
+                      </h4>
+                      <p className="text-xs text-slate-500 mb-3">
+                        Add close-ups, back of item, signatures, original publication pages, etc.
+                      </p>
+
+                      {/* Existing images */}
+                      {poster.supplementalImages && poster.supplementalImages.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {poster.supplementalImages.map((img, idx) => (
+                            <div key={img.url} className="relative group">
+                              <img
+                                src={img.url}
+                                alt={img.description || `Reference ${idx + 1}`}
+                                className="w-full h-20 object-cover rounded border border-slate-200"
+                              />
+                              <button
+                                onClick={() => deleteSupplementalImage(img.url)}
+                                disabled={deletingImage === img.url}
+                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                                title="Remove image"
+                              >
+                                {deletingImage === img.url ? '...' : '×'}
+                              </button>
+                              {img.description && (
+                                <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
+                                  {img.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add new image */}
+                      {(!poster.supplementalImages || poster.supplementalImages.length < 5) && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={supplementalDescription}
+                            onChange={(e) => setSupplementalDescription(e.target.value)}
+                            placeholder="Describe this image (e.g., 'Close-up of signature')"
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+                          />
+                          <div className="flex gap-2">
+                            <label className={`flex-1 px-3 py-2 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
+                              uploadingSupplemental || compressingSupplemental
+                                ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
+                                : 'border-slate-300 hover:border-amber-400 hover:bg-amber-50 text-slate-600'
+                            }`}>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png"
+                                disabled={uploadingSupplemental || compressingSupplemental}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    uploadSupplementalImage(file, supplementalDescription || undefined);
+                                    e.target.value = '';
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                              {compressingSupplemental
+                                ? 'Compressing...'
+                                : uploadingSupplemental
+                                ? 'Uploading...'
+                                : 'Browse...'}
+                            </label>
+                            <button
+                              type="button"
+                              disabled={uploadingSupplemental || compressingSupplemental}
+                              onClick={async () => {
+                                try {
+                                  const clipboardItems = await navigator.clipboard.read();
+                                  for (const item of clipboardItems) {
+                                    const imageType = item.types.find(t => t.startsWith('image/'));
+                                    if (imageType) {
+                                      const blob = await item.getType(imageType);
+                                      const file = new File([blob], `pasted-${Date.now()}.png`, { type: imageType });
+                                      uploadSupplementalImage(file, supplementalDescription || undefined);
+                                      break;
+                                    }
+                                  }
+                                } catch (err) {
+                                  setError('Could not read clipboard. Try Ctrl+V in the description field.');
+                                }
+                              }}
+                              className={`px-3 py-2 text-sm border-2 border-dashed rounded transition ${
+                                uploadingSupplemental || compressingSupplemental
+                                  ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
+                                  : 'border-slate-300 hover:border-amber-400 hover:bg-amber-50 text-slate-600 cursor-pointer'
+                              }`}
+                            >
+                              Paste
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Text Context */}
+                    <div className="mb-4">
+                      <label className="text-sm font-medium text-slate-700 mb-2 block">
+                        Additional Context (optional)
+                      </label>
+                      <textarea
+                        value={additionalContext}
+                        onChange={(e) => setAdditionalContext(e.target.value)}
+                        placeholder="E.g., The artist signature reads 'Yvan Petiteau'. This is from a 1946 issue of Formes et Couleurs magazine."
+                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none resize-none"
+                        rows={3}
+                      />
+                    </div>
+
                     {error && (
                       <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        <button onClick={() => setError('')} className="float-right text-red-400 hover:text-red-600">×</button>
                         {error}
                       </div>
                     )}
+
                     <div className="flex gap-3">
                       <button
                         onClick={() => triggerAnalysis(true, additionalContext)}
-                        disabled={analyzing}
+                        disabled={analyzing || uploadingSupplemental || compressingSupplemental}
                         className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {analyzing ? 'Re-analyzing...' : additionalContext.trim() ? 'Re-analyze with Context' : 'Re-analyze'}
+                        {analyzing ? 'Re-analyzing...' : `Re-analyze${(poster.supplementalImages?.length || additionalContext.trim()) ? ' with New Context' : ''}`}
                       </button>
                       <button
                         onClick={() => {
                           setShowReanalyze(false);
                           setAdditionalContext('');
+                          setSupplementalDescription('');
+                          setError('');
                         }}
                         disabled={analyzing}
                         className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition disabled:opacity-50"
@@ -1066,7 +1112,7 @@ export default function PosterDetailPage() {
                       <div className="mt-4 text-center">
                         <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600 mb-2"></div>
                         <p className="text-sm text-slate-600">
-                          Re-analyzing with your additional context...
+                          Re-analyzing with {poster.supplementalImages?.length || 0} reference image(s)...
                         </p>
                       </div>
                     )}
