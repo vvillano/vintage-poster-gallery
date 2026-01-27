@@ -72,6 +72,79 @@ function getPrintingWikiUrl(technique: string): string {
   return `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(technique)} printmaking`;
 }
 
+// Map publications to their Wikipedia article URLs
+function getPublicationWikiUrl(publication: string): string {
+  const lowerPub = publication.toLowerCase();
+
+  // Map common publications to Wikipedia articles
+  const wikiMap: [string, string][] = [
+    // American magazines
+    ['the new yorker', 'The_New_Yorker'],
+    ['new yorker', 'The_New_Yorker'],
+    ['fortune', 'Fortune_(magazine)'],
+    ['vogue', 'Vogue_(magazine)'],
+    ['vanity fair', 'Vanity_Fair_(magazine)'],
+    ['harper\'s bazaar', 'Harper%27s_Bazaar'],
+    ['harpers bazaar', 'Harper%27s_Bazaar'],
+    ['saturday evening post', 'The_Saturday_Evening_Post'],
+    ['collier\'s', 'Collier%27s'],
+    ['colliers', 'Collier%27s'],
+    ['life', 'Life_(magazine)'],
+    ['time', 'Time_(magazine)'],
+    ['esquire', 'Esquire_(magazine)'],
+    ['playboy', 'Playboy'],
+    ['cosmopolitan', 'Cosmopolitan_(magazine)'],
+    ['the atlantic', 'The_Atlantic'],
+    ['atlantic monthly', 'The_Atlantic'],
+    ['holiday', 'Holiday_(magazine)'],
+    ['mccall\'s', 'McCall%27s'],
+    ['mccalls', 'McCall%27s'],
+    ['good housekeeping', 'Good_Housekeeping'],
+    ['ladies\' home journal', 'Ladies%27_Home_Journal'],
+    ['redbook', 'Redbook'],
+    // French magazines
+    ['la vie parisienne', 'La_Vie_Parisienne'],
+    ['vie parisienne', 'La_Vie_Parisienne'],
+    ['l\'illustration', 'L%27Illustration'],
+    ['illustration', 'L%27Illustration'],
+    ['le rire', 'Le_Rire'],
+    ['le journal', 'Le_Journal'],
+    ['le petit journal', 'Le_Petit_Journal'],
+    ['l\'assiette au beurre', 'L%27Assiette_au_Beurre'],
+    ['le sourire', 'Le_Sourire'],
+    ['fantasio', 'Fantasio_(magazine)'],
+    ['le figaro', 'Le_Figaro'],
+    ['la revue blanche', 'La_Revue_blanche'],
+    ['paris match', 'Paris_Match'],
+    // British magazines
+    ['punch', 'Punch_(magazine)'],
+    ['the studio', 'The_Studio_(magazine)'],
+    ['the sphere', 'The_Sphere'],
+    ['the illustrated london news', 'The_Illustrated_London_News'],
+    ['illustrated london news', 'The_Illustrated_London_News'],
+    ['the tatler', 'Tatler'],
+    ['tatler', 'Tatler'],
+    ['the strand', 'The_Strand_Magazine'],
+    ['strand magazine', 'The_Strand_Magazine'],
+    // German magazines
+    ['simplicissimus', 'Simplicissimus'],
+    ['jugend', 'Jugend_(magazine)'],
+    ['berliner illustrirte', 'Berliner_Illustrirte_Zeitung'],
+    // Italian magazines
+    ['la domenica del corriere', 'La_Domenica_del_Corriere'],
+  ];
+
+  // Check for matches (more specific terms checked first due to array order)
+  for (const [key, wiki] of wikiMap) {
+    if (lowerPub.includes(key)) {
+      return `https://en.wikipedia.org/wiki/${wiki}`;
+    }
+  }
+
+  // Fallback to search
+  return `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(publication + ' magazine')}`;
+}
+
 // Build marketplace search query with all relevant context
 function buildMarketplaceQuery(poster: Poster): string {
   const parts: string[] = [];
@@ -580,9 +653,19 @@ export default function PosterDetailPage() {
                         {poster.rawAiResponse.historicalContext.publication && (
                           <div>
                             <label className="text-sm font-medium text-slate-700">Publication</label>
-                            <p className="text-slate-700 mt-1">
-                              {poster.rawAiResponse.historicalContext.publication}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-slate-700">
+                                {poster.rawAiResponse.historicalContext.publication}
+                              </p>
+                              <a
+                                href={getPublicationWikiUrl(poster.rawAiResponse.historicalContext.publication)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                              >
+                                Learn more →
+                              </a>
+                            </div>
                           </div>
                         )}
                         {poster.rawAiResponse.historicalContext.advertiser && (

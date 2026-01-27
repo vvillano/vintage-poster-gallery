@@ -68,12 +68,22 @@ function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, pro
   const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.
 
 CRITICAL - ARTIST IDENTIFICATION:
-1. CAREFULLY examine the ENTIRE image for signatures, monograms, or artist marks (often in corners, margins, or integrated into the design)
-2. Look for printed artist credits, typically near the title or in small text
-3. Recognize famous poster artists by style (Mucha, Cappiello, Chéret, Toulouse-Lautrec, Cassandre, etc.)
-4. Record EXACTLY what you see - if signed "H. Monnier" report "Henri Monnier" (full name when identifiable)
-5. Set artistConfidence: "confirmed" if clearly signed/printed, "likely" if style strongly suggests, "uncertain" if unsure, "unknown" if cannot determine
-6. Set artistSource: describe WHERE you found the name (e.g., "signed lower right corner", "printed below image", "style attribution")
+1. SYSTEMATICALLY examine ALL FOUR CORNERS of the image for signatures:
+   - Lower LEFT corner (very common location for signatures)
+   - Lower RIGHT corner (also very common)
+   - Upper left and upper right corners
+   - Along bottom edge, in margins, or integrated into the design
+2. READ SIGNATURES CAREFULLY letter by letter - do not guess or assume names
+   - If you see "Bade" do NOT assume it says "Paul" or another common name
+   - Transcribe EXACTLY what is written, then research the full artist name
+3. Look for printed artist credits near the title or in small text
+4. CROSS-VERIFY the artist using multiple indicators:
+   - Does the signature match the art style?
+   - Is the publication/era consistent with when this artist was active?
+   - Do other visible text elements (printer, date, publication) support this identification?
+5. Research the exact transcribed name to find the artist's full name and career details
+6. Set artistConfidence: "confirmed" ONLY if clearly signed AND verified through style/context, "likely" if strong evidence, "uncertain" if conflicting indicators, "unknown" if cannot determine
+7. Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'Bade'", "printed credit below image")
 
 DATE IDENTIFICATION:
 1. Look for dates printed on the piece (often near printer info or copyright)
@@ -89,11 +99,23 @@ PUBLICATION & CLIENT (when applicable):
 - For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, etc.)
 - For advertising: Identify the advertiser/client (e.g., Cognac Briand, Campari, Air France)
 - Note the publication date/issue if visible
+- Provide brief context about the publication (founding date, country, editorial focus, notable artists who contributed)
+- Use publication history to help verify artist identification and date
 
 ERA CONTEXT:
 - Describe the historical/cultural moment when this was created
 - How would contemporary audiences have perceived this piece?
 - What social, political, or cultural currents does it reflect?
+
+CROSS-VERIFICATION (CRITICAL):
+- BEFORE finalizing artist identification, verify using MULTIPLE independent indicators:
+  1. Signature/printed name (read EXACTLY, letter by letter)
+  2. Art style and technique (does it match known works by this artist?)
+  3. Publication/printer (who did this artist typically work with?)
+  4. Time period (was this artist active during this era?)
+  5. Subject matter (is this typical of the artist's oeuvre?)
+- If indicators conflict, note the discrepancy and set lower confidence
+- When artist is unknown, describe distinctive style elements that could aid identification
 
 PRINTING TECHNIQUE - Be precise:
 - Stone lithograph (litho from limestone, often visible texture)
