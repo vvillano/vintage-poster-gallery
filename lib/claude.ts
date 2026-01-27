@@ -96,10 +96,10 @@ PRINTER/PUBLISHER:
 - Common printers: Chaix, Lemercier, Verneau, etc.
 
 PUBLICATION & CLIENT (when applicable):
-- For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, etc.)
+- For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, Popular Mechanics, etc.)
 - For advertising: Identify the advertiser/client (e.g., Cognac Briand, Campari, Air France)
-- Note the publication date/issue if visible
-- Provide brief context about the publication (founding date, country, editorial focus, notable artists who contributed)
+- IMPORTANT: The "publication" field should contain ONLY the publication name (e.g., "Popular Mechanics", "The New Yorker"), NOT a description
+- Put any context about the publication (founding date, editorial focus, notable artists) in the eraContext field instead
 - Use publication history to help verify artist identification and date
 
 ERA CONTEXT:

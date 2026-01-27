@@ -102,6 +102,12 @@ function getPublicationWikiUrl(publication: string): string {
     ['good housekeeping', 'Good_Housekeeping'],
     ['ladies\' home journal', 'Ladies%27_Home_Journal'],
     ['redbook', 'Redbook'],
+    ['popular mechanics', 'Popular_Mechanics'],
+    ['popular science', 'Popular_Science'],
+    ['scientific american', 'Scientific_American'],
+    ['national geographic', 'National_Geographic'],
+    ['readers digest', 'Reader%27s_Digest'],
+    ['reader\'s digest', 'Reader%27s_Digest'],
     // French magazines
     ['la vie parisienne', 'La_Vie_Parisienne'],
     ['vie parisienne', 'La_Vie_Parisienne'],
