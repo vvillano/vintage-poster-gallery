@@ -57,26 +57,33 @@ Rarity: ${analysis.rarityValue?.rarityAssessment || poster.rarityAnalysis || ''}
 Collector Interest: ${analysis.rarityValue?.collectorInterest || poster.valueInsights || ''}
 `.trim();
 
-    // Generate new descriptions using Haiku (cheaper for text generation)
+    // Generate new descriptions and talking points using Haiku (cheaper for text generation)
     const response = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
-      max_tokens: 2000,
+      max_tokens: 2500,
       messages: [
         {
           role: 'user',
-          content: `Based on this vintage item analysis, write 4 product descriptions in different tones. Each should be 150-200 words (2-3 paragraphs).
+          content: `Based on this vintage item analysis, write 4 product descriptions in different tones plus talking points for in-gallery conversations.
 
 ITEM DETAILS:
 ${context}
 
-TONE GUIDELINES:
+DESCRIPTIONS (150-200 words each, 2-3 paragraphs):
 - "standard": ${BRAND_VOICE}
 - "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions
 - "concise": Just the facts - bullet-point style in prose, key details only, no flowery language
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity
 
+TALKING POINTS (4-6 brief bullet points):
+- Artist and date if known
+- Notable visual elements or techniques
+- Interesting details that make good conversation starters
+- What makes this piece special or collectible
+Keep each point brief (10-20 words).
+
 Return ONLY valid JSON:
-{"standard": "...", "scholarly": "...", "concise": "...", "enthusiastic": "..."}`
+{"standard": "...", "scholarly": "...", "concise": "...", "enthusiastic": "...", "talkingPoints": ["...", "..."]}`
         }
       ]
     });

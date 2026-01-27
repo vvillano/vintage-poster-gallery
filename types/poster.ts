@@ -131,6 +131,7 @@ export interface PosterAnalysis {
   };
   validationNotes?: string;  // Present when initial information was provided
   productDescriptions: ProductDescriptions;  // Marketing descriptions in multiple tones
+  talkingPoints: string[];  // Brief bullet points for in-gallery conversations
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
 }

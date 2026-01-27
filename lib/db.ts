@@ -186,11 +186,11 @@ export async function deletePoster(id: number): Promise<void> {
 }
 
 /**
- * Update just the product descriptions in rawAiResponse
+ * Update product descriptions and talking points in rawAiResponse
  */
 export async function updatePosterDescriptions(
   id: number,
-  descriptions: any
+  data: any
 ): Promise<Poster> {
   // Get current rawAiResponse
   const poster = await getPosterById(id);
@@ -198,10 +198,14 @@ export async function updatePosterDescriptions(
     throw new Error(`Poster with ID ${id} not found`);
   }
 
-  // Merge new descriptions into rawAiResponse
+  // Extract descriptions and talking points
+  const { talkingPoints, ...descriptions } = data;
+
+  // Merge new data into rawAiResponse
   const updatedRawResponse = {
     ...poster.rawAiResponse,
-    productDescriptions: descriptions
+    productDescriptions: descriptions,
+    ...(talkingPoints ? { talkingPoints } : {})
   };
 
   const result = await sql`

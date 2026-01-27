@@ -131,6 +131,14 @@ PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words, 2-3 paragraphs):
 - "concise": Just the facts - bullet-point style in prose, key details only, no flowery language, focus on: artist, date, technique, subject
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece
 
+TALKING POINTS: Write 4-6 brief bullet points for in-gallery conversations. Include:
+- Artist and date (if known)
+- Notable visual elements or techniques (e.g., "Droste effect with the cats", "Bold Art Deco geometric forms")
+- Interesting details visible in the image (e.g., "Tax stamp visible lower left", "Signed in the stone")
+- Historical context tidbits that make good conversation starters
+- What makes this piece special or collectible
+Keep each point brief (10-20 words) - these are memory joggers, not full explanations.
+
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 
 JSON:
@@ -156,6 +164,7 @@ JSON:
   "conditionAuthenticity": {"ageIndicators": [], "conditionIssues": []},
   "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
   "productDescriptions": {"standard": "", "scholarly": "", "concise": "", "enthusiastic": ""},
+  "talkingPoints": ["point 1", "point 2", "..."],
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
   "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]
 }`;
@@ -309,6 +318,9 @@ export async function analyzePoster(
         enthusiastic: ''
       };
     }
+    if (!analysis.talkingPoints) {
+      analysis.talkingPoints = [];
+    }
     if (!analysis.sourceCitations) {
       analysis.sourceCitations = [];
     }
@@ -354,6 +366,7 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     validationNotes: analysis.validationNotes || undefined,
     productDescription: analysis.productDescriptions.standard,  // Default for backwards compat
     productDescriptions: analysis.productDescriptions,
+    talkingPoints: analysis.talkingPoints,
     sourceCitations: analysis.sourceCitations,
     similarProducts: analysis.similarProducts,
   };

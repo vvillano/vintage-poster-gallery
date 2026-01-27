@@ -776,6 +776,24 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
+              {/* Talking Points */}
+              {poster.rawAiResponse?.talkingPoints && poster.rawAiResponse.talkingPoints.length > 0 && (
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                  <h4 className="text-lg font-bold text-slate-900 mb-3">
+                    Talking Points
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-3">Quick reference for in-gallery conversations</p>
+                  <ul className="space-y-2">
+                    {poster.rawAiResponse.talkingPoints.map((point: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="text-amber-600 mt-0.5">•</span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Identification */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">
