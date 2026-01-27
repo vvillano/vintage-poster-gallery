@@ -6,6 +6,51 @@ import { Poster } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
+// Map printing techniques to their Wikipedia article URLs
+function getPrintingWikiUrl(technique: string): string {
+  const lowerTechnique = technique.toLowerCase();
+
+  // Map common terms to Wikipedia articles
+  const wikiMap: Record<string, string> = {
+    'lithograph': 'Lithography',
+    'lithography': 'Lithography',
+    'stone lithograph': 'Lithography',
+    'chromolithograph': 'Chromolithography',
+    'chromolithography': 'Chromolithography',
+    'offset': 'Offset_printing',
+    'offset lithograph': 'Offset_printing',
+    'engraving': 'Engraving',
+    'copper engraving': 'Engraving',
+    'steel engraving': 'Steel_engraving',
+    'wood engraving': 'Wood_engraving',
+    'intaglio': 'Intaglio_(printmaking)',
+    'etching': 'Etching',
+    'woodcut': 'Woodcut',
+    'woodblock': 'Woodblock_printing',
+    'screenprint': 'Screen_printing',
+    'screen print': 'Screen_printing',
+    'silkscreen': 'Screen_printing',
+    'serigraphy': 'Screen_printing',
+    'mezzotint': 'Mezzotint',
+    'aquatint': 'Aquatint',
+    'photolithograph': 'Photolithography',
+    'photogravure': 'Photogravure',
+    'letterpress': 'Letterpress_printing',
+    'relief': 'Relief_print',
+    'linocut': 'Linocut',
+  };
+
+  // Check for matches
+  for (const [key, wiki] of Object.entries(wikiMap)) {
+    if (lowerTechnique.includes(key)) {
+      return `https://en.wikipedia.org/wiki/${wiki}`;
+    }
+  }
+
+  // Fallback to search
+  return `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(technique)} printmaking`;
+}
+
 export default function PosterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -443,7 +488,7 @@ export default function PosterDetailPage() {
                           {poster.printingTechnique}
                         </p>
                         <a
-                          href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.printingTechnique)}`}
+                          href={getPrintingWikiUrl(poster.printingTechnique)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
