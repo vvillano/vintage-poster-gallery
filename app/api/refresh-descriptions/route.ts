@@ -101,18 +101,26 @@ Return ONLY valid JSON:
       throw new Error('Invalid JSON response');
     }
 
-    let jsonString = textContent.text.substring(firstBrace, lastBrace + 1);
+    const jsonString = textContent.text.substring(firstBrace, lastBrace + 1);
 
-    // Sanitize JSON - replace control characters inside string values
-    // This handles newlines, tabs, etc. that Claude sometimes includes in responses
-    jsonString = jsonString.replace(/[\x00-\x1F\x7F]/g, (char) => {
-      if (char === '\n') return '\\n';
-      if (char === '\r') return '\\r';
-      if (char === '\t') return '\\t';
-      return '';
-    });
-
-    const descriptions = JSON.parse(jsonString);
+    // Try to parse JSON, with fallback sanitization for control characters in strings
+    let descriptions;
+    try {
+      descriptions = JSON.parse(jsonString);
+    } catch (parseError) {
+      // If parsing failed, escape control characters ONLY inside quoted strings
+      // This preserves structural whitespace while fixing literal newlines in values
+      const sanitized = jsonString.replace(
+        /"(?:[^"\\]|\\.)*"/g,
+        (match) => match.replace(/[\x00-\x1F\x7F]/g, (char) => {
+          if (char === '\n') return '\\n';
+          if (char === '\r') return '\\r';
+          if (char === '\t') return '\\t';
+          return '';
+        })
+      );
+      descriptions = JSON.parse(sanitized);
+    }
 
     // Update poster with new descriptions (updates both productDescription and rawAiResponse)
     await updatePosterDescriptions(posterId, descriptions);
