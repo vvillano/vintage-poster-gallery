@@ -175,7 +175,7 @@ export default function PosterDetailPage() {
           {/* Reverse Image Search - uses actual image + title only (not artist/date which may be wrong) */}
           {poster?.imageUrl && (
             <a
-              href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}${poster.title ? `&q=${encodeURIComponent(poster.title)}` : ''}`}
+              href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}${poster.title ? `&q=${encodeURIComponent(`${poster.title} Original ${poster.productType || 'Poster'}`)}` : ''}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center gap-2"
