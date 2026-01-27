@@ -458,11 +458,11 @@ export default function PosterDetailPage() {
               {poster.artist && poster.artist !== 'Unknown' && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-xl font-bold text-slate-900 mb-4">Artist Profile</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <p className="text-xl font-semibold text-slate-900">{poster.artist}</p>
                       {poster.artistConfidence && (
-                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
+                        <span className={`text-xs px-2 py-0.5 rounded ${
                           poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
                           poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
                           poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
@@ -473,30 +473,41 @@ export default function PosterDetailPage() {
                       )}
                     </div>
                     {poster.artistSource && (
-                      <p className="text-xs text-slate-500">
-                        <strong>Identified from:</strong> {poster.artistSource}
-                      </p>
-                    )}
-                    {poster.estimatedDate && (
                       <p className="text-sm text-slate-600">
-                        <strong>Active period:</strong> {poster.estimatedDate}
+                        <strong>Attribution:</strong> {poster.artistSource}
                       </p>
                     )}
-                    {poster.historicalContext && (
-                      <p className="text-sm text-slate-600 line-clamp-4">
-                        {poster.historicalContext.split('.').slice(0, 2).join('.')}...
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-sm text-slate-500 mb-3">
+                        View full biography and other works:
                       </p>
-                    )}
-                    {poster.artist && (
-                      <a
-                        href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                      >
-                        Learn more about this artist →
-                      </a>
-                    )}
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                        >
+                          Google
+                        </a>
+                        <a
+                          href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                        >
+                          Wikipedia
+                        </a>
+                        <a
+                          href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                        >
+                          WikiArt
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
