@@ -438,9 +438,19 @@ export default function PosterDetailPage() {
                   {poster.printingTechnique && (
                     <div className="mb-3">
                       <label className="text-sm font-medium text-slate-700">Technique</label>
-                      <p className="text-slate-700">
-                        {poster.printingTechnique}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-slate-700">
+                          {poster.printingTechnique}
+                        </p>
+                        <a
+                          href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.printingTechnique)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Learn more →
+                        </a>
+                      </div>
                     </div>
                   )}
                   {poster.printer && (
