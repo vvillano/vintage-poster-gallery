@@ -617,7 +617,7 @@ export default function PosterDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       <a
                         href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
-                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''} original`
+                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -626,8 +626,8 @@ export default function PosterDetailPage() {
                         eBay
                       </a>
                       <a
-                        href={`https://www.google.com/search?q=${encodeURIComponent(
-                          `"${poster.title}"${poster.artist && poster.artist !== 'Unknown' ? ' "' + poster.artist + '"' : ''} for sale`
+                        href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(
+                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -636,18 +636,8 @@ export default function PosterDetailPage() {
                         Google Shopping
                       </a>
                       <a
-                        href={`https://www.1stdibs.com/search/?q=${encodeURIComponent(
-                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        1stDibs
-                      </a>
-                      <a
-                        href={`https://www.liveauctioneers.com/search/?keyword=${encodeURIComponent(
-                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''}`
+                        href={`https://www.liveauctioneers.com/search/?q=${encodeURIComponent(
+                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
