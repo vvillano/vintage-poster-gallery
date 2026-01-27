@@ -509,60 +509,104 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
-              {/* Artist Profile */}
-              {poster.artist && poster.artist !== 'Unknown' && (
+              {/* Design Profile */}
+              {poster.rawAiResponse && (
                 <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">Artist Profile</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <p className="text-xl font-semibold text-slate-900">{poster.artist}</p>
-                      {poster.artistConfidence && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                          poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {poster.artistConfidence}
-                        </span>
-                      )}
-                    </div>
-                    {poster.artistSource && (
-                      <p className="text-sm text-slate-600">
-                        <strong>Attribution:</strong> {poster.artistSource}
-                      </p>
-                    )}
-                    <div className="pt-2 border-t border-slate-100">
-                      <p className="text-sm text-slate-500 mb-3">
-                        View full biography and other works:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                        >
-                          Google
-                        </a>
-                        <a
-                          href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                        >
-                          Wikipedia
-                        </a>
-                        <a
-                          href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                        >
-                          WikiArt
-                        </a>
+                  <h3 className="text-xl font-bold text-slate-900 mb-4">Design Profile</h3>
+                  <div className="space-y-5">
+                    {/* Period & Style */}
+                    {poster.rawAiResponse.historicalContext?.periodMovement && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">Period & Style</label>
+                        <p className="text-slate-700 mt-1">
+                          {poster.rawAiResponse.historicalContext.periodMovement}
+                        </p>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Design Observations */}
+                    {poster.rawAiResponse.technicalAnalysis && (
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-slate-700">Design Observations</label>
+                        {poster.rawAiResponse.technicalAnalysis.composition && (
+                          <div className="pl-3 border-l-2 border-slate-200">
+                            <p className="text-xs font-medium text-slate-500 uppercase">Composition</p>
+                            <p className="text-slate-700 text-sm">
+                              {poster.rawAiResponse.technicalAnalysis.composition}
+                            </p>
+                          </div>
+                        )}
+                        {poster.rawAiResponse.technicalAnalysis.colorPalette && (
+                          <div className="pl-3 border-l-2 border-slate-200">
+                            <p className="text-xs font-medium text-slate-500 uppercase">Color Palette</p>
+                            <p className="text-slate-700 text-sm">
+                              {poster.rawAiResponse.technicalAnalysis.colorPalette}
+                            </p>
+                          </div>
+                        )}
+                        {poster.rawAiResponse.technicalAnalysis.typography && (
+                          <div className="pl-3 border-l-2 border-slate-200">
+                            <p className="text-xs font-medium text-slate-500 uppercase">Typography</p>
+                            <p className="text-slate-700 text-sm">
+                              {poster.rawAiResponse.technicalAnalysis.typography}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Artist Section */}
+                    {poster.artist && poster.artist !== 'Unknown' && (
+                      <div className="pt-4 border-t border-slate-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Artist</label>
+                            <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
+                          </div>
+                          {poster.artistConfidence && (
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                              poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {poster.artistConfidence}
+                            </span>
+                          )}
+                        </div>
+                        {poster.artistSource && (
+                          <p className="text-sm text-slate-600 mb-3">
+                            <strong>Attribution:</strong> {poster.artistSource}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                          >
+                            Google
+                          </a>
+                          <a
+                            href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                          >
+                            Wikipedia
+                          </a>
+                          <a
+                            href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                          >
+                            WikiArt
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
