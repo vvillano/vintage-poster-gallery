@@ -33,15 +33,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Poster not found' }, { status: 404 });
     }
 
-    if (!poster.analysisCompleted || !poster.rawAiResponse) {
+    if (!poster.analysisCompleted) {
       return NextResponse.json(
         { error: 'Poster must be analyzed before refreshing descriptions' },
         { status: 400 }
       );
     }
 
-    // Build context from existing analysis
-    const analysis = poster.rawAiResponse;
+    // Build context from existing analysis - support both rawAiResponse and legacy fields
+    const analysis = poster.rawAiResponse || {};
     const context = `
 Product Type: ${poster.productType || 'Vintage item'}
 Artist: ${poster.artist || 'Unknown'}${poster.artistConfidence ? ` (${poster.artistConfidence})` : ''}
@@ -49,11 +49,12 @@ Title: ${poster.title || 'Untitled'}
 Date: ${poster.estimatedDate || 'Unknown'}
 Printing Technique: ${poster.printingTechnique || 'Unknown'}
 Period/Movement: ${analysis.historicalContext?.periodMovement || 'Unknown'}
-Cultural Significance: ${analysis.historicalContext?.culturalSignificance || ''}
+Cultural Significance: ${analysis.historicalContext?.culturalSignificance || poster.significance || ''}
+Historical Context: ${poster.historicalContext || ''}
 Publication: ${analysis.historicalContext?.publication || ''}
 Advertiser: ${analysis.historicalContext?.advertiser || ''}
-Rarity: ${analysis.rarityValue?.rarityAssessment || ''}
-Collector Interest: ${analysis.rarityValue?.collectorInterest || ''}
+Rarity: ${analysis.rarityValue?.rarityAssessment || poster.rarityAnalysis || ''}
+Collector Interest: ${analysis.rarityValue?.collectorInterest || poster.valueInsights || ''}
 `.trim();
 
     // Generate new descriptions using Haiku (cheaper for text generation)

@@ -278,7 +278,10 @@ export default function PosterDetailPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to refresh descriptions');
+        const errorMsg = errorData.details
+          ? `${errorData.error}: ${errorData.details}`
+          : errorData.error || 'Failed to refresh descriptions';
+        throw new Error(errorMsg);
       }
 
       // Refresh poster data
@@ -321,7 +324,7 @@ export default function PosterDetailPage() {
     );
   }
 
-  if (error || !poster) {
+  if (!poster) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
@@ -424,62 +427,159 @@ export default function PosterDetailPage() {
             )}
           </div>
 
-          {/* Product Description */}
-          {poster.analysisCompleted && (poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h4 className="text-lg font-bold text-slate-900">
-                  Product Description
-                </h4>
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={refreshDescriptions}
-                    disabled={refreshingDescriptions}
-                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
-                    title="Generate new description variations"
-                  >
-                    {refreshingDescriptions ? '...' : '↻'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(getCurrentDescription());
-                      alert('Description copied to clipboard!');
-                    }}
-                    className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                  >
-                    Copy
-                  </button>
-                </div>
+          {/* Historical Context - moved to left column */}
+          {poster.analysisCompleted && poster.historicalContext && (
+            <div className="bg-white rounded-lg shadow p-6 mt-4">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Historical Context
+              </h3>
+              <p className="text-slate-700 whitespace-pre-wrap">
+                {poster.historicalContext}
+              </p>
+            </div>
+          )}
+
+          {/* Design Profile - moved to left column */}
+          {poster.analysisCompleted && poster.rawAiResponse && (
+            <div className="bg-white rounded-lg shadow p-6 mt-4">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Design Profile</h3>
+              <div className="space-y-5">
+                {/* Period & Style */}
+                {poster.rawAiResponse.historicalContext?.periodMovement && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Period & Style</label>
+                    <p className="text-slate-700 mt-1">
+                      {poster.rawAiResponse.historicalContext.periodMovement}
+                    </p>
+                  </div>
+                )}
+
+                {/* Publication & Advertiser */}
+                {(poster.rawAiResponse.historicalContext?.publication || poster.rawAiResponse.historicalContext?.advertiser) && (
+                  <div className="flex flex-wrap gap-4">
+                    {poster.rawAiResponse.historicalContext.publication && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">Publication</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-slate-700">
+                            {poster.rawAiResponse.historicalContext.publication}
+                          </p>
+                          <a
+                            href={getPublicationWikiUrl(poster.rawAiResponse.historicalContext.publication)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            Learn more →
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {poster.rawAiResponse.historicalContext.advertiser && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">Advertiser/Client</label>
+                        <p className="text-slate-700 mt-1">
+                          {poster.rawAiResponse.historicalContext.advertiser}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Era Context */}
+                {poster.rawAiResponse.historicalContext?.eraContext && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Era Context</label>
+                    <p className="text-slate-700 mt-1 text-sm">
+                      {poster.rawAiResponse.historicalContext.eraContext}
+                    </p>
+                  </div>
+                )}
+
+                {/* Design Observations */}
+                {poster.rawAiResponse.technicalAnalysis && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-slate-700">Design Observations</label>
+                    {poster.rawAiResponse.technicalAnalysis.composition && (
+                      <div className="pl-3 border-l-2 border-slate-200">
+                        <p className="text-xs font-medium text-slate-500 uppercase">Composition</p>
+                        <p className="text-slate-700 text-sm">
+                          {poster.rawAiResponse.technicalAnalysis.composition}
+                        </p>
+                      </div>
+                    )}
+                    {poster.rawAiResponse.technicalAnalysis.colorPalette && (
+                      <div className="pl-3 border-l-2 border-slate-200">
+                        <p className="text-xs font-medium text-slate-500 uppercase">Color Palette</p>
+                        <p className="text-slate-700 text-sm">
+                          {poster.rawAiResponse.technicalAnalysis.colorPalette}
+                        </p>
+                      </div>
+                    )}
+                    {poster.rawAiResponse.technicalAnalysis.typography && (
+                      <div className="pl-3 border-l-2 border-slate-200">
+                        <p className="text-xs font-medium text-slate-500 uppercase">Typography</p>
+                        <p className="text-slate-700 text-sm">
+                          {poster.rawAiResponse.technicalAnalysis.typography}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Artist Section */}
+                {poster.artist && poster.artist !== 'Unknown' && (
+                  <div className="pt-4 border-t border-slate-200">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">Artist</label>
+                        <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
+                      </div>
+                      {poster.artistConfidence && (
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                          poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {poster.artistConfidence}
+                        </span>
+                      )}
+                    </div>
+                    {poster.artistSource && (
+                      <p className="text-sm text-slate-600 mb-3">
+                        <strong>Attribution:</strong> {poster.artistSource}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        Google
+                      </a>
+                      <a
+                        href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        Wikipedia
+                      </a>
+                      <a
+                        href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        WikiArt
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {/* Tone Selector - only show if multiple tones available */}
-              {hasMultipleTones() && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {DESCRIPTION_TONES.map((tone) => (
-                    <button
-                      key={tone}
-                      onClick={() => setSelectedTone(tone)}
-                      className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
-                        selectedTone === tone
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                      }`}
-                    >
-                      {tone}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {getCurrentDescription()}
-              </p>
-              <p className="text-xs text-slate-600 mt-3">
-                {hasMultipleTones()
-                  ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
-                  : 'Ready to use in your Shopify product listing'
-                }
-              </p>
             </div>
           )}
         </div>
@@ -606,6 +706,76 @@ export default function PosterDetailPage() {
                 )}
               </div>
 
+              {/* Product Description - moved to right column, below Re-analyze */}
+              {(poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h4 className="text-lg font-bold text-slate-900">
+                      Product Description
+                    </h4>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        onClick={refreshDescriptions}
+                        disabled={refreshingDescriptions}
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
+                        title="Generate new description variations"
+                      >
+                        {refreshingDescriptions ? '...' : '↻'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(getCurrentDescription());
+                          alert('Description copied to clipboard!');
+                        }}
+                        className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tone Selector - only show if multiple tones available */}
+                  {hasMultipleTones() && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {DESCRIPTION_TONES.map((tone) => (
+                        <button
+                          key={tone}
+                          onClick={() => setSelectedTone(tone)}
+                          className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
+                            selectedTone === tone
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {tone}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Inline error for refresh */}
+                  {error && (
+                    <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                      <button
+                        onClick={() => setError('')}
+                        className="float-right text-red-500 hover:text-red-700"
+                      >×</button>
+                      {error}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {getCurrentDescription()}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-3">
+                    {hasMultipleTones()
+                      ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
+                      : 'Ready to use in your Shopify product listing'
+                    }
+                  </p>
+                </div>
+              )}
+
               {/* Identification */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">
@@ -680,18 +850,6 @@ export default function PosterDetailPage() {
                 </div>
               </div>
 
-              {/* Historical Context */}
-              {poster.historicalContext && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">
-                    Historical Context
-                  </h3>
-                  <p className="text-slate-700 whitespace-pre-wrap">
-                    {poster.historicalContext}
-                  </p>
-                </div>
-              )}
-
               {/* Printing Technique */}
               {(poster.printingTechnique || poster.printer) && (
                 <div className="bg-white rounded-lg shadow p-6">
@@ -724,150 +882,6 @@ export default function PosterDetailPage() {
                       </p>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* Design Profile */}
-              {poster.rawAiResponse && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">Design Profile</h3>
-                  <div className="space-y-5">
-                    {/* Period & Style */}
-                    {poster.rawAiResponse.historicalContext?.periodMovement && (
-                      <div>
-                        <label className="text-sm font-medium text-slate-700">Period & Style</label>
-                        <p className="text-slate-700 mt-1">
-                          {poster.rawAiResponse.historicalContext.periodMovement}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Publication & Advertiser */}
-                    {(poster.rawAiResponse.historicalContext?.publication || poster.rawAiResponse.historicalContext?.advertiser) && (
-                      <div className="flex flex-wrap gap-4">
-                        {poster.rawAiResponse.historicalContext.publication && (
-                          <div>
-                            <label className="text-sm font-medium text-slate-700">Publication</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-slate-700">
-                                {poster.rawAiResponse.historicalContext.publication}
-                              </p>
-                              <a
-                                href={getPublicationWikiUrl(poster.rawAiResponse.historicalContext.publication)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                              >
-                                Learn more →
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                        {poster.rawAiResponse.historicalContext.advertiser && (
-                          <div>
-                            <label className="text-sm font-medium text-slate-700">Advertiser/Client</label>
-                            <p className="text-slate-700 mt-1">
-                              {poster.rawAiResponse.historicalContext.advertiser}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Era Context */}
-                    {poster.rawAiResponse.historicalContext?.eraContext && (
-                      <div>
-                        <label className="text-sm font-medium text-slate-700">Era Context</label>
-                        <p className="text-slate-700 mt-1 text-sm">
-                          {poster.rawAiResponse.historicalContext.eraContext}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Design Observations */}
-                    {poster.rawAiResponse.technicalAnalysis && (
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium text-slate-700">Design Observations</label>
-                        {poster.rawAiResponse.technicalAnalysis.composition && (
-                          <div className="pl-3 border-l-2 border-slate-200">
-                            <p className="text-xs font-medium text-slate-500 uppercase">Composition</p>
-                            <p className="text-slate-700 text-sm">
-                              {poster.rawAiResponse.technicalAnalysis.composition}
-                            </p>
-                          </div>
-                        )}
-                        {poster.rawAiResponse.technicalAnalysis.colorPalette && (
-                          <div className="pl-3 border-l-2 border-slate-200">
-                            <p className="text-xs font-medium text-slate-500 uppercase">Color Palette</p>
-                            <p className="text-slate-700 text-sm">
-                              {poster.rawAiResponse.technicalAnalysis.colorPalette}
-                            </p>
-                          </div>
-                        )}
-                        {poster.rawAiResponse.technicalAnalysis.typography && (
-                          <div className="pl-3 border-l-2 border-slate-200">
-                            <p className="text-xs font-medium text-slate-500 uppercase">Typography</p>
-                            <p className="text-slate-700 text-sm">
-                              {poster.rawAiResponse.technicalAnalysis.typography}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Artist Section */}
-                    {poster.artist && poster.artist !== 'Unknown' && (
-                      <div className="pt-4 border-t border-slate-200">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <label className="text-sm font-medium text-slate-700">Artist</label>
-                            <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
-                          </div>
-                          {poster.artistConfidence && (
-                            <span className={`text-xs px-2 py-0.5 rounded ${
-                              poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                              poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                              poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {poster.artistConfidence}
-                            </span>
-                          )}
-                        </div>
-                        {poster.artistSource && (
-                          <p className="text-sm text-slate-600 mb-3">
-                            <strong>Attribution:</strong> {poster.artistSource}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          <a
-                            href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                          >
-                            Google
-                          </a>
-                          <a
-                            href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                          >
-                            Wikipedia
-                          </a>
-                          <a
-                            href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                          >
-                            WikiArt
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
