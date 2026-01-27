@@ -647,7 +647,9 @@ export default function PosterDetailPage() {
                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">Image Search (Most Accurate)</p>
                     <div className="flex flex-wrap gap-2">
                       <a
-                        href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}`}
+                        href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}&q=${encodeURIComponent(
+                          `${poster.title} Original ${poster.productType || 'Poster'}`
+                        )}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition"
