@@ -195,6 +195,7 @@ export default function PosterDetailPage() {
   const [uploadingSupplemental, setUploadingSupplemental] = useState(false);
   const [supplementalDescription, setSupplementalDescription] = useState('');
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
+  const [compressingSupplemental, setCompressingSupplemental] = useState(false);
 
   useEffect(() => {
     fetchPoster();
@@ -266,15 +267,93 @@ export default function PosterDetailPage() {
     URL.revokeObjectURL(url);
   }
 
+  // Compress image if over 5MB
+  async function compressImage(file: File, targetSizeMB: number = 4.95): Promise<File> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0);
+
+          let quality = 0.95;
+          const targetBytes = targetSizeMB * 1024 * 1024;
+          const minQuality = 0.75;
+
+          const tryCompress = () => {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error('Compression failed'));
+                  return;
+                }
+                if (blob.size > targetBytes && quality > minQuality) {
+                  quality -= 0.02;
+                  tryCompress();
+                  return;
+                }
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              },
+              'image/jpeg',
+              quality
+            );
+          };
+          tryCompress();
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function uploadSupplementalImage(file: File, description?: string) {
     if (!poster) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      setError('Please select a JPG or PNG image file.');
+      return;
+    }
 
     try {
       setUploadingSupplemental(true);
       setError('');
 
+      let processedFile = file;
+
+      // Compress if over 5MB
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setCompressingSupplemental(true);
+        try {
+          processedFile = await compressImage(file);
+        } catch (err) {
+          setError('Failed to compress image. Please try a smaller file.');
+          setCompressingSupplemental(false);
+          setUploadingSupplemental(false);
+          return;
+        }
+        setCompressingSupplemental(false);
+      }
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', processedFile);
       if (description) {
         formData.append('description', description);
       }
@@ -296,6 +375,7 @@ export default function PosterDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to upload supplemental image');
     } finally {
       setUploadingSupplemental(false);
+      setCompressingSupplemental(false);
     }
   }
 
@@ -537,26 +617,50 @@ export default function PosterDetailPage() {
                     placeholder="What does this image show? (optional)"
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   />
-                  <label className={`block w-full px-3 py-2 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
-                    uploadingSupplemental
-                      ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
-                      : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-slate-600'
-                  }`}>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png"
-                      disabled={uploadingSupplemental}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          uploadSupplementalImage(file, supplementalDescription || undefined);
-                          e.target.value = '';
+                  <div
+                    className={`block w-full px-3 py-3 text-sm text-center border-2 border-dashed rounded transition ${
+                      uploadingSupplemental || compressingSupplemental
+                        ? 'border-slate-300 bg-slate-50 text-slate-400'
+                        : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-slate-600 cursor-pointer'
+                    }`}
+                    onPaste={(e) => {
+                      if (uploadingSupplemental || compressingSupplemental) return;
+                      const items = e.clipboardData?.items;
+                      if (!items) return;
+                      for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf('image') !== -1) {
+                          const blob = items[i].getAsFile();
+                          if (blob) {
+                            const pastedFile = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                            uploadSupplementalImage(pastedFile, supplementalDescription || undefined);
+                          }
+                          break;
                         }
-                      }}
-                      className="hidden"
-                    />
-                    {uploadingSupplemental ? 'Uploading...' : '+ Add Image'}
-                  </label>
+                      }
+                    }}
+                    tabIndex={0}
+                  >
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png"
+                        disabled={uploadingSupplemental || compressingSupplemental}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            uploadSupplementalImage(file, supplementalDescription || undefined);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      {compressingSupplemental
+                        ? 'Compressing...'
+                        : uploadingSupplemental
+                        ? 'Uploading...'
+                        : '+ Add Image (click or paste)'}
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
