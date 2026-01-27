@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import ImagePreview from '@/components/ImagePreview';
 
 // Map printing techniques to their Wikipedia article URLs
 function getPrintingWikiUrl(technique: string): string {
@@ -527,13 +528,12 @@ export default function PosterDetailPage() {
         {/* Image */}
         <div>
           <div className="bg-white rounded-lg shadow p-4">
-            <div className="aspect-[3/4] bg-slate-100 rounded-lg overflow-hidden">
-              <img
-                src={poster.imageUrl}
-                alt={poster.title || poster.fileName}
-                className="w-full h-full object-contain"
-              />
-            </div>
+            <ImagePreview
+              src={poster.imageUrl}
+              alt={poster.title || poster.fileName}
+              className="w-full h-full object-contain aspect-[3/4] bg-slate-100 rounded-lg"
+              previewSize={600}
+            />
             <div className="mt-4 text-sm text-slate-600">
               {poster.productType && (
                 <div className="mb-3">
@@ -576,11 +576,12 @@ export default function PosterDetailPage() {
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
                   {poster.supplementalImages.map((img, idx) => (
-                    <div key={img.url} className="relative">
-                      <img
+                    <div key={img.url}>
+                      <ImagePreview
                         src={img.url}
                         alt={img.description || `Reference ${idx + 1}`}
-                        className="w-full h-16 object-cover rounded border border-slate-200"
+                        className="w-full h-16 object-cover rounded border border-slate-200 cursor-zoom-in"
+                        previewSize={400}
                       />
                       {img.description && (
                         <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
@@ -975,20 +976,22 @@ export default function PosterDetailPage() {
                       {poster.supplementalImages && poster.supplementalImages.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mb-3">
                           {poster.supplementalImages.map((img, idx) => (
-                            <div key={img.url} className="relative group">
-                              <img
+                            <div key={img.url} className="group">
+                              <ImagePreview
                                 src={img.url}
                                 alt={img.description || `Reference ${idx + 1}`}
                                 className="w-full h-20 object-cover rounded border border-slate-200"
-                              />
-                              <button
-                                onClick={() => deleteSupplementalImage(img.url)}
-                                disabled={deletingImage === img.url}
-                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
-                                title="Remove image"
+                                previewSize={400}
                               >
-                                {deletingImage === img.url ? '...' : '×'}
-                              </button>
+                                <button
+                                  onClick={() => deleteSupplementalImage(img.url)}
+                                  disabled={deletingImage === img.url}
+                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                                  title="Remove image"
+                                >
+                                  {deletingImage === img.url ? '...' : '×'}
+                                </button>
+                              </ImagePreview>
                               {img.description && (
                                 <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
                                   {img.description}
