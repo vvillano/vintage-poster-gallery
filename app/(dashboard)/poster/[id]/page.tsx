@@ -681,7 +681,7 @@ export default function PosterDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       <a
                         href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
+                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -691,7 +691,7 @@ export default function PosterDetailPage() {
                       </a>
                       <a
                         href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
+                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -701,7 +701,7 @@ export default function PosterDetailPage() {
                       </a>
                       <a
                         href={`https://www.liveauctioneers.com/search/?q=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.artist && poster.artist !== 'Unknown' ? poster.artist : poster.title}`
+                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
