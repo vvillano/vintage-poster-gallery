@@ -570,44 +570,92 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
-              {/* Available Listings */}
-              {poster.similarProducts && Array.isArray(poster.similarProducts) && poster.similarProducts.length > 0 && (
+              {/* Find This Item */}
+              {poster.title && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-xl font-bold text-slate-900 mb-4">
-                    Available Listings
+                    Find This Item
                   </h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Exact matches of this specific item currently available for purchase
+                    Search marketplaces for current listings of this exact piece
                   </p>
-                  <div className="space-y-3">
-                    {poster.similarProducts.map((product: any, idx: number) => (
-                      <div key={idx} className="border border-slate-200 rounded-lg p-4 hover:border-blue-400 transition">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-slate-900 mb-1">{product.title}</h4>
-                            <p className="text-sm text-slate-600 mb-2">{product.site}</p>
-                            {(product.price || product.condition) && (
-                              <div className="flex gap-3 text-sm">
-                                {product.price && (
-                                  <span className="text-green-700 font-medium">{product.price}</span>
-                                )}
-                                {product.condition && (
-                                  <span className="text-slate-600">{product.condition}</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <a
-                            href={product.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition whitespace-nowrap"
-                          >
-                            View →
-                          </a>
-                        </div>
-                      </div>
-                    ))}
+
+                  {/* Image Search */}
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-slate-500 uppercase mb-2">Image Search (Most Accurate)</p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition"
+                      >
+                        Google Lens
+                      </a>
+                      <a
+                        href={`https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&sbisrc=UrlPaste&q=imgurl:${encodeURIComponent(poster.imageUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition"
+                      >
+                        Bing Visual
+                      </a>
+                      <a
+                        href={`https://tineye.com/search?url=${encodeURIComponent(poster.imageUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded transition"
+                      >
+                        TinEye
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Marketplace Search */}
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase mb-2">Marketplace Search</p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
+                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''} original`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-yellow-500 hover:bg-yellow-600 text-slate-900 px-3 py-1.5 rounded transition"
+                      >
+                        eBay
+                      </a>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(
+                          `"${poster.title}"${poster.artist && poster.artist !== 'Unknown' ? ' "' + poster.artist + '"' : ''} for sale`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        Google Shopping
+                      </a>
+                      <a
+                        href={`https://www.1stdibs.com/search/?q=${encodeURIComponent(
+                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        1stDibs
+                      </a>
+                      <a
+                        href={`https://www.liveauctioneers.com/search/?keyword=${encodeURIComponent(
+                          `${poster.title}${poster.artist && poster.artist !== 'Unknown' ? ' ' + poster.artist : ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
+                      >
+                        LiveAuctioneers
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
