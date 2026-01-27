@@ -542,28 +542,35 @@ export default function PosterDetailPage() {
                   <h3 className="text-xl font-bold text-slate-900 mb-4">
                     Source Citations
                   </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Claims identified by AI analysis - verify independently
+                  </p>
                   <div className="space-y-3">
                     {poster.sourceCitations.map((citation: any, idx: number) => (
                       <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
                         <p className="font-medium text-slate-900 mb-1">{citation.claim}</p>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <span>{citation.source}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            citation.reliability === 'high' ? 'bg-green-100 text-green-800' :
-                            citation.reliability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {citation.reliability}
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <span>{citation.source}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              citation.reliability === 'high' ? 'bg-green-100 text-green-800' :
+                              citation.reliability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.reliability}
+                            </span>
+                          </div>
+                          <a
+                            href={`https://www.google.com/search?q=${encodeURIComponent(
+                              `${citation.claim} ${citation.source}`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition"
+                          >
+                            Verify →
+                          </a>
                         </div>
-                        <a
-                          href={citation.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline mt-1 inline-block"
-                        >
-                          {citation.url}
-                        </a>
                       </div>
                     ))}
                   </div>
