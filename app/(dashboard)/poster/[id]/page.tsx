@@ -72,6 +72,35 @@ function getPrintingWikiUrl(technique: string): string {
   return `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(technique)} printmaking`;
 }
 
+// Build marketplace search query with all relevant context
+function buildMarketplaceQuery(poster: Poster): string {
+  const parts: string[] = [];
+
+  // Product type
+  parts.push(poster.productType || 'vintage');
+
+  // Publication or advertiser (from rawAiResponse if available)
+  const publication = poster.rawAiResponse?.historicalContext?.publication;
+  const advertiser = poster.rawAiResponse?.historicalContext?.advertiser;
+  if (publication) {
+    parts.push(publication);
+  } else if (advertiser) {
+    parts.push(advertiser);
+  }
+
+  // Title (always include)
+  if (poster.title) {
+    parts.push(poster.title);
+  }
+
+  // Artist (only if confirmed)
+  if (poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed') {
+    parts.push(poster.artist);
+  }
+
+  return parts.join(' ');
+}
+
 export default function PosterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -777,9 +806,7 @@ export default function PosterDetailPage() {
                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">Marketplace Search</p>
                     <div className="flex flex-wrap gap-2">
                       <a
-                        href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
-                        )}`}
+                        href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm bg-yellow-500 hover:bg-yellow-600 text-slate-900 px-3 py-1.5 rounded transition"
@@ -787,9 +814,7 @@ export default function PosterDetailPage() {
                         eBay
                       </a>
                       <a
-                        href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
-                        )}`}
+                        href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
@@ -797,9 +822,7 @@ export default function PosterDetailPage() {
                         Google Shopping
                       </a>
                       <a
-                        href={`https://www.liveauctioneers.com/search/?q=${encodeURIComponent(
-                          `${poster.productType || 'vintage'} ${poster.title}${poster.artist && poster.artist !== 'Unknown' && poster.artistConfidence === 'confirmed' ? ` ${poster.artist}` : ''}`
-                        )}`}
+                        href={`https://www.liveauctioneers.com/search/?q=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
