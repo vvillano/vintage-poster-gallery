@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -192,6 +192,9 @@ export default function PosterDetailPage() {
   const [showReanalyze, setShowReanalyze] = useState(false);
   const [selectedTone, setSelectedTone] = useState<DescriptionTone>('standard');
   const [refreshingDescriptions, setRefreshingDescriptions] = useState(false);
+  const [uploadingSupplemental, setUploadingSupplemental] = useState(false);
+  const [supplementalDescription, setSupplementalDescription] = useState('');
+  const [deletingImage, setDeletingImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPoster();
@@ -261,6 +264,65 @@ export default function PosterDetailPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  async function uploadSupplementalImage(file: File, description?: string) {
+    if (!poster) return;
+
+    try {
+      setUploadingSupplemental(true);
+      setError('');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (description) {
+        formData.append('description', description);
+      }
+
+      const res = await fetch(`/api/posters/${posterId}/supplemental-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to upload supplemental image');
+      }
+
+      // Refresh poster data
+      await fetchPoster();
+      setSupplementalDescription('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload supplemental image');
+    } finally {
+      setUploadingSupplemental(false);
+    }
+  }
+
+  async function deleteSupplementalImage(imageUrl: string) {
+    if (!poster) return;
+
+    try {
+      setDeletingImage(imageUrl);
+      setError('');
+
+      const res = await fetch(
+        `/api/posters/${posterId}/supplemental-image?imageUrl=${encodeURIComponent(imageUrl)}`,
+        { method: 'DELETE' }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete supplemental image');
+      }
+
+      // Refresh poster data
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete supplemental image');
+    } finally {
+      setDeletingImage(null);
+    }
   }
 
   async function refreshDescriptions() {
@@ -425,6 +487,79 @@ export default function PosterDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Supplemental Images */}
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-slate-700">
+                  Supplemental Images ({poster.supplementalImages?.length || 0}/5)
+                </h4>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                Add additional photos to improve analysis (backs, close-ups, signatures, context)
+              </p>
+
+              {/* Existing supplemental images */}
+              {poster.supplementalImages && poster.supplementalImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {poster.supplementalImages.map((img, idx) => (
+                    <div key={img.url} className="relative group">
+                      <img
+                        src={img.url}
+                        alt={img.description || `Supplemental ${idx + 1}`}
+                        className="w-full h-20 object-cover rounded border border-slate-200"
+                      />
+                      <button
+                        onClick={() => deleteSupplementalImage(img.url)}
+                        disabled={deletingImage === img.url}
+                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                        title="Remove image"
+                      >
+                        {deletingImage === img.url ? '...' : '×'}
+                      </button>
+                      {img.description && (
+                        <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
+                          {img.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload new supplemental image */}
+              {(!poster.supplementalImages || poster.supplementalImages.length < 5) && (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={supplementalDescription}
+                    onChange={(e) => setSupplementalDescription(e.target.value)}
+                    placeholder="What does this image show? (optional)"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                  <label className={`block w-full px-3 py-2 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
+                    uploadingSupplemental
+                      ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
+                      : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-slate-600'
+                  }`}>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png"
+                      disabled={uploadingSupplemental}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          uploadSupplementalImage(file, supplementalDescription || undefined);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    {uploadingSupplemental ? 'Uploading...' : '+ Add Image'}
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Product Description */}
@@ -512,6 +647,47 @@ export default function PosterDetailPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Notable Figures */}
+          {poster.analysisCompleted && poster.rawAiResponse?.notableFigures && poster.rawAiResponse.notableFigures.length > 0 && (
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4 mt-4">
+              <h4 className="text-lg font-bold text-slate-900 mb-3">
+                Notable Figures
+              </h4>
+              <p className="text-xs text-slate-500 mb-3">People mentioned or depicted in this piece</p>
+              <div className="space-y-3">
+                {poster.rawAiResponse.notableFigures.map((figure: { name: string; role: string; context: string; wikiSearch?: string }, idx: number) => (
+                  <div key={idx} className="border-l-2 border-purple-300 pl-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-slate-900">{figure.name}</span>
+                      <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                        {figure.role}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600">{figure.context}</p>
+                    <div className="flex gap-2 mt-2">
+                      <a
+                        href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(figure.wikiSearch || figure.name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition"
+                      >
+                        Wikipedia →
+                      </a>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(figure.name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition"
+                      >
+                        Google →
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

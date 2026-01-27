@@ -59,11 +59,12 @@ export async function POST(request: NextRequest) {
         : additionalContext;
     }
 
-    // Analyze with Claude
+    // Analyze with Claude (including any supplemental images)
     const analysis = await analyzePoster(
       poster.imageUrl,
       combinedInfo || undefined,
-      poster.productType || undefined
+      poster.productType || undefined,
+      poster.supplementalImages || undefined
     );
 
     console.log('Analysis completed successfully');

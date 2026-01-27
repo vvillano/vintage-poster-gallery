@@ -1,3 +1,12 @@
+// Supplemental image for additional analysis context
+export interface SupplementalImage {
+  url: string;
+  blobId: string;
+  fileName: string;
+  description?: string;  // Optional description of what this image shows
+  uploadDate: Date;
+}
+
 // Core Poster type matching database schema
 export interface Poster {
   id: number;
@@ -7,6 +16,9 @@ export interface Poster {
   fileSize: number;
   uploadDate: Date;
   uploadedBy: string;
+
+  // Supplemental images for additional analysis context
+  supplementalImages?: SupplementalImage[] | null;
 
   // Initial information provided at upload (optional)
   initialInformation?: string | null;
@@ -75,6 +87,14 @@ export interface ProductDescriptions {
   enthusiastic: string;  // Collector-focused - energetic, highlights appeal
 }
 
+// Notable figure mentioned or depicted in the item
+export interface NotableFigure {
+  name: string;           // Full name of the person
+  role: string;           // Brief description: "Scientist", "Politician", "Artist depicted", etc.
+  context: string;        // Why they appear / their connection to the piece
+  wikiSearch?: string;    // Optional search term for Wikipedia lookup
+}
+
 // Source citation with link
 export interface SourceCitation {
   claim: string;  // The specific claim being cited (e.g., "Artist: Leonetto Cappiello")
@@ -132,6 +152,7 @@ export interface PosterAnalysis {
   validationNotes?: string;  // Present when initial information was provided
   productDescriptions: ProductDescriptions;  // Marketing descriptions in multiple tones
   talkingPoints: string[];  // Brief bullet points for in-gallery conversations
+  notableFigures: NotableFigure[];  // People mentioned/depicted in the item
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
 }
@@ -172,6 +193,7 @@ export interface CreatePosterInput {
   uploadedBy: string;
   initialInformation?: string;
   productType?: string;
+  supplementalImages?: SupplementalImage[];
 }
 
 export interface UpdatePosterInput {
@@ -195,4 +217,5 @@ export interface UpdatePosterInput {
   sourceCitations?: any;
   similarProducts?: any;
   userNotes?: string;
+  supplementalImages?: SupplementalImage[];
 }

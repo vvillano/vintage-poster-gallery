@@ -4,9 +4,16 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PRODUCT_TYPES } from '@/types/poster';
 
+interface SupplementalFile {
+  file: File;
+  preview: string;
+  description: string;
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supplementalInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -18,6 +25,8 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [compressionInfo, setCompressionInfo] = useState('');
+  const [supplementalFiles, setSupplementalFiles] = useState<SupplementalFile[]>([]);
+  const [showSupplementalSection, setShowSupplementalSection] = useState(false);
 
   // Handle clipboard paste
   useEffect(() => {
@@ -158,8 +167,8 @@ export default function UploadPage() {
     }
 
     // Allow larger files initially (we'll compress them)
-    if (selectedFile.size > 20 * 1024 * 1024) {
-      setError('File size must be less than 20MB.');
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError('File size must be less than 50MB.');
       return;
     }
 
@@ -241,6 +250,27 @@ export default function UploadPage() {
       const uploadData = await uploadRes.json();
       const posterId = uploadData.posterId;
 
+      // Upload supplemental images if any
+      if (supplementalFiles.length > 0) {
+        for (const suppFile of supplementalFiles) {
+          const suppFormData = new FormData();
+          suppFormData.append('file', suppFile.file);
+          if (suppFile.description) {
+            suppFormData.append('description', suppFile.description);
+          }
+
+          try {
+            await fetch(`/api/posters/${posterId}/supplemental-image`, {
+              method: 'POST',
+              body: suppFormData,
+            });
+          } catch (err) {
+            console.error('Failed to upload supplemental image:', err);
+            // Continue with analysis even if supplemental upload fails
+          }
+        }
+      }
+
       // Trigger analysis
       setUploading(false);
       setAnalyzing(true);
@@ -272,9 +302,68 @@ export default function UploadPage() {
     setProductType('');
     setInitialInformation('');
     setError('');
+    setSupplementalFiles([]);
+    setShowSupplementalSection(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSupplementalFile = async (selectedFile: File) => {
+    // Validate file type
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(selectedFile.type)) {
+      setError('Please select a JPG or PNG image file.');
+      return;
+    }
+
+    // Check limit
+    if (supplementalFiles.length >= 5) {
+      setError('Maximum of 5 supplemental images allowed.');
+      return;
+    }
+
+    setError('');
+
+    try {
+      let processedFile = selectedFile;
+
+      // Compress if over 5MB
+      const maxSize = 5 * 1024 * 1024;
+      if (selectedFile.size > maxSize) {
+        setCompressing(true);
+        try {
+          processedFile = await compressImage(selectedFile);
+        } catch (err) {
+          setError('Failed to compress supplemental image.');
+          setCompressing(false);
+          return;
+        }
+        setCompressing(false);
+      }
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSupplementalFiles(prev => [...prev, {
+          file: processedFile,
+          preview: reader.result as string,
+          description: '',
+        }]);
+      };
+      reader.readAsDataURL(processedFile);
+    } catch (err) {
+      setError('Failed to process supplemental image.');
+    }
+  };
+
+  const removeSupplementalFile = (index: number) => {
+    setSupplementalFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSupplementalDescription = (index: number, description: string) => {
+    setSupplementalFiles(prev => prev.map((item, i) =>
+      i === index ? { ...item, description } : item
+    ));
   };
 
   return (
@@ -400,6 +489,94 @@ export default function UploadPage() {
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                 rows={6}
               />
+            </div>
+
+            {/* Supplemental Images */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Supplemental Images (Optional)
+                </label>
+                {!showSupplementalSection && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplementalSection(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    + Add reference photos
+                  </button>
+                )}
+              </div>
+
+              {showSupplementalSection && (
+                <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                  <p className="text-sm text-slate-600 mb-3">
+                    Add up to 5 additional photos to help with analysis (back of item, close-ups of signatures,
+                    condition details, original publication, etc.)
+                  </p>
+
+                  {/* Existing supplemental images */}
+                  {supplementalFiles.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                      {supplementalFiles.map((item, idx) => (
+                        <div key={idx} className="relative">
+                          <img
+                            src={item.preview}
+                            alt={`Supplemental ${idx + 1}`}
+                            className="w-full h-24 object-cover rounded border border-slate-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSupplementalFile(idx)}
+                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs"
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => updateSupplementalDescription(idx, e.target.value)}
+                            placeholder="What's in this image?"
+                            className="w-full mt-1 px-2 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add more supplemental images */}
+                  {supplementalFiles.length < 5 && (
+                    <label className="block w-full px-3 py-3 text-sm text-center border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                      <input
+                        ref={supplementalInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png"
+                        onChange={(e) => {
+                          const selectedFile = e.target.files?.[0];
+                          if (selectedFile) {
+                            handleSupplementalFile(selectedFile);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      + Add supplemental image ({supplementalFiles.length}/5)
+                    </label>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSupplementalSection(false);
+                      setSupplementalFiles([]);
+                    }}
+                    className="mt-3 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Cancel & remove all supplemental images
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (

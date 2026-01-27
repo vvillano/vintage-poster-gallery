@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions } from '@/types/poster';
+import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage } from '@/types/poster';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -64,8 +64,16 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 
 
 // Construct analysis prompt with optional initial information, research context, and product type
-function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string): string {
-  const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.
+function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string, hasSupplementalImages?: boolean): string {
+  const imageNote = hasSupplementalImages
+    ? `\n\nIMPORTANT: Multiple images have been provided. The FIRST image is the primary item being analyzed. Additional images are supplemental reference photos that may show:
+- Different angles or details (back, close-ups of signatures, condition issues)
+- Related items or context (original advertisements, book/magazine it was published in)
+- Provenance documentation (auction records, gallery labels, certificates)
+Use ALL provided images to inform your analysis, cross-referencing details visible in different photos.`
+    : '';
+
+  const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.${imageNote}
 
 CRITICAL - ARTIST IDENTIFICATION:
 1. SYSTEMATICALLY examine ALL FOUR CORNERS of the image for signatures:
@@ -102,6 +110,16 @@ PUBLICATION & CLIENT (when applicable):
 - Put any context about the publication (founding date, editorial focus, notable artists) in the eraContext field instead
 - Use publication history to help verify artist identification and date
 
+NOTABLE FIGURES - CRITICAL for historical context:
+- Look for names of PEOPLE mentioned anywhere in the image text (corners, margins, captions, body text)
+- Scientists, inventors, politicians, celebrities, historical figures - anyone named or depicted
+- Check lower corners especially - credits, dedications, and subject identifications often appear there
+- For portraits or depictions: identify who is being shown
+- For scientific/educational prints: identify scientists, inventors, or researchers credited
+- For political prints: identify politicians, rulers, or historical figures
+- Include their role and why they're relevant to the piece
+- This adds significant historical and educational value for collectors
+
 ERA CONTEXT:
 - Describe the historical/cultural moment when this was created
 - How would contemporary audiences have perceived this piece?
@@ -135,6 +153,7 @@ TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help 
 - Artist and date (if known)
 - Notable visual elements or techniques (e.g., "Droste effect with the cats", "Bold Art Deco geometric forms")
 - Interesting details visible in the image (e.g., "Tax stamp visible lower left", "Signed in the stone")
+- CRITICAL - Named individuals: If any scientists, inventors, politicians, or historical figures are mentioned or depicted, include a talking point about who they were and why they're significant
 - IMPORTANT: Historical/cultural context that tells a story:
   * What was happening in this region/country at this time?
   * If it's for an event (festival, exhibition, etc.), explain what that event was
@@ -170,6 +189,7 @@ JSON:
   "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
   "productDescriptions": {"standard": "", "scholarly": "", "concise": "", "enthusiastic": ""},
   "talkingPoints": ["point 1", "point 2", "..."],
+  "notableFigures": [{"name": "Full Name", "role": "Scientist/Politician/etc", "context": "Why they appear in this piece", "wikiSearch": "search term for Wikipedia"}],
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
   "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]
 }`;
@@ -181,27 +201,69 @@ JSON:
  * Analyze a vintage poster image using Claude's vision capabilities
  * @param imageUrl - Public URL to the poster image (from Vercel Blob)
  * @param initialInformation - Optional user-provided information to validate
+ * @param productType - The type of product being analyzed
+ * @param supplementalImages - Optional array of additional images for context
  * @returns Structured poster analysis
  */
 export async function analyzePoster(
   imageUrl: string,
   initialInformation?: string,
-  productType?: string
+  productType?: string,
+  supplementalImages?: SupplementalImage[]
 ): Promise<PosterAnalysis> {
   try {
     console.log('[analyzePoster] Starting analysis for image:', imageUrl);
+    console.log('[analyzePoster] Supplemental images:', supplementalImages?.length || 0);
 
     // Verify API key is configured
     if (!process.env.ANTHROPIC_API_KEY) {
       throw new Error('ANTHROPIC_API_KEY is not configured');
     }
 
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType);
+    const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
     console.log('[analyzePoster] Product type:', productType);
     console.log('[analyzePoster] Image URL:', imageUrl);
     console.log('[analyzePoster] Calling Claude API...');
+
+    // Build content array with primary image first, then supplemental images
+    const contentArray: Array<{ type: 'image'; source: { type: 'url'; url: string } } | { type: 'text'; text: string }> = [
+      {
+        type: 'image',
+        source: {
+          type: 'url',
+          url: imageUrl,
+        },
+      },
+    ];
+
+    // Add supplemental images with optional descriptions
+    if (supplementalImages && supplementalImages.length > 0) {
+      for (const img of supplementalImages) {
+        // Add description text before each supplemental image if provided
+        if (img.description) {
+          contentArray.push({
+            type: 'text',
+            text: `[Supplemental image: ${img.description}]`,
+          });
+        }
+        contentArray.push({
+          type: 'image',
+          source: {
+            type: 'url',
+            url: img.url,
+          },
+        });
+      }
+    }
+
+    // Add the analysis prompt at the end
+    contentArray.push({
+      type: 'text',
+      text: prompt,
+    });
 
     // Call Claude with vision capabilities
     // Using Claude Opus 4.5 for maximum accuracy in artist/date identification
@@ -213,19 +275,7 @@ export async function analyzePoster(
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'url',
-                  url: imageUrl,
-                },
-              },
-              {
-                type: 'text',
-                text: prompt,
-              },
-            ],
+            content: contentArray,
           },
         ],
       });
@@ -326,6 +376,9 @@ export async function analyzePoster(
     if (!analysis.talkingPoints) {
       analysis.talkingPoints = [];
     }
+    if (!analysis.notableFigures) {
+      analysis.notableFigures = [];
+    }
     if (!analysis.sourceCitations) {
       analysis.sourceCitations = [];
     }
@@ -372,6 +425,7 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     productDescription: analysis.productDescriptions.standard,  // Default for backwards compat
     productDescriptions: analysis.productDescriptions,
     talkingPoints: analysis.talkingPoints,
+    notableFigures: analysis.notableFigures,
     sourceCitations: analysis.sourceCitations,
     similarProducts: analysis.similarProducts,
   };

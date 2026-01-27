@@ -3,6 +3,7 @@ import type {
   Poster,
   CreatePosterInput,
   UpdatePosterInput,
+  SupplementalImage,
 } from '@/types/poster';
 
 /**
@@ -20,6 +21,7 @@ export async function createPoster(
       uploaded_by,
       initial_information,
       product_type,
+      supplemental_images,
       analysis_completed
     )
     VALUES (
@@ -30,6 +32,7 @@ export async function createPoster(
       ${input.uploadedBy},
       ${input.initialInformation || null},
       ${input.productType || null},
+      ${input.supplementalImages ? JSON.stringify(input.supplementalImages) : null},
       false
     )
     RETURNING *
@@ -269,6 +272,69 @@ export async function getPosterStats(): Promise<{
 }
 
 /**
+ * Add or update supplemental images for a poster
+ */
+export async function updateSupplementalImages(
+  id: number,
+  images: SupplementalImage[]
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      supplemental_images = ${JSON.stringify(images)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
+ * Add a supplemental image to an existing poster
+ */
+export async function addSupplementalImage(
+  id: number,
+  image: SupplementalImage
+): Promise<Poster> {
+  // Get current poster
+  const poster = await getPosterById(id);
+  if (!poster) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  // Add new image to array
+  const currentImages = poster.supplementalImages || [];
+  const updatedImages = [...currentImages, image];
+
+  return updateSupplementalImages(id, updatedImages);
+}
+
+/**
+ * Remove a supplemental image from a poster
+ */
+export async function removeSupplementalImage(
+  id: number,
+  imageUrl: string
+): Promise<Poster> {
+  // Get current poster
+  const poster = await getPosterById(id);
+  if (!poster) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  // Remove image from array
+  const currentImages = poster.supplementalImages || [];
+  const updatedImages = currentImages.filter(img => img.url !== imageUrl);
+
+  return updateSupplementalImages(id, updatedImages);
+}
+
+/**
  * Convert database row to Poster type
  */
 function dbRowToPoster(row: any): Poster {
@@ -280,6 +346,7 @@ function dbRowToPoster(row: any): Poster {
     fileSize: row.file_size,
     uploadDate: new Date(row.upload_date),
     uploadedBy: row.uploaded_by,
+    supplementalImages: row.supplemental_images,
     initialInformation: row.initial_information,
     productType: row.product_type,
     artist: row.artist,
