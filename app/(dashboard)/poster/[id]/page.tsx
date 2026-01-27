@@ -524,6 +524,38 @@ export default function PosterDetailPage() {
                       </div>
                     )}
 
+                    {/* Publication & Advertiser */}
+                    {(poster.rawAiResponse.historicalContext?.publication || poster.rawAiResponse.historicalContext?.advertiser) && (
+                      <div className="flex flex-wrap gap-4">
+                        {poster.rawAiResponse.historicalContext.publication && (
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Publication</label>
+                            <p className="text-slate-700 mt-1">
+                              {poster.rawAiResponse.historicalContext.publication}
+                            </p>
+                          </div>
+                        )}
+                        {poster.rawAiResponse.historicalContext.advertiser && (
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Advertiser/Client</label>
+                            <p className="text-slate-700 mt-1">
+                              {poster.rawAiResponse.historicalContext.advertiser}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Era Context */}
+                    {poster.rawAiResponse.historicalContext?.eraContext && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">Era Context</label>
+                        <p className="text-slate-700 mt-1 text-sm">
+                          {poster.rawAiResponse.historicalContext.eraContext}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Design Observations */}
                     {poster.rawAiResponse.technicalAnalysis && (
                       <div className="space-y-3">

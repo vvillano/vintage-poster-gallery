@@ -95,6 +95,9 @@ export interface PosterAnalysis {
     periodMovement: string;
     culturalSignificance: string;
     originalPurpose: string;
+    publication?: string;  // For cover art/illustrations: The New Yorker, Fortune, etc.
+    advertiser?: string;   // For advertising: Cognac Briand, Campari, etc.
+    eraContext?: string;   // How contemporary audiences perceived it, cultural moment
   };
   technicalAnalysis: {
     printingTechnique: string;

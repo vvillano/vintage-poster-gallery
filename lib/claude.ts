@@ -85,6 +85,16 @@ PRINTER/PUBLISHER:
 - Look for printer marks, typically at bottom: "Imp.", "Imprimerie", "Printed by", etc.
 - Common printers: Chaix, Lemercier, Verneau, etc.
 
+PUBLICATION & CLIENT (when applicable):
+- For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, etc.)
+- For advertising: Identify the advertiser/client (e.g., Cognac Briand, Campari, Air France)
+- Note the publication date/issue if visible
+
+ERA CONTEXT:
+- Describe the historical/cultural moment when this was created
+- How would contemporary audiences have perceived this piece?
+- What social, political, or cultural currents does it reflect?
+
 PRINTING TECHNIQUE - Be precise:
 - Stone lithograph (litho from limestone, often visible texture)
 - Chromolithograph (multi-color litho, typically 5+ color runs)
@@ -109,7 +119,7 @@ JSON:
     "dateSource": "",
     "estimatedDimensions": ""
   },
-  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": ""},
+  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": "", "publication": "", "advertiser": "", "eraContext": ""},
   "technicalAnalysis": {
     "printingTechnique": "",
     "printer": "",
