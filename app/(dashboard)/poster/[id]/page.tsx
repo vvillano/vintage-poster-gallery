@@ -612,6 +612,14 @@ export default function PosterDetailPage() {
                   Identification
                 </h3>
                 <div className="space-y-4">
+                  {/* Product Type */}
+                  {poster.productType && (
+                    <div className="border-b border-slate-100 pb-3">
+                      <label className="text-sm font-medium text-slate-700">Product Type</label>
+                      <p className="text-slate-900">{poster.productType}</p>
+                    </div>
+                  )}
+
                   {/* Artist with confidence */}
                   <div className="border-b border-slate-100 pb-3">
                     <div className="flex items-center justify-between mb-1">
