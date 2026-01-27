@@ -203,6 +203,7 @@ export default function PosterDetailPage() {
   const [savingTags, setSavingTags] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [refreshingTags, setRefreshingTags] = useState(false);
 
   useEffect(() => {
     fetchPoster();
@@ -473,6 +474,32 @@ export default function PosterDetailPage() {
     }
     setTagSearch('');
     setShowTagDropdown(false);
+  }
+
+  // Refresh tag suggestions using Sonnet (cheaper than full re-analysis)
+  async function refreshTagSuggestions() {
+    if (!poster) return;
+
+    try {
+      setRefreshingTags(true);
+      setError('');
+
+      const res = await fetch(`/api/posters/${posterId}/refresh-tags`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to refresh tags');
+      }
+
+      // Refresh poster data to get new suggested tags
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh tags');
+    } finally {
+      setRefreshingTags(false);
+    }
   }
 
   async function refreshDescriptions() {
@@ -759,9 +786,19 @@ export default function PosterDetailPage() {
           {poster.analysisCompleted && (
             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4 mt-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-bold text-slate-900">
-                  Item Tags
-                </h4>
+                <div className="flex items-center gap-3">
+                  <h4 className="text-lg font-bold text-slate-900">
+                    Item Tags
+                  </h4>
+                  <button
+                    onClick={refreshTagSuggestions}
+                    disabled={refreshingTags}
+                    className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    title="Refresh AI tag suggestions (uses Sonnet - low cost)"
+                  >
+                    {refreshingTags ? 'Refreshing...' : 'Refresh Suggestions'}
+                  </button>
+                </div>
                 {savingTags && (
                   <span className="text-xs text-slate-500">Saving...</span>
                 )}
