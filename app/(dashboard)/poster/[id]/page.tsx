@@ -202,50 +202,29 @@ export default function PosterDetailPage() {
             )}
           </div>
 
-          {/* Artist Profile */}
-          {poster.analysisCompleted && poster.artist && poster.artist !== 'Unknown' && (
-            <div className="bg-white rounded-lg shadow p-4 mt-4">
-              <h4 className="text-lg font-bold text-slate-900 mb-3">Artist Profile</h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
-                  {poster.artistConfidence && (
-                    <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
-                      poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                      poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {poster.artistConfidence}
-                    </span>
-                  )}
-                </div>
-                {poster.artistSource && (
-                  <p className="text-xs text-slate-500">
-                    <strong>Identified from:</strong> {poster.artistSource}
-                  </p>
-                )}
-                {poster.estimatedDate && (
-                  <p className="text-sm text-slate-600">
-                    <strong>Active period:</strong> {poster.estimatedDate}
-                  </p>
-                )}
-                {poster.historicalContext && (
-                  <p className="text-sm text-slate-600 line-clamp-4">
-                    {poster.historicalContext.split('.').slice(0, 2).join('.')}...
-                  </p>
-                )}
-                {poster.artist && (
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                  >
-                    Learn more about this artist →
-                  </a>
-                )}
+          {/* Product Description */}
+          {poster.analysisCompleted && poster.productDescription && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-lg font-bold text-slate-900">
+                  Product Description
+                </h4>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(poster.productDescription || '');
+                    alert('Description copied to clipboard!');
+                  }}
+                  className="ml-auto text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
+                >
+                  Copy
+                </button>
               </div>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                {poster.productDescription}
+              </p>
+              <p className="text-xs text-slate-600 mt-3">
+                Ready to use in your Shopify product listing
+              </p>
             </div>
           )}
         </div>
@@ -475,6 +454,53 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
+              {/* Artist Profile */}
+              {poster.artist && poster.artist !== 'Unknown' && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-xl font-bold text-slate-900 mb-4">Artist Profile</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
+                      {poster.artistConfidence && (
+                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
+                          poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                          poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {poster.artistConfidence}
+                        </span>
+                      )}
+                    </div>
+                    {poster.artistSource && (
+                      <p className="text-xs text-slate-500">
+                        <strong>Identified from:</strong> {poster.artistSource}
+                      </p>
+                    )}
+                    {poster.estimatedDate && (
+                      <p className="text-sm text-slate-600">
+                        <strong>Active period:</strong> {poster.estimatedDate}
+                      </p>
+                    )}
+                    {poster.historicalContext && (
+                      <p className="text-sm text-slate-600 line-clamp-4">
+                        {poster.historicalContext.split('.').slice(0, 2).join('.')}...
+                      </p>
+                    )}
+                    {poster.artist && (
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        Learn more about this artist →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Rarity Analysis */}
               {poster.rarityAnalysis && (
                 <div className="bg-white rounded-lg shadow p-6">
@@ -495,32 +521,6 @@ export default function PosterDetailPage() {
                   </h3>
                   <p className="text-slate-700 whitespace-pre-wrap">
                     {poster.valueInsights}
-                  </p>
-                </div>
-              )}
-
-              {/* Product Description */}
-              {poster.productDescription && (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-xl font-bold text-slate-900">
-                      Product Description
-                    </h3>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(poster.productDescription || '');
-                        alert('Description copied to clipboard!');
-                      }}
-                      className="ml-auto text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
-                    {poster.productDescription}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-4">
-                    Ready to use in your Shopify product listing
                   </p>
                 </div>
               )}
