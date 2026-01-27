@@ -131,13 +131,18 @@ PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words, 2-3 paragraphs):
 - "concise": Just the facts - bullet-point style in prose, key details only, no flowery language, focus on: artist, date, technique, subject
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece
 
-TALKING POINTS: Write 4-6 brief bullet points for in-gallery conversations. Include:
+TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help gallery staff engage customers with interesting facts and context. Include:
 - Artist and date (if known)
 - Notable visual elements or techniques (e.g., "Droste effect with the cats", "Bold Art Deco geometric forms")
 - Interesting details visible in the image (e.g., "Tax stamp visible lower left", "Signed in the stone")
-- Historical context tidbits that make good conversation starters
-- What makes this piece special or collectible
-Keep each point brief (10-20 words) - these are memory joggers, not full explanations.
+- IMPORTANT: Historical/cultural context that tells a story:
+  * What was happening in this region/country at this time?
+  * If it's for an event (festival, exhibition, etc.), explain what that event was
+  * What social, political, or cultural movements influenced this piece?
+  * How would people at the time have experienced or used this item?
+- Why collectors find this piece interesting
+- Any fun facts, anecdotes, or surprising details about the artist, subject, or era
+Keep each point 15-30 words - enough context to spark a conversation.
 
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 

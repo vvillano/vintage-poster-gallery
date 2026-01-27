@@ -75,12 +75,16 @@ DESCRIPTIONS (150-200 words each, 2-3 paragraphs):
 - "concise": Just the facts - bullet-point style in prose, key details only, no flowery language
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity
 
-TALKING POINTS (4-6 brief bullet points):
+TALKING POINTS (6-8 bullet points for in-gallery storytelling):
 - Artist and date if known
 - Notable visual elements or techniques
-- Interesting details that make good conversation starters
-- What makes this piece special or collectible
-Keep each point brief (10-20 words).
+- IMPORTANT: Historical/cultural context that tells a story:
+  * What was happening in this region/country at this time?
+  * If it's for an event (festival, exhibition, etc.), explain what that event was
+  * What social, political, or cultural movements influenced this piece?
+- Why collectors find this piece interesting
+- Any fun facts or surprising details about the artist, subject, or era
+Keep each point 15-30 words - enough context to spark a conversation.
 
 Return ONLY valid JSON:
 {"standard": "...", "scholarly": "...", "concise": "...", "enthusiastic": "...", "talkingPoints": ["...", "..."]}`

@@ -427,6 +427,94 @@ export default function PosterDetailPage() {
             )}
           </div>
 
+          {/* Product Description */}
+          {poster.analysisCompleted && (poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-lg font-bold text-slate-900">
+                  Product Description
+                </h4>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={refreshDescriptions}
+                    disabled={refreshingDescriptions}
+                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
+                    title="Generate new description variations"
+                  >
+                    {refreshingDescriptions ? '...' : '↻'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(getCurrentDescription());
+                      alert('Description copied to clipboard!');
+                    }}
+                    className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              {/* Tone Selector - only show if multiple tones available */}
+              {hasMultipleTones() && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {DESCRIPTION_TONES.map((tone) => (
+                    <button
+                      key={tone}
+                      onClick={() => setSelectedTone(tone)}
+                      className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
+                        selectedTone === tone
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {tone}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline error for refresh */}
+              {error && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                  <button
+                    onClick={() => setError('')}
+                    className="float-right text-red-500 hover:text-red-700"
+                  >×</button>
+                  {error}
+                </div>
+              )}
+
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                {getCurrentDescription()}
+              </p>
+              <p className="text-xs text-slate-600 mt-3">
+                {hasMultipleTones()
+                  ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
+                  : 'Ready to use in your Shopify product listing'
+                }
+              </p>
+            </div>
+          )}
+
+          {/* Talking Points */}
+          {poster.analysisCompleted && poster.rawAiResponse?.talkingPoints && poster.rawAiResponse.talkingPoints.length > 0 && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 mt-4">
+              <h4 className="text-lg font-bold text-slate-900 mb-3">
+                Talking Points
+              </h4>
+              <p className="text-xs text-slate-500 mb-3">Quick reference for in-gallery conversations</p>
+              <ul className="space-y-2">
+                {poster.rawAiResponse.talkingPoints.map((point: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                    <span className="text-amber-600 mt-0.5">•</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Historical Context - moved to left column */}
           {poster.analysisCompleted && poster.historicalContext && (
             <div className="bg-white rounded-lg shadow p-6 mt-4">
@@ -705,94 +793,6 @@ export default function PosterDetailPage() {
                   </div>
                 )}
               </div>
-
-              {/* Product Description - moved to right column, below Re-analyze */}
-              {(poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <h4 className="text-lg font-bold text-slate-900">
-                      Product Description
-                    </h4>
-                    <div className="ml-auto flex items-center gap-2">
-                      <button
-                        onClick={refreshDescriptions}
-                        disabled={refreshingDescriptions}
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
-                        title="Generate new description variations"
-                      >
-                        {refreshingDescriptions ? '...' : '↻'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(getCurrentDescription());
-                          alert('Description copied to clipboard!');
-                        }}
-                        className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tone Selector - only show if multiple tones available */}
-                  {hasMultipleTones() && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {DESCRIPTION_TONES.map((tone) => (
-                        <button
-                          key={tone}
-                          onClick={() => setSelectedTone(tone)}
-                          className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
-                            selectedTone === tone
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                          }`}
-                        >
-                          {tone}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Inline error for refresh */}
-                  {error && (
-                    <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
-                      <button
-                        onClick={() => setError('')}
-                        className="float-right text-red-500 hover:text-red-700"
-                      >×</button>
-                      {error}
-                    </div>
-                  )}
-
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                    {getCurrentDescription()}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-3">
-                    {hasMultipleTones()
-                      ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
-                      : 'Ready to use in your Shopify product listing'
-                    }
-                  </p>
-                </div>
-              )}
-
-              {/* Talking Points */}
-              {poster.rawAiResponse?.talkingPoints && poster.rawAiResponse.talkingPoints.length > 0 && (
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                  <h4 className="text-lg font-bold text-slate-900 mb-3">
-                    Talking Points
-                  </h4>
-                  <p className="text-xs text-slate-500 mb-3">Quick reference for in-gallery conversations</p>
-                  <ul className="space-y-2">
-                    {poster.rawAiResponse.talkingPoints.map((point: string, idx: number) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="text-amber-600 mt-0.5">•</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
               {/* Identification */}
               <div className="bg-white rounded-lg shadow p-6">
