@@ -201,6 +201,53 @@ export default function PosterDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Artist Profile */}
+          {poster.analysisCompleted && poster.artist && poster.artist !== 'Unknown' && (
+            <div className="bg-white rounded-lg shadow p-4 mt-4">
+              <h4 className="text-lg font-bold text-slate-900 mb-3">Artist Profile</h4>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
+                  {poster.artistConfidence && (
+                    <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
+                      poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                      poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                      poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {poster.artistConfidence}
+                    </span>
+                  )}
+                </div>
+                {poster.artistSource && (
+                  <p className="text-xs text-slate-500">
+                    <strong>Identified from:</strong> {poster.artistSource}
+                  </p>
+                )}
+                {poster.estimatedDate && (
+                  <p className="text-sm text-slate-600">
+                    <strong>Active period:</strong> {poster.estimatedDate}
+                  </p>
+                )}
+                {poster.historicalContext && (
+                  <p className="text-sm text-slate-600 line-clamp-4">
+                    {poster.historicalContext.split('.').slice(0, 2).join('.')}...
+                  </p>
+                )}
+                {poster.artist && (
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    Learn more about this artist →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Analysis */}
@@ -262,6 +309,68 @@ export default function PosterDetailPage() {
                   </p>
                 </div>
               )}
+
+              {/* Re-analyze with Additional Context */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-900">
+                    Re-analyze with Additional Context
+                  </h3>
+                  <button
+                    onClick={() => setShowReanalyze(!showReanalyze)}
+                    className="text-sm bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded transition"
+                  >
+                    {showReanalyze ? 'Hide' : 'Re-analyze'}
+                  </button>
+                </div>
+                {showReanalyze && (
+                  <div className="mt-4">
+                    <p className="text-sm text-slate-600 mb-3">
+                      Provide additional information to improve the analysis (e.g., known artist,
+                      correct date, printing technique, or anything the AI missed).
+                    </p>
+                    <textarea
+                      value={additionalContext}
+                      onChange={(e) => setAdditionalContext(e.target.value)}
+                      placeholder="Example: The artist is Henri Monnier, clearly signed on the bottom right. This is a stone lithograph, not chromolithography. The piece is dated 1892."
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none mb-4"
+                      rows={3}
+                    />
+                    {error && (
+                      <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => triggerAnalysis(true, additionalContext)}
+                        disabled={analyzing || !additionalContext.trim()}
+                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {analyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowReanalyze(false);
+                          setAdditionalContext('');
+                        }}
+                        disabled={analyzing}
+                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {analyzing && (
+                      <div className="mt-4 text-center">
+                        <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600 mb-2"></div>
+                        <p className="text-sm text-slate-600">
+                          Re-analyzing with your additional context...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Identification */}
               <div className="bg-white rounded-lg shadow p-6">
@@ -523,70 +632,6 @@ export default function PosterDetailPage() {
                 </p>
               </div>
 
-              {/* Re-analyze with Additional Context */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Re-analyze with Additional Context
-                  </h3>
-                  <button
-                    onClick={() => setShowReanalyze(!showReanalyze)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    {showReanalyze ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {showReanalyze && (
-                  <div>
-                    <p className="text-sm text-slate-600 mb-3">
-                      Provide additional information to improve the analysis (e.g., known artist,
-                      correct date, printing technique, or anything the AI missed).
-                    </p>
-                    <textarea
-                      value={additionalContext}
-                      onChange={(e) => setAdditionalContext(e.target.value)}
-                      placeholder="Example: The artist is Henri Monnier, clearly signed on the bottom right. This is a stone lithograph, not chromolithography. The piece is dated 1892."
-                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none mb-4"
-                      rows={4}
-                    />
-                    {error && (
-                      <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                        {error}
-                      </div>
-                    )}
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => triggerAnalysis(true, additionalContext)}
-                        disabled={analyzing || !additionalContext.trim()}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {analyzing ? 'Re-analyzing...' : 'Re-analyze with New Context'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowReanalyze(false);
-                          setAdditionalContext('');
-                        }}
-                        disabled={analyzing}
-                        className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    {analyzing && (
-                      <div className="mt-4 text-center">
-                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600 mb-2"></div>
-                        <p className="text-sm text-slate-600">
-                          Re-analyzing with your additional context...
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-500 mt-3">
-                      Note: This will replace the current analysis with new results
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
