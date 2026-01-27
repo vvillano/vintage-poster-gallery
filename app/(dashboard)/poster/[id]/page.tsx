@@ -334,11 +334,11 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
-              {/* Re-analyze with Additional Context */}
+              {/* Re-analyze */}
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-slate-900">
-                    Re-analyze with Additional Context
+                    Re-analyze
                   </h3>
                   <button
                     onClick={() => setShowReanalyze(!showReanalyze)}
@@ -350,13 +350,13 @@ export default function PosterDetailPage() {
                 {showReanalyze && (
                   <div className="mt-4">
                     <p className="text-sm text-slate-600 mb-3">
-                      Provide additional information to improve the analysis (e.g., known artist,
-                      correct date, printing technique, or anything the AI missed).
+                      Run a fresh analysis with the upgraded model. Optionally provide additional context
+                      to guide the analysis (e.g., known artist, correct date, or anything the AI missed).
                     </p>
                     <textarea
                       value={additionalContext}
                       onChange={(e) => setAdditionalContext(e.target.value)}
-                      placeholder="Example: The artist is Henri Monnier, clearly signed on the bottom right. This is a stone lithograph, not chromolithography. The piece is dated 1892."
+                      placeholder="Optional: The artist is Henri Monnier, clearly signed on the bottom right. This is a stone lithograph, not chromolithography."
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none mb-4"
                       rows={3}
                     />
@@ -368,10 +368,10 @@ export default function PosterDetailPage() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => triggerAnalysis(true, additionalContext)}
-                        disabled={analyzing || !additionalContext.trim()}
+                        disabled={analyzing}
                         className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {analyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                        {analyzing ? 'Re-analyzing...' : additionalContext.trim() ? 'Re-analyze with Context' : 'Re-analyze'}
                       </button>
                       <button
                         onClick={() => {
