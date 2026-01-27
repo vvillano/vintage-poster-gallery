@@ -11,37 +11,58 @@ function getPrintingWikiUrl(technique: string): string {
   const lowerTechnique = technique.toLowerCase();
 
   // Map common terms to Wikipedia articles
-  const wikiMap: Record<string, string> = {
-    'lithograph': 'Lithography',
-    'lithography': 'Lithography',
-    'stone lithograph': 'Lithography',
-    'chromolithograph': 'Chromolithography',
-    'chromolithography': 'Chromolithography',
-    'offset': 'Offset_printing',
-    'offset lithograph': 'Offset_printing',
-    'engraving': 'Engraving',
-    'copper engraving': 'Engraving',
-    'steel engraving': 'Steel_engraving',
-    'wood engraving': 'Wood_engraving',
-    'intaglio': 'Intaglio_(printmaking)',
-    'etching': 'Etching',
-    'woodcut': 'Woodcut',
-    'woodblock': 'Woodblock_printing',
-    'screenprint': 'Screen_printing',
-    'screen print': 'Screen_printing',
-    'silkscreen': 'Screen_printing',
-    'serigraphy': 'Screen_printing',
-    'mezzotint': 'Mezzotint',
-    'aquatint': 'Aquatint',
-    'photolithograph': 'Photolithography',
-    'photogravure': 'Photogravure',
-    'letterpress': 'Letterpress_printing',
-    'relief': 'Relief_print',
-    'linocut': 'Linocut',
-  };
+  // Ordered by specificity - more specific terms first to ensure correct matching
+  const wikiMap: [string, string][] = [
+    // Specific lithography types (check before generic 'lithograph')
+    ['offset lithograph', 'Offset_printing'],
+    ['offset litho', 'Offset_printing'],
+    ['offset printing', 'Offset_printing'],
+    ['offset', 'Offset_printing'],
+    ['stone lithograph', 'Lithography'],
+    ['chromolithograph', 'Chromolithography'],
+    ['chromolithography', 'Chromolithography'],
+    ['photolithograph', 'Photolithography'],
+    ['photolithography', 'Photolithography'],
+    // Generic lithograph (last among litho types)
+    ['lithograph', 'Lithography'],
+    ['lithography', 'Lithography'],
+    // Specific engraving types (check before generic 'engraving')
+    ['steel engraving', 'Steel_engraving'],
+    ['wood engraving', 'Wood_engraving'],
+    ['copper engraving', 'Engraving'],
+    ['line engraving', 'Engraving'],
+    ['engraving', 'Engraving'],
+    // Intaglio methods
+    ['intaglio', 'Intaglio_(printmaking)'],
+    ['etching', 'Etching'],
+    ['mezzotint', 'Mezzotint'],
+    ['aquatint', 'Aquatint'],
+    ['drypoint', 'Drypoint'],
+    ['photogravure', 'Photogravure'],
+    // Relief printing
+    ['woodcut', 'Woodcut'],
+    ['woodblock', 'Woodblock_printing'],
+    ['linocut', 'Linocut'],
+    ['relief print', 'Relief_print'],
+    ['relief', 'Relief_print'],
+    // Screen printing
+    ['screenprint', 'Screen_printing'],
+    ['screen print', 'Screen_printing'],
+    ['silkscreen', 'Screen_printing'],
+    ['silk screen', 'Screen_printing'],
+    ['serigraphy', 'Screen_printing'],
+    ['serigraph', 'Screen_printing'],
+    // Other techniques
+    ['letterpress', 'Letterpress_printing'],
+    ['giclée', 'Giclée'],
+    ['giclee', 'Giclée'],
+    ['collotype', 'Collotype'],
+    ['pochoir', 'Pochoir'],
+    ['heliogravure', 'Photogravure'],
+  ];
 
-  // Check for matches
-  for (const [key, wiki] of Object.entries(wikiMap)) {
+  // Check for matches (more specific terms checked first due to array order)
+  for (const [key, wiki] of wikiMap) {
     if (lowerTechnique.includes(key)) {
       return `https://en.wikipedia.org/wiki/${wiki}`;
     }
