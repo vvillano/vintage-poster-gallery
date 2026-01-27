@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { PosterAnalysis, SourceCitation, SimilarProduct } from '@/types/poster';
+import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions } from '@/types/poster';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -125,7 +125,11 @@ PRINTING TECHNIQUE - Be precise:
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
 
-PRODUCT DESCRIPTION: Write 2-3 paragraphs (150-200 words total). ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ')}
+PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words, 2-3 paragraphs):
+- "standard": ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ').replace(/\n/g, ' ')}
+- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions
+- "concise": Just the facts - bullet-point style in prose, key details only, no flowery language, focus on: artist, date, technique, subject
+- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece
 
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 
@@ -151,7 +155,7 @@ JSON:
   },
   "conditionAuthenticity": {"ageIndicators": [], "conditionIssues": []},
   "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
-  "productDescription": "",
+  "productDescriptions": {"standard": "", "scholarly": "", "concise": "", "enthusiastic": ""},
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
   "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]
 }`;
@@ -297,8 +301,13 @@ export async function analyzePoster(
     }
 
     // Ensure new fields have defaults if missing
-    if (!analysis.productDescription) {
-      analysis.productDescription = '';
+    if (!analysis.productDescriptions) {
+      analysis.productDescriptions = {
+        standard: '',
+        scholarly: '',
+        concise: '',
+        enthusiastic: ''
+      };
     }
     if (!analysis.sourceCitations) {
       analysis.sourceCitations = [];
@@ -343,7 +352,8 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
     validationNotes: analysis.validationNotes || undefined,
-    productDescription: analysis.productDescription,
+    productDescription: analysis.productDescriptions.standard,  // Default for backwards compat
+    productDescriptions: analysis.productDescriptions,
     sourceCitations: analysis.sourceCitations,
     similarProducts: analysis.similarProducts,
   };

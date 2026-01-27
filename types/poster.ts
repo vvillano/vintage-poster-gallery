@@ -30,7 +30,8 @@ export interface Poster {
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
   validationNotes?: string | null;  // AI notes on validating initial information
-  productDescription?: string | null;  // Marketing-ready description for website
+  productDescription?: string | null;  // Marketing-ready description for website (backwards compat)
+  productDescriptions?: ProductDescriptions | null;  // All description tones
   sourceCitations?: any | null;  // JSON array of source links with descriptions
   similarProducts?: any | null;  // JSON array of similar products on other sites
 
@@ -61,6 +62,18 @@ export const PRODUCT_TYPES = [
 ] as const;
 
 export type ProductType = typeof PRODUCT_TYPES[number];
+
+// Description tone options
+export const DESCRIPTION_TONES = ['standard', 'scholarly', 'concise', 'enthusiastic'] as const;
+export type DescriptionTone = typeof DESCRIPTION_TONES[number];
+
+// Product descriptions in multiple tones
+export interface ProductDescriptions {
+  standard: string;      // Gallery voice - sophisticated, art-historically grounded
+  scholarly: string;     // Academic tone - more formal, detailed provenance focus
+  concise: string;       // Just the facts - minimal prose, key details only
+  enthusiastic: string;  // Collector-focused - energetic, highlights appeal
+}
 
 // Source citation with link
 export interface SourceCitation {
@@ -117,7 +130,7 @@ export interface PosterAnalysis {
     collectorInterest: string;
   };
   validationNotes?: string;  // Present when initial information was provided
-  productDescription: string;  // Marketing-ready product description (2-3 paragraphs)
+  productDescriptions: ProductDescriptions;  // Marketing descriptions in multiple tones
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
 }
@@ -177,6 +190,7 @@ export interface UpdatePosterInput {
   valueInsights?: string;
   validationNotes?: string;
   productDescription?: string;
+  productDescriptions?: ProductDescriptions;
   sourceCitations?: any;
   similarProducts?: any;
   userNotes?: string;

@@ -186,6 +186,42 @@ export async function deletePoster(id: number): Promise<void> {
 }
 
 /**
+ * Update just the product descriptions in rawAiResponse
+ */
+export async function updatePosterDescriptions(
+  id: number,
+  descriptions: any
+): Promise<Poster> {
+  // Get current rawAiResponse
+  const poster = await getPosterById(id);
+  if (!poster) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  // Merge new descriptions into rawAiResponse
+  const updatedRawResponse = {
+    ...poster.rawAiResponse,
+    productDescriptions: descriptions
+  };
+
+  const result = await sql`
+    UPDATE posters
+    SET
+      product_description = ${descriptions.standard || null},
+      raw_ai_response = ${JSON.stringify(updatedRawResponse)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Search posters by artist, title, or other text fields
  */
 export async function searchPosters(query: string): Promise<Poster[]> {

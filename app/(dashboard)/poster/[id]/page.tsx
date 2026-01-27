@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -190,6 +190,8 @@ export default function PosterDetailPage() {
   const [error, setError] = useState('');
   const [additionalContext, setAdditionalContext] = useState('');
   const [showReanalyze, setShowReanalyze] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<DescriptionTone>('standard');
+  const [refreshingDescriptions, setRefreshingDescriptions] = useState(false);
 
   useEffect(() => {
     fetchPoster();
@@ -259,6 +261,53 @@ export default function PosterDetailPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  async function refreshDescriptions() {
+    if (!poster) return;
+
+    try {
+      setRefreshingDescriptions(true);
+      setError('');
+
+      const res = await fetch('/api/refresh-descriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ posterId: poster.id }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to refresh descriptions');
+      }
+
+      // Refresh poster data
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh descriptions');
+    } finally {
+      setRefreshingDescriptions(false);
+    }
+  }
+
+  // Get the current description based on selected tone
+  function getCurrentDescription(): string {
+    if (!poster) return '';
+
+    // Try to get from productDescriptions (new format)
+    const descriptions = poster.rawAiResponse?.productDescriptions;
+    if (descriptions && descriptions[selectedTone]) {
+      return descriptions[selectedTone];
+    }
+
+    // Fallback to legacy productDescription field
+    return poster.productDescription || '';
+  }
+
+  // Check if multiple tones are available
+  function hasMultipleTones(): boolean {
+    const descriptions = poster?.rawAiResponse?.productDescriptions;
+    return descriptions && typeof descriptions === 'object' && Object.keys(descriptions).length > 1;
   }
 
   if (loading) {
@@ -376,27 +425,60 @@ export default function PosterDetailPage() {
           </div>
 
           {/* Product Description */}
-          {poster.analysisCompleted && poster.productDescription && (
+          {poster.analysisCompleted && (poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mt-4">
               <div className="flex items-center gap-2 mb-3">
                 <h4 className="text-lg font-bold text-slate-900">
                   Product Description
                 </h4>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(poster.productDescription || '');
-                    alert('Description copied to clipboard!');
-                  }}
-                  className="ml-auto text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                >
-                  Copy
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={refreshDescriptions}
+                    disabled={refreshingDescriptions}
+                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
+                    title="Generate new description variations"
+                  >
+                    {refreshingDescriptions ? '...' : '↻'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(getCurrentDescription());
+                      alert('Description copied to clipboard!');
+                    }}
+                    className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
+
+              {/* Tone Selector - only show if multiple tones available */}
+              {hasMultipleTones() && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {DESCRIPTION_TONES.map((tone) => (
+                    <button
+                      key={tone}
+                      onClick={() => setSelectedTone(tone)}
+                      className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
+                        selectedTone === tone
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {tone}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {poster.productDescription}
+                {getCurrentDescription()}
               </p>
               <p className="text-xs text-slate-600 mt-3">
-                Ready to use in your Shopify product listing
+                {hasMultipleTones()
+                  ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
+                  : 'Ready to use in your Shopify product listing'
+                }
               </p>
             </div>
           )}
