@@ -15,7 +15,7 @@ async function researchPoster(imageAnalysisPreview: string): Promise<string> {
   try {
     // First, do a quick visual analysis to identify key search terms
     const quickAnalysis = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 500,
       messages: [{
         role: 'user',
@@ -154,11 +154,11 @@ export async function analyzePoster(
     console.log('[analyzePoster] Calling Claude API...');
 
     // Call Claude with vision capabilities
-    // Using Claude Sonnet 4.5 (current model as of 2026)
+    // Using Claude Opus 4.5 for maximum accuracy in artist/date identification
     let response;
     try {
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-opus-4-5-20251101',
         max_tokens: 8000,
         messages: [
           {

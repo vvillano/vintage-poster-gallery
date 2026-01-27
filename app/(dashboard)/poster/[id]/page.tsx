@@ -240,7 +240,7 @@ export default function PosterDetailPage() {
                     <strong>File Size:</strong> {(poster.fileSize / 1024 / 1024).toFixed(2)} MB
                   </p>
                   <p>
-                    <strong>Analysis Model:</strong> claude-sonnet-4-5-20250929
+                    <strong>Analysis Model:</strong> claude-opus-4-5-20251101
                   </p>
                 </div>
               </div>
