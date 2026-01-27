@@ -106,7 +106,6 @@ function getPublicationWikiUrl(publication: string): string {
     ['la vie parisienne', 'La_Vie_Parisienne'],
     ['vie parisienne', 'La_Vie_Parisienne'],
     ['l\'illustration', 'L%27Illustration'],
-    ['illustration', 'L%27Illustration'],
     ['le rire', 'Le_Rire'],
     ['le journal', 'Le_Journal'],
     ['le petit journal', 'Le_Petit_Journal'],
