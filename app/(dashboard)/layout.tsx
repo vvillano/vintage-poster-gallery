@@ -16,6 +16,7 @@ export default function DashboardLayout({
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
     { name: 'Upload', href: '/upload', icon: '📤' },
+    { name: 'Tags', href: '/settings/tags', icon: '🏷️' },
   ];
 
   return (

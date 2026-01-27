@@ -7,6 +7,13 @@ export interface SupplementalImage {
   uploadDate: Date;
 }
 
+// Tag for item categorization
+export interface Tag {
+  id: number;
+  name: string;
+  createdAt: Date;
+}
+
 // Core Poster type matching database schema
 export interface Poster {
   id: number;
@@ -19,6 +26,9 @@ export interface Poster {
 
   // Supplemental images for additional analysis context
   supplementalImages?: SupplementalImage[] | null;
+
+  // Item tags for categorization
+  itemTags?: string[] | null;
 
   // Initial information provided at upload (optional)
   initialInformation?: string | null;
@@ -155,6 +165,7 @@ export interface PosterAnalysis {
   notableFigures: NotableFigure[];  // People mentioned/depicted in the item
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
+  suggestedTags?: string[];  // AI-suggested tags from master list
 }
 
 // Request/Response types for API routes

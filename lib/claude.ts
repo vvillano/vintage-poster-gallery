@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage } from '@/types/poster';
+import { getTagNames } from '@/lib/tags';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -63,8 +64,8 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 `;
 
 
-// Construct analysis prompt with optional initial information, research context, and product type
-function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string, hasSupplementalImages?: boolean): string {
+// Construct analysis prompt with optional initial information, research context, product type, and tag list
+function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string, hasSupplementalImages?: boolean, tagList?: string[]): string {
   const imageNote = hasSupplementalImages
     ? `\n\nIMPORTANT: Multiple images have been provided. The FIRST image is the primary item being analyzed. Additional images are supplemental reference photos that may show:
 - Different angles or details (back, close-ups of signatures, condition issues)
@@ -164,7 +165,15 @@ TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help 
 Keep each point 15-30 words - enough context to spark a conversation.
 
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
+${tagList && tagList.length > 0 ? `
+TAG SUGGESTIONS:
+From the following master list of tags, select 3-8 tags that best describe this item.
+Choose tags based on: subject matter, art style/movement, time period, publication type, and themes.
+Only use tags from this exact list - do not create new tags.
 
+AVAILABLE TAGS:
+${tagList.join(', ')}
+` : ''}
 JSON:
 {
   "identification": {
@@ -191,7 +200,8 @@ JSON:
   "talkingPoints": ["point 1", "point 2", "..."],
   "notableFigures": [{"name": "Full Name", "role": "Scientist/Politician/etc", "context": "Why they appear in this piece", "wikiSearch": "search term for Wikipedia"}],
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
-  "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]
+  "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]${tagList && tagList.length > 0 ? `,
+  "suggestedTags": ["tag1", "tag2", "..."]` : ''}
 }`;
 
   return basePrompt;
@@ -220,8 +230,17 @@ export async function analyzePoster(
       throw new Error('ANTHROPIC_API_KEY is not configured');
     }
 
+    // Fetch current tag list for suggestions
+    let tagList: string[] = [];
+    try {
+      tagList = await getTagNames();
+      console.log('[analyzePoster] Fetched', tagList.length, 'tags for suggestions');
+    } catch (tagError) {
+      console.warn('[analyzePoster] Could not fetch tags, skipping tag suggestions:', tagError);
+    }
+
     const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages);
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
     console.log('[analyzePoster] Product type:', productType);
@@ -385,8 +404,12 @@ export async function analyzePoster(
     if (!analysis.similarProducts) {
       analysis.similarProducts = [];
     }
+    if (!analysis.suggestedTags) {
+      analysis.suggestedTags = [];
+    }
 
     console.log('[analyzePoster] Analysis parsed successfully');
+    console.log('[analyzePoster] Suggested tags:', analysis.suggestedTags);
     return analysis;
   } catch (error) {
     console.error('[analyzePoster] Error analyzing poster with Claude:', error);
@@ -428,5 +451,6 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     notableFigures: analysis.notableFigures,
     sourceCitations: analysis.sourceCitations,
     similarProducts: analysis.similarProducts,
+    suggestedTags: analysis.suggestedTags,
   };
 }

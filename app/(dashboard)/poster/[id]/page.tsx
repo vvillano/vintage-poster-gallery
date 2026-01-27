@@ -197,10 +197,35 @@ export default function PosterDetailPage() {
   const [supplementalDescription, setSupplementalDescription] = useState('');
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
   const [compressingSupplemental, setCompressingSupplemental] = useState(false);
+  // Tag management state
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [savingTags, setSavingTags] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
 
   useEffect(() => {
     fetchPoster();
   }, [posterId]);
+
+  // Fetch available tags
+  useEffect(() => {
+    fetch('/api/tags')
+      .then(res => res.json())
+      .then(data => {
+        if (data.tags) {
+          setAvailableTags(data.tags.map((t: { name: string }) => t.name));
+        }
+      })
+      .catch(err => console.error('Failed to fetch tags:', err));
+  }, []);
+
+  // Initialize selected tags when poster loads
+  useEffect(() => {
+    if (poster?.itemTags) {
+      setSelectedTags(poster.itemTags);
+    }
+  }, [poster?.itemTags]);
 
   async function fetchPoster() {
     try {
@@ -404,6 +429,50 @@ export default function PosterDetailPage() {
     } finally {
       setDeletingImage(null);
     }
+  }
+
+  // Save tags to database
+  async function saveTags(newTags: string[]) {
+    if (!poster) return;
+
+    try {
+      setSavingTags(true);
+      const res = await fetch(`/api/posters/${posterId}/tags`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: newTags }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save tags');
+      }
+
+      setSelectedTags(newTags);
+    } catch (err) {
+      console.error('Failed to save tags:', err);
+      // Revert on error
+      setSelectedTags(poster.itemTags || []);
+    } finally {
+      setSavingTags(false);
+    }
+  }
+
+  // Toggle a tag selection
+  function toggleTag(tag: string) {
+    const newTags = selectedTags.includes(tag)
+      ? selectedTags.filter(t => t !== tag)
+      : [...selectedTags, tag];
+    saveTags(newTags);
+  }
+
+  // Add a tag from the dropdown
+  function addTag(tag: string) {
+    if (!selectedTags.includes(tag)) {
+      const newTags = [...selectedTags, tag];
+      saveTags(newTags);
+    }
+    setTagSearch('');
+    setShowTagDropdown(false);
   }
 
   async function refreshDescriptions() {
@@ -683,6 +752,120 @@ export default function PosterDetailPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Item Tags */}
+          {poster.analysisCompleted && (
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-lg font-bold text-slate-900">
+                  Item Tags
+                </h4>
+                {savingTags && (
+                  <span className="text-xs text-slate-500">Saving...</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mb-3">Tags for categorization and Shopify integration</p>
+
+              {/* AI Suggested Tags */}
+              {poster.rawAiResponse?.suggestedTags && poster.rawAiResponse.suggestedTags.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
+                  <div className="flex flex-wrap gap-2">
+                    {poster.rawAiResponse.suggestedTags.map((tag: string) => (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={`px-3 py-1 rounded-full text-sm transition ${
+                          selectedTags.includes(tag)
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                        }`}
+                      >
+                        {tag}
+                        {selectedTags.includes(tag) && <span className="ml-1">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Tags */}
+              {selectedTags.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 mb-2">Selected ({selectedTags.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded-full text-sm"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => toggleTag(tag)}
+                          className="ml-1 hover:bg-emerald-700 rounded-full w-4 h-4 flex items-center justify-center"
+                          title="Remove tag"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add More Tags */}
+              <div className="relative">
+                <p className="text-xs font-medium text-slate-600 mb-2">Add Tag</p>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tagSearch}
+                    onChange={(e) => {
+                      setTagSearch(e.target.value);
+                      setShowTagDropdown(true);
+                    }}
+                    onFocus={() => setShowTagDropdown(true)}
+                    placeholder="Search tags..."
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                  />
+                  {showTagDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {availableTags
+                        .filter(tag =>
+                          !selectedTags.includes(tag) &&
+                          tag.toLowerCase().includes(tagSearch.toLowerCase())
+                        )
+                        .slice(0, 10)
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => addTag(tag)}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 transition"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      {availableTags.filter(tag =>
+                        !selectedTags.includes(tag) &&
+                        tag.toLowerCase().includes(tagSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-500">
+                          No matching tags found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {showTagDropdown && (
+                  <button
+                    onClick={() => setShowTagDropdown(false)}
+                    className="fixed inset-0 z-0"
+                    aria-label="Close dropdown"
+                  />
+                )}
+              </div>
             </div>
           )}
 

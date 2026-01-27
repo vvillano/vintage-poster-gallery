@@ -335,6 +335,29 @@ export async function removeSupplementalImage(
 }
 
 /**
+ * Update the selected tags for a poster
+ */
+export async function updatePosterTags(
+  id: number,
+  tags: string[]
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      item_tags = ${JSON.stringify(tags)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Convert database row to Poster type
  */
 function dbRowToPoster(row: any): Poster {
@@ -347,6 +370,7 @@ function dbRowToPoster(row: any): Poster {
     uploadDate: new Date(row.upload_date),
     uploadedBy: row.uploaded_by,
     supplementalImages: row.supplemental_images,
+    itemTags: row.item_tags,
     initialInformation: row.initial_information,
     productType: row.product_type,
     artist: row.artist,
