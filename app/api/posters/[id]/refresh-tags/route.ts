@@ -50,7 +50,13 @@ export async function POST(
         `Publication: ${poster.rawAiResponse.historicalContext.publication}`,
     ].filter(Boolean).join('\n');
 
-    // Call Haiku for tag suggestions (much cheaper than Opus)
+    // Get currently selected tags to provide as context
+    const currentlySelectedTags = poster.itemTags || [];
+    const selectedTagsContext = currentlySelectedTags.length > 0
+      ? `\n\nALREADY SELECTED TAGS (user has confirmed these are correct):\n${currentlySelectedTags.join(', ')}\n\nSuggest additional complementary tags that work well with these. Include the already-selected tags in your response, plus 2-5 additional relevant tags.`
+      : '';
+
+    // Call Sonnet for tag suggestions (much cheaper than Opus)
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
@@ -70,7 +76,7 @@ export async function POST(
               text: `Based on this vintage item image and the following details, select 3-8 tags that best categorize it.
 
 ITEM DETAILS:
-${context || 'No details available - analyze the image directly.'}
+${context || 'No details available - analyze the image directly.'}${selectedTagsContext}
 
 AVAILABLE TAGS (only use tags from this exact list):
 ${tagList.join(', ')}
