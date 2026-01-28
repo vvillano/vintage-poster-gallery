@@ -1612,7 +1612,7 @@ export default function PosterDetailPage() {
                       Worthpoint
                     </a>
                     <a
-                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(buildResearchQuery())}`}
+                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(buildResearchQuery())}&upcoming=false`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
