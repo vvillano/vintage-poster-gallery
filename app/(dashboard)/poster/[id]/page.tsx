@@ -1600,20 +1600,26 @@ export default function PosterDetailPage() {
                     </button>
                   </div>
 
-                  <p className="text-xs text-slate-500 mb-2">Subscription sites (copy search term, then paste after login):</p>
+                  <p className="text-xs text-slate-500 mb-2">Subscription sites:</p>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {RESEARCH_SOURCES.filter(s => s.requiresSubscription).map((source) => (
-                      <a
-                        key={source.name}
-                        href={source.name === 'Worthpoint' ? 'https://www.worthpoint.com/worthopedia' : 'https://www.invaluable.com/'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
-                        title="Opens homepage - paste search term after logging in"
-                      >
-                        {source.name}
-                      </a>
-                    ))}
+                    <a
+                      href="https://www.worthpoint.com/worthopedia"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
+                      title="Opens Worthopedia - paste search term after logging in"
+                    >
+                      Worthpoint
+                    </a>
+                    <a
+                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(buildResearchQuery())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
+                      title="Direct search - works for logged-in and logged-out users"
+                    >
+                      Invaluable
+                    </a>
                   </div>
 
                   <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
