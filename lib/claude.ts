@@ -164,6 +164,15 @@ TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help 
 - Any fun facts, anecdotes, or surprising details about the artist, subject, or era
 Keep each point 15-30 words - enough context to spark a conversation.
 
+NOTABLE FIGURES RESEARCH: Carefully examine the item for any named individuals or recognizable faces.
+- Look for: names in text, portraits, caricatures, photographs of people
+- For EACH person identified, research who they were: scientists, inventors, politicians, artists, performers, business figures, etc.
+- Include historical figures even if they seem obscure - Victorian-era doctors, 19th century industrialists, early scientists
+- Provide enough context for gallery staff to explain why this person matters
+- Include a Wikipedia search term that would find their article
+- If text mentions someone like "Dr. Gully" or "Prof. Smith", research their full identity
+- Empty array ONLY if genuinely no named/depicted individuals
+
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 ${tagList && tagList.length > 0 ? `
 TAG SUGGESTIONS:
