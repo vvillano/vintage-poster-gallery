@@ -874,9 +874,10 @@ export default function PosterDetailPage() {
                     // Check if content has bullet characters (•)
                     const hasBulletChars = text.includes('•');
                     // Split by bullet characters if present, otherwise split by sentences
+                    // Use negative lookbehind to avoid splitting on initials (single uppercase letter + period)
                     const items = hasBulletChars
                       ? text.split(/\s*•\s*/).filter((s: string) => s.trim())
-                      : text.split(/(?<=\.)\s+/).filter((s: string) => s.trim());
+                      : text.split(/(?<![A-Z])(?<=\.)\s+/).filter((s: string) => s.trim());
                     return items.map((sentence: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
                         <span className="text-blue-600 mt-0.5">•</span>
@@ -886,9 +887,11 @@ export default function PosterDetailPage() {
                   })()}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                  {getCurrentDescription()}
-                </p>
+                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
+                  {getCurrentDescription().split(/\n\n+/).map((paragraph: string, idx: number) => (
+                    <p key={idx}>{paragraph.trim()}</p>
+                  ))}
+                </div>
               )}
               <p className="text-xs text-slate-600 mt-3">
                 {hasMultipleTones()
