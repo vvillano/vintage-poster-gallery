@@ -14,6 +14,28 @@ export interface Tag {
   createdAt: Date;
 }
 
+// Comparable sale record for market research
+export interface ComparableSale {
+  id: string;           // UUID for unique identification
+  date: string;         // ISO date string (YYYY-MM-DD)
+  price: number;        // Sale price
+  currency: string;     // Currency code (default "USD")
+  source: string;       // Where found: "Worthpoint", "Invaluable", "Heritage Auctions", etc.
+  condition?: string;   // Condition of the sold item
+  notes?: string;       // Additional notes about the sale
+  url?: string;         // Link to the sale/listing
+  createdAt: string;    // ISO timestamp when record was added
+}
+
+// Research link sources for price research
+export const RESEARCH_SOURCES = [
+  { name: 'Worthpoint', urlTemplate: 'https://www.worthpoint.com/search?query={search}', requiresSubscription: true },
+  { name: 'Invaluable', urlTemplate: 'https://www.invaluable.com/search?query={search}', requiresSubscription: true },
+  { name: 'Heritage Auctions', urlTemplate: 'https://historical.ha.com/c/search-results.zx?N=51&Ntt={search}', requiresSubscription: false },
+  { name: 'LiveAuctioneers', urlTemplate: 'https://www.liveauctioneers.com/search/?keyword={search}&sort=-sale_date', requiresSubscription: false },
+  { name: 'eBay Sold', urlTemplate: 'https://www.ebay.com/sch/i.html?_nkw={search}&LH_Complete=1&LH_Sold=1&_sop=13', requiresSubscription: false },
+] as const;
+
 // Core Poster type matching database schema
 export interface Poster {
   id: number;
@@ -29,6 +51,9 @@ export interface Poster {
 
   // Item tags for categorization
   itemTags?: string[] | null;
+
+  // Comparable sales for market research
+  comparableSales?: ComparableSale[] | null;
 
   // Initial information provided at upload (optional)
   initialInformation?: string | null;

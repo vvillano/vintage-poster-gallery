@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, RESEARCH_SOURCES } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -204,6 +204,20 @@ export default function PosterDetailPage() {
   const [tagSearch, setTagSearch] = useState('');
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [refreshingTags, setRefreshingTags] = useState(false);
+
+  // Comparable sales state
+  const [showAddSale, setShowAddSale] = useState(false);
+  const [addingSale, setAddingSale] = useState(false);
+  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+  const [newSale, setNewSale] = useState({
+    date: '',
+    price: '',
+    currency: 'USD',
+    source: '',
+    condition: '',
+    notes: '',
+    url: '',
+  });
 
   useEffect(() => {
     fetchPoster();
@@ -530,6 +544,92 @@ export default function PosterDetailPage() {
     } finally {
       setRefreshingDescriptions(false);
     }
+  }
+
+  // Add a comparable sale
+  async function addComparableSale(e: React.FormEvent) {
+    e.preventDefault();
+    if (!poster || !newSale.date || !newSale.price || !newSale.source) return;
+
+    try {
+      setAddingSale(true);
+      setError('');
+
+      const res = await fetch(`/api/posters/${posterId}/sales`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSale),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to add sale');
+      }
+
+      // Refresh poster data and reset form
+      await fetchPoster();
+      setNewSale({
+        date: '',
+        price: '',
+        currency: 'USD',
+        source: '',
+        condition: '',
+        notes: '',
+        url: '',
+      });
+      setShowAddSale(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add sale');
+    } finally {
+      setAddingSale(false);
+    }
+  }
+
+  // Delete a comparable sale
+  async function deleteComparableSale(saleId: string) {
+    if (!poster) return;
+
+    try {
+      setDeletingSaleId(saleId);
+      setError('');
+
+      const res = await fetch(`/api/posters/${posterId}/sales/${saleId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete sale');
+      }
+
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete sale');
+    } finally {
+      setDeletingSaleId(null);
+    }
+  }
+
+  // Build research search query
+  function buildResearchQuery(): string {
+    if (!poster) return '';
+    const parts: string[] = [];
+    if (poster.artist && poster.artist !== 'Unknown') parts.push(poster.artist);
+    if (poster.title) parts.push(poster.title);
+    if (!parts.length && poster.productType) parts.push(poster.productType);
+    return parts.join(' ');
+  }
+
+  // Calculate price summary from sales
+  function getPriceSummary(): { low: number; high: number; avg: number; count: number } | null {
+    if (!poster?.comparableSales || poster.comparableSales.length === 0) return null;
+    const prices = poster.comparableSales.map(s => s.price);
+    return {
+      low: Math.min(...prices),
+      high: Math.max(...prices),
+      avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+      count: prices.length,
+    };
   }
 
   // Get the current description based on selected tone
@@ -1475,6 +1575,232 @@ export default function PosterDetailPage() {
                   </p>
                 </div>
               )}
+
+              {/* Price Research & Sales */}
+              <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">
+                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  Price Research & Sales
+                </h3>
+
+                {/* Research Links */}
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-slate-700 mb-2">Research Links</p>
+                  <p className="text-xs text-slate-500 mb-3">Click to search for comparable sales in price databases</p>
+                  <div className="flex flex-wrap gap-2">
+                    {RESEARCH_SOURCES.map((source) => (
+                      <a
+                        key={source.name}
+                        href={source.urlTemplate.replace('{search}', encodeURIComponent(buildResearchQuery()))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`text-sm px-3 py-1.5 rounded transition ${
+                          source.requiresSubscription
+                            ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                        title={source.requiresSubscription ? 'Requires subscription' : 'Free access'}
+                      >
+                        {source.name}
+                        {source.requiresSubscription && <span className="ml-1">★</span>}
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">★ = Subscription required</p>
+                </div>
+
+                {/* Price Summary */}
+                {getPriceSummary() && (
+                  <div className="mb-6 p-4 bg-white rounded-lg border border-violet-200">
+                    <p className="text-sm font-medium text-slate-700 mb-2">Price Summary</p>
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <p className="text-xs text-slate-500">Low</p>
+                        <p className="text-lg font-bold text-red-600">${getPriceSummary()!.low.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">High</p>
+                        <p className="text-lg font-bold text-green-600">${getPriceSummary()!.high.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Average</p>
+                        <p className="text-lg font-bold text-violet-600">${getPriceSummary()!.avg.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Sales</p>
+                        <p className="text-lg font-bold text-slate-700">{getPriceSummary()!.count}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sales Log */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-slate-700">Sales Log</p>
+                    <button
+                      onClick={() => setShowAddSale(!showAddSale)}
+                      className="text-sm bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded transition"
+                    >
+                      {showAddSale ? 'Cancel' : '+ Add Sale'}
+                    </button>
+                  </div>
+
+                  {/* Add Sale Form */}
+                  {showAddSale && (
+                    <form onSubmit={addComparableSale} className="mb-4 p-4 bg-white rounded-lg border border-violet-200 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">Date *</label>
+                          <input
+                            type="date"
+                            value={newSale.date}
+                            onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
+                            required
+                            className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">Price *</label>
+                          <div className="flex mt-1">
+                            <select
+                              value={newSale.currency}
+                              onChange={(e) => setNewSale({ ...newSale, currency: e.target.value })}
+                              className="px-2 py-2 text-sm border border-r-0 border-slate-300 rounded-l bg-slate-50"
+                            >
+                              <option value="USD">$</option>
+                              <option value="EUR">€</option>
+                              <option value="GBP">£</option>
+                            </select>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={newSale.price}
+                              onChange={(e) => setNewSale({ ...newSale, price: e.target.value })}
+                              required
+                              placeholder="0.00"
+                              className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-r focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Source *</label>
+                        <select
+                          value={newSale.source}
+                          onChange={(e) => setNewSale({ ...newSale, source: e.target.value })}
+                          required
+                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                        >
+                          <option value="">Select source...</option>
+                          <option value="Worthpoint">Worthpoint</option>
+                          <option value="Invaluable">Invaluable</option>
+                          <option value="Heritage Auctions">Heritage Auctions</option>
+                          <option value="LiveAuctioneers">LiveAuctioneers</option>
+                          <option value="eBay Sold">eBay Sold</option>
+                          <option value="Christie's">Christie's</option>
+                          <option value="Sotheby's">Sotheby's</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Condition</label>
+                        <input
+                          type="text"
+                          value={newSale.condition}
+                          onChange={(e) => setNewSale({ ...newSale, condition: e.target.value })}
+                          placeholder="e.g., Excellent, Good, Fair"
+                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">URL</label>
+                        <input
+                          type="url"
+                          value={newSale.url}
+                          onChange={(e) => setNewSale({ ...newSale, url: e.target.value })}
+                          placeholder="Link to the sale listing"
+                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Notes</label>
+                        <textarea
+                          value={newSale.notes}
+                          onChange={(e) => setNewSale({ ...newSale, notes: e.target.value })}
+                          placeholder="Any additional details..."
+                          rows={2}
+                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none resize-none"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={addingSale || !newSale.date || !newSale.price || !newSale.source}
+                        className="w-full bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {addingSale ? 'Adding...' : 'Add Sale Record'}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Sales List */}
+                  {poster.comparableSales && poster.comparableSales.length > 0 ? (
+                    <div className="space-y-2">
+                      {poster.comparableSales
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((sale) => (
+                          <div
+                            key={sale.id}
+                            className="p-3 bg-white rounded-lg border border-slate-200 group"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                  <span className="font-bold text-violet-700">
+                                    {sale.currency === 'USD' ? '$' : sale.currency === 'EUR' ? '€' : '£'}
+                                    {sale.price.toLocaleString()}
+                                  </span>
+                                  <span className="text-sm text-slate-600">{sale.source}</span>
+                                  <span className="text-xs text-slate-400">
+                                    {new Date(sale.date).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                {sale.condition && (
+                                  <p className="text-xs text-slate-500">Condition: {sale.condition}</p>
+                                )}
+                                {sale.notes && (
+                                  <p className="text-xs text-slate-500 mt-1">{sale.notes}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                                {sale.url && (
+                                  <a
+                                    href={sale.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded"
+                                  >
+                                    View →
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => deleteComparableSale(sale.id)}
+                                  disabled={deletingSaleId === sale.id}
+                                  className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded disabled:opacity-50"
+                                >
+                                  {deletingSaleId === sale.id ? '...' : 'Delete'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-lg border border-dashed border-slate-300">
+                      No sales recorded yet. Use the research links above to find comparable sales.
+                    </p>
+                  )}
+                </div>
+              </div>
 
               {/* Source Citations */}
               {poster.sourceCitations && Array.isArray(poster.sourceCitations) && poster.sourceCitations.length > 0 && (

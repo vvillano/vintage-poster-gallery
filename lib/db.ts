@@ -4,6 +4,7 @@ import type {
   CreatePosterInput,
   UpdatePosterInput,
   SupplementalImage,
+  ComparableSale,
 } from '@/types/poster';
 
 /**
@@ -381,6 +382,106 @@ export async function updatePosterTags(
 }
 
 /**
+ * Get comparable sales for a poster
+ */
+export async function getComparableSales(posterId: number): Promise<ComparableSale[]> {
+  const poster = await getPosterById(posterId);
+  if (!poster) {
+    throw new Error(`Poster with ID ${posterId} not found`);
+  }
+  return poster.comparableSales || [];
+}
+
+/**
+ * Add a comparable sale to a poster
+ */
+export async function addComparableSale(
+  posterId: number,
+  sale: Omit<ComparableSale, 'id' | 'createdAt'>
+): Promise<Poster> {
+  const poster = await getPosterById(posterId);
+  if (!poster) {
+    throw new Error(`Poster with ID ${posterId} not found`);
+  }
+
+  const currentSales = poster.comparableSales || [];
+  const newSale: ComparableSale = {
+    ...sale,
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+  };
+  const updatedSales = [...currentSales, newSale];
+
+  const result = await sql`
+    UPDATE posters
+    SET
+      comparable_sales = ${JSON.stringify(updatedSales)},
+      last_modified = NOW()
+    WHERE id = ${posterId}
+    RETURNING *
+  `;
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
+ * Update a comparable sale for a poster
+ */
+export async function updateComparableSale(
+  posterId: number,
+  saleId: string,
+  updates: Partial<Omit<ComparableSale, 'id' | 'createdAt'>>
+): Promise<Poster> {
+  const poster = await getPosterById(posterId);
+  if (!poster) {
+    throw new Error(`Poster with ID ${posterId} not found`);
+  }
+
+  const currentSales = poster.comparableSales || [];
+  const updatedSales = currentSales.map(sale =>
+    sale.id === saleId ? { ...sale, ...updates } : sale
+  );
+
+  const result = await sql`
+    UPDATE posters
+    SET
+      comparable_sales = ${JSON.stringify(updatedSales)},
+      last_modified = NOW()
+    WHERE id = ${posterId}
+    RETURNING *
+  `;
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
+ * Delete a comparable sale from a poster
+ */
+export async function deleteComparableSale(
+  posterId: number,
+  saleId: string
+): Promise<Poster> {
+  const poster = await getPosterById(posterId);
+  if (!poster) {
+    throw new Error(`Poster with ID ${posterId} not found`);
+  }
+
+  const currentSales = poster.comparableSales || [];
+  const updatedSales = currentSales.filter(sale => sale.id !== saleId);
+
+  const result = await sql`
+    UPDATE posters
+    SET
+      comparable_sales = ${JSON.stringify(updatedSales)},
+      last_modified = NOW()
+    WHERE id = ${posterId}
+    RETURNING *
+  `;
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Convert database row to Poster type
  */
 function dbRowToPoster(row: any): Poster {
@@ -394,6 +495,7 @@ function dbRowToPoster(row: any): Poster {
     uploadedBy: row.uploaded_by,
     supplementalImages: row.supplemental_images,
     itemTags: row.item_tags,
+    comparableSales: row.comparable_sales,
     initialInformation: row.initial_information,
     productType: row.product_type,
     artist: row.artist,
