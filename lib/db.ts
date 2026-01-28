@@ -189,6 +189,29 @@ export async function deletePoster(id: number): Promise<void> {
 }
 
 /**
+ * Update only the rawAiResponse field (for partial updates like tag refresh)
+ */
+export async function updatePosterRawAiResponse(
+  id: number,
+  rawAiResponse: any
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      raw_ai_response = ${JSON.stringify(rawAiResponse)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Update product descriptions and talking points in rawAiResponse
  */
 export async function updatePosterDescriptions(

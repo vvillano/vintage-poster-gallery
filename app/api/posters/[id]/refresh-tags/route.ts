@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getPosterById, updatePosterAnalysis } from '@/lib/db';
+import { getPosterById, updatePosterRawAiResponse } from '@/lib/db';
 import { getTagNames } from '@/lib/tags';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -111,15 +111,13 @@ Respond with ONLY a JSON array of tag names, nothing else. Example: ["Art Deco",
       throw new Error('Failed to parse tag suggestions');
     }
 
-    // Update the poster's rawAiResponse with new suggested tags
+    // Update only the rawAiResponse with new suggested tags (preserves all other fields)
     const updatedRawResponse = {
       ...poster.rawAiResponse,
       suggestedTags,
     };
 
-    await updatePosterAnalysis(posterId, {
-      rawAiResponse: updatedRawResponse,
-    });
+    await updatePosterRawAiResponse(posterId, updatedRawResponse);
 
     return NextResponse.json({
       success: true,
