@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface ImagePreviewProps {
   src: string;
@@ -18,25 +18,13 @@ export default function ImagePreview({
   children,
 }: ImagePreviewProps) {
   const [isHovering, setIsHovering] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = () => {
-    // Small delay to prevent flicker on quick mouse movements
-    timeoutRef.current = setTimeout(() => {
-      setIsHovering(true);
-    }, 150);
-  };
-
-  const handleMouseLeave = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    setIsHovering(false);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const calculatePosition = useCallback(() => {
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
@@ -70,12 +58,58 @@ export default function ImagePreview({
     }
 
     setPosition({ x, y });
+  }, [previewSize]);
+
+  const handleMouseEnter = () => {
+    // Clear any pending hide timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+
+    // Calculate position immediately
+    calculatePosition();
+
+    // Delay showing to prevent flicker on quick mouse movements
+    showTimeoutRef.current = setTimeout(() => {
+      setIsHovering(true);
+      // Small delay before making visible for smooth entry
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    }, 150);
+  };
+
+  const handleMouseLeave = () => {
+    // Clear any pending show timeout
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current);
+      showTimeoutRef.current = null;
+    }
+
+    // Start fade out immediately
+    setIsVisible(false);
+
+    // Delay removing from DOM to allow fade-out animation
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsHovering(false);
+    }, 150); // Match the transition duration
+  };
+
+  const handleMouseMove = () => {
+    // Only recalculate if already hovering (prevents jank during show delay)
+    if (isHovering) {
+      calculatePosition();
+    }
   };
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (showTimeoutRef.current) {
+        clearTimeout(showTimeoutRef.current);
+      }
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
       }
     };
   }, []);
@@ -95,17 +129,27 @@ export default function ImagePreview({
       />
       {children}
 
-      {/* Preview popup */}
+      {/* Preview popup - always rendered when hovering for smooth transitions */}
       {isHovering && (
         <div
-          className="fixed z-50 pointer-events-none animate-fadeIn"
+          className="fixed z-50 pointer-events-none"
           style={{
-            left: position.x,
-            top: position.y,
+            transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+            opacity: isVisible ? 1 : 0,
+            willChange: 'transform, opacity',
+            transition: 'opacity 0.15s ease-out, transform 0.1s ease-out',
             maxWidth: previewSize,
+            left: 0,
+            top: 0,
           }}
         >
-          <div className="bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden">
+          <div
+            className="bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
+            style={{
+              transform: isVisible ? 'scale(1)' : 'scale(0.97)',
+              transition: 'transform 0.15s ease-out',
+            }}
+          >
             <img
               src={src}
               alt={alt}
