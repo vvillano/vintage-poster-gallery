@@ -1627,6 +1627,15 @@ export default function PosterDetailPage() {
                     >
                       Invaluable
                     </a>
+                    <a
+                      href="https://auctions.posterauctions.com/poster-price-guide"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
+                      title="Rennert's Poster Price Guide"
+                    >
+                      Rennert's
+                    </a>
                   </div>
 
                   <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
