@@ -69,11 +69,11 @@ Collector Interest: ${analysis.rarityValue?.collectorInterest || poster.valueIns
 ITEM DETAILS:
 ${context}
 
-DESCRIPTIONS (150-200 words each, 2-3 paragraphs):
-- "standard": ${BRAND_VOICE}
-- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions
-- "concise": Just the facts - bullet-point style in prose, key details only, no flowery language
-- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity
+DESCRIPTIONS (150-200 words each):
+- "standard": ${BRAND_VOICE} Write in 2-3 flowing paragraphs separated by double newlines.
+- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs separated by double newlines.
+- "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters (•) or dashes. Example format: "1970 Italian film poster for The Wild Racers. Designed by artist P. Franco. Printed using offset lithography in Eastmancolor."
+- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity. Write in 2-3 paragraphs separated by double newlines.
 
 TALKING POINTS (6-8 bullet points for in-gallery storytelling):
 - Artist and date if known

@@ -869,16 +869,21 @@ export default function PosterDetailPage() {
 
               {selectedTone === 'concise' ? (
                 <ul className="space-y-1.5">
-                  {getCurrentDescription()
-                    .replace(/[—–]/g, '-')
-                    .split(/(?<=\.)\s+/)
-                    .filter((sentence: string) => sentence.trim())
-                    .map((sentence: string, idx: number) => (
+                  {(() => {
+                    const text = getCurrentDescription().replace(/[—–]/g, '-');
+                    // Check if content has bullet characters (•)
+                    const hasBulletChars = text.includes('•');
+                    // Split by bullet characters if present, otherwise split by sentences
+                    const items = hasBulletChars
+                      ? text.split(/\s*•\s*/).filter((s: string) => s.trim())
+                      : text.split(/(?<=\.)\s+/).filter((s: string) => s.trim());
+                    return items.map((sentence: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
                         <span className="text-blue-600 mt-0.5">•</span>
                         <span>{sentence.trim()}</span>
                       </li>
-                    ))}
+                    ));
+                  })()}
                 </ul>
               ) : (
                 <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">

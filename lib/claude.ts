@@ -144,11 +144,11 @@ PRINTING TECHNIQUE - Be precise:
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
 
-PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words, 2-3 paragraphs):
-- "standard": ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ').replace(/\n/g, ' ')}
-- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions
-- "concise": Just the facts - bullet-point style in prose, key details only, no flowery language, focus on: artist, date, technique, subject
-- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece
+PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words):
+- "standard": ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ').replace(/\n/g, ' ')} Write in 2-3 flowing paragraphs separated by double newlines.
+- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs separated by double newlines.
+- "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters or dashes. Focus on: artist, date, technique, subject, significance.
+- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece. Write in 2-3 paragraphs separated by double newlines.
 
 TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help gallery staff engage customers with interesting facts and context. Include:
 - Artist and date (if known)
