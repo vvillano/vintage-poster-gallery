@@ -27,7 +27,19 @@ export interface ComparableSale {
   createdAt: string;    // ISO timestamp when record was added
 }
 
-// Research link sources for price research
+// Research site for price research (stored in database)
+export interface ResearchSite {
+  id: number;
+  name: string;
+  urlTemplate: string;          // URL with optional {search} placeholder
+  requiresSubscription: boolean;
+  username?: string | null;     // Login credentials (optional)
+  password?: string | null;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+// Research link sources for price research (legacy - will be replaced by database)
 export const RESEARCH_SOURCES = [
   { name: 'Worthpoint', urlTemplate: 'https://www.worthpoint.com/search?query={search}', requiresSubscription: true },
   { name: 'Invaluable', urlTemplate: 'https://www.invaluable.com/search?query={search}', requiresSubscription: true },

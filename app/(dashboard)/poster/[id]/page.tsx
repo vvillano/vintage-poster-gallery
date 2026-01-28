@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, RESEARCH_SOURCES } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -210,6 +210,8 @@ export default function PosterDetailPage() {
   const [addingSale, setAddingSale] = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
   const [researchQuery, setResearchQuery] = useState('');
+  const [researchSites, setResearchSites] = useState<ResearchSite[]>([]);
+  const [copiedCredential, setCopiedCredential] = useState<string | null>(null);
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -234,6 +236,18 @@ export default function PosterDetailPage() {
         }
       })
       .catch(err => console.error('Failed to fetch tags:', err));
+  }, []);
+
+  // Fetch research sites
+  useEffect(() => {
+    fetch('/api/research-sites')
+      .then(res => res.json())
+      .then(data => {
+        if (data.sites) {
+          setResearchSites(data.sites);
+        }
+      })
+      .catch(err => console.error('Failed to fetch research sites:', err));
   }, []);
 
   // Initialize selected tags when poster loads
@@ -1607,51 +1621,109 @@ export default function PosterDetailPage() {
                     </button>
                   </div>
 
-                  <p className="text-xs text-slate-500 mb-2">Subscription sites:</p>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <a
-                      href={`https://www.worthpoint.com/inventory/search?query=${encodeURIComponent(researchQuery)}&sort=SaleDate&img=true&saleDate=ALL_TIME`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Direct search - requires WorthPoint subscription"
-                    >
-                      Worthpoint
-                    </a>
-                    <a
-                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(researchQuery)}&upcoming=false`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Direct search - works for logged-in and logged-out users"
-                    >
-                      Invaluable
-                    </a>
-                    <a
-                      href={`https://auctions.posterauctions.com/poster-price-guide?search=${encodeURIComponent(researchQuery)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Direct search - Rennert's Poster Price Guide"
-                    >
-                      Rennert's
-                    </a>
-                  </div>
+                  {/* Subscription sites */}
+                  {researchSites.filter(s => s.requiresSubscription).length > 0 && (
+                    <>
+                      <p className="text-xs text-slate-500 mb-2">Subscription sites:</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {researchSites.filter(s => s.requiresSubscription).map((site) => {
+                          const siteUrl = site.urlTemplate.includes('{search}')
+                            ? site.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))
+                            : site.urlTemplate;
+                          const hasCredentials = site.username || site.password;
+                          return (
+                            <div key={site.id} className="relative group">
+                              <a
+                                href={siteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white inline-block"
+                              >
+                                {site.name}
+                              </a>
+                              {/* Credentials tooltip */}
+                              {hasCredentials && (
+                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 z-50">
+                                  <div className="bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl min-w-[180px]">
+                                    <p className="text-slate-400 text-[10px] uppercase tracking-wide mb-2">Credentials</p>
+                                    {site.username && (
+                                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                                        <span className="text-slate-300">UN:</span>
+                                        <span className="font-mono">{site.username}</span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigator.clipboard.writeText(site.username || '');
+                                            setCopiedCredential(`${site.id}-un`);
+                                            setTimeout(() => setCopiedCredential(null), 1500);
+                                          }}
+                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
+                                        >
+                                          {copiedCredential === `${site.id}-un` ? 'Copied!' : 'Copy'}
+                                        </button>
+                                      </div>
+                                    )}
+                                    {site.password && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-slate-300">PW:</span>
+                                        <span className="font-mono">••••••</span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigator.clipboard.writeText(site.password || '');
+                                            setCopiedCredential(`${site.id}-pw`);
+                                            setTimeout(() => setCopiedCredential(null), 1500);
+                                          }}
+                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
+                                        >
+                                          {copiedCredential === `${site.id}-pw` ? 'Copied!' : 'Copy'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
 
-                  <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
-                  <div className="flex flex-wrap gap-2">
-                    {RESEARCH_SOURCES.filter(s => !s.requiresSubscription).map((source) => (
-                      <a
-                        key={source.name}
-                        href={source.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700"
-                      >
-                        {source.name}
+                  {/* Free sites */}
+                  {researchSites.filter(s => !s.requiresSubscription).length > 0 && (
+                    <>
+                      <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
+                      <div className="flex flex-wrap gap-2">
+                        {researchSites.filter(s => !s.requiresSubscription).map((site) => {
+                          const siteUrl = site.urlTemplate.includes('{search}')
+                            ? site.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))
+                            : site.urlTemplate;
+                          return (
+                            <a
+                              key={site.id}
+                              href={siteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            >
+                              {site.name}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* No sites message */}
+                  {researchSites.length === 0 && (
+                    <p className="text-sm text-slate-500">
+                      No research sites configured.{' '}
+                      <a href="/settings/research-sites" className="text-violet-600 hover:underline">
+                        Add sites in Settings
                       </a>
-                    ))}
-                  </div>
+                    </p>
+                  )}
                 </div>
 
                 {/* Price Summary */}
@@ -1738,11 +1810,9 @@ export default function PosterDetailPage() {
                           className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                         >
                           <option value="">Select source...</option>
-                          <option value="Worthpoint">Worthpoint</option>
-                          <option value="Invaluable">Invaluable</option>
-                          <option value="Heritage Auctions">Heritage Auctions</option>
-                          <option value="LiveAuctioneers">LiveAuctioneers</option>
-                          <option value="eBay Sold">eBay Sold</option>
+                          {researchSites.map((site) => (
+                            <option key={site.id} value={site.name}>{site.name}</option>
+                          ))}
                           <option value="Christie's">Christie's</option>
                           <option value="Sotheby's">Sotheby's</option>
                           <option value="Other">Other</option>
