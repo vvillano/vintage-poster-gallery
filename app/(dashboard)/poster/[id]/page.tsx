@@ -1699,16 +1699,60 @@ export default function PosterDetailPage() {
                           const siteUrl = site.urlTemplate.includes('{search}')
                             ? site.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))
                             : site.urlTemplate;
+                          const hasCredentials = site.username || site.password;
                           return (
-                            <a
-                              key={site.id}
-                              href={siteUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            >
-                              {site.name}
-                            </a>
+                            <div key={site.id} className="relative group">
+                              <a
+                                href={siteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700 inline-block"
+                              >
+                                {site.name}
+                              </a>
+                              {/* Credentials tooltip */}
+                              {hasCredentials && (
+                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 z-50">
+                                  <div className="bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl min-w-[180px]">
+                                    <p className="text-slate-400 text-[10px] uppercase tracking-wide mb-2">Credentials</p>
+                                    {site.username && (
+                                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                                        <span className="text-slate-300">UN:</span>
+                                        <span className="font-mono">{site.username}</span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigator.clipboard.writeText(site.username || '');
+                                            setCopiedCredential(`${site.id}-un`);
+                                            setTimeout(() => setCopiedCredential(null), 1500);
+                                          }}
+                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
+                                        >
+                                          {copiedCredential === `${site.id}-un` ? 'Copied!' : 'Copy'}
+                                        </button>
+                                      </div>
+                                    )}
+                                    {site.password && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-slate-300">PW:</span>
+                                        <span className="font-mono">••••••</span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigator.clipboard.writeText(site.password || '');
+                                            setCopiedCredential(`${site.id}-pw`);
+                                            setTimeout(() => setCopiedCredential(null), 1500);
+                                          }}
+                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
+                                        >
+                                          {copiedCredential === `${site.id}-pw` ? 'Copied!' : 'Copy'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
