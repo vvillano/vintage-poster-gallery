@@ -209,6 +209,7 @@ export default function PosterDetailPage() {
   const [showAddSale, setShowAddSale] = useState(false);
   const [addingSale, setAddingSale] = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+  const [researchQuery, setResearchQuery] = useState('');
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -241,6 +242,17 @@ export default function PosterDetailPage() {
       setSelectedTags(poster.itemTags);
     }
   }, [poster?.itemTags]);
+
+  // Initialize research query when poster loads
+  useEffect(() => {
+    if (poster) {
+      const parts: string[] = [];
+      if (poster.artist && poster.artist !== 'Unknown') parts.push(poster.artist);
+      if (poster.title) parts.push(poster.title);
+      if (!parts.length && poster.productType) parts.push(poster.productType);
+      setResearchQuery(parts.join(' '));
+    }
+  }, [poster?.artist, poster?.title, poster?.productType]);
 
   async function fetchPoster() {
     try {
@@ -608,16 +620,6 @@ export default function PosterDetailPage() {
     } finally {
       setDeletingSaleId(null);
     }
-  }
-
-  // Build research search query
-  function buildResearchQuery(): string {
-    if (!poster) return '';
-    const parts: string[] = [];
-    if (poster.artist && poster.artist !== 'Unknown') parts.push(poster.artist);
-    if (poster.title) parts.push(poster.title);
-    if (!parts.length && poster.productType) parts.push(poster.productType);
-    return parts.join(' ');
   }
 
   // Calculate price summary from sales
@@ -1586,12 +1588,18 @@ export default function PosterDetailPage() {
                 <div className="mb-6">
                   <p className="text-sm font-medium text-slate-700 mb-2">Research Links</p>
 
-                  {/* Search term with copy button */}
+                  {/* Editable search term with copy button */}
                   <div className="flex items-center gap-2 mb-3 p-2 bg-white rounded border border-slate-200">
-                    <span className="text-sm text-slate-600 flex-1 truncate">{buildResearchQuery()}</span>
+                    <input
+                      type="text"
+                      value={researchQuery}
+                      onChange={(e) => setResearchQuery(e.target.value)}
+                      className="text-sm text-slate-600 flex-1 bg-transparent outline-none focus:ring-0 border-none"
+                      placeholder="Enter search terms..."
+                    />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(buildResearchQuery());
+                        navigator.clipboard.writeText(researchQuery);
                         alert('Search term copied!');
                       }}
                       className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition whitespace-nowrap"
@@ -1612,7 +1620,7 @@ export default function PosterDetailPage() {
                       Worthpoint
                     </a>
                     <a
-                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(buildResearchQuery())}&upcoming=false`}
+                      href={`https://www.invaluable.com/search?keyword=${encodeURIComponent(researchQuery)}&upcoming=false`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
@@ -1627,7 +1635,7 @@ export default function PosterDetailPage() {
                     {RESEARCH_SOURCES.filter(s => !s.requiresSubscription).map((source) => (
                       <a
                         key={source.name}
-                        href={source.urlTemplate.replace('{search}', encodeURIComponent(buildResearchQuery()))}
+                        href={source.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700"
