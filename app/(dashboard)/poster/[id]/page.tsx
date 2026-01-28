@@ -1585,27 +1585,51 @@ export default function PosterDetailPage() {
                 {/* Research Links */}
                 <div className="mb-6">
                   <p className="text-sm font-medium text-slate-700 mb-2">Research Links</p>
-                  <p className="text-xs text-slate-500 mb-3">Click to search for comparable sales in price databases</p>
+
+                  {/* Search term with copy button */}
+                  <div className="flex items-center gap-2 mb-3 p-2 bg-white rounded border border-slate-200">
+                    <span className="text-sm text-slate-600 flex-1 truncate">{buildResearchQuery()}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(buildResearchQuery());
+                        alert('Search term copied!');
+                      }}
+                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition whitespace-nowrap"
+                    >
+                      Copy
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500 mb-2">Subscription sites (copy search term, then paste after login):</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {RESEARCH_SOURCES.filter(s => s.requiresSubscription).map((source) => (
+                      <a
+                        key={source.name}
+                        href={source.name === 'Worthpoint' ? 'https://www.worthpoint.com/' : 'https://www.invaluable.com/'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
+                        title="Opens homepage - paste search term after logging in"
+                      >
+                        {source.name}
+                      </a>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
                   <div className="flex flex-wrap gap-2">
-                    {RESEARCH_SOURCES.map((source) => (
+                    {RESEARCH_SOURCES.filter(s => !s.requiresSubscription).map((source) => (
                       <a
                         key={source.name}
                         href={source.urlTemplate.replace('{search}', encodeURIComponent(buildResearchQuery()))}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`text-sm px-3 py-1.5 rounded transition ${
-                          source.requiresSubscription
-                            ? 'bg-violet-600 hover:bg-violet-700 text-white'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                        title={source.requiresSubscription ? 'Requires subscription' : 'Free access'}
+                        className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700"
                       >
                         {source.name}
-                        {source.requiresSubscription && <span className="ml-1">★</span>}
                       </a>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-400 mt-2">★ = Subscription required</p>
                 </div>
 
                 {/* Price Summary */}
