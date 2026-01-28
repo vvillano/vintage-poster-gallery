@@ -1605,7 +1605,7 @@ export default function PosterDetailPage() {
                     {RESEARCH_SOURCES.filter(s => s.requiresSubscription).map((source) => (
                       <a
                         key={source.name}
-                        href={source.name === 'Worthpoint' ? 'https://www.worthpoint.com/' : 'https://www.invaluable.com/'}
+                        href={source.name === 'Worthpoint' ? 'https://www.worthpoint.com/worthopedia' : 'https://www.invaluable.com/'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
