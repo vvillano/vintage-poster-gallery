@@ -247,12 +247,11 @@ export default function PosterDetailPage() {
   useEffect(() => {
     if (poster) {
       const parts: string[] = [];
-      if (poster.artist && poster.artist !== 'Unknown') parts.push(poster.artist);
       if (poster.title) parts.push(poster.title);
-      if (!parts.length && poster.productType) parts.push(poster.productType);
+      if (poster.productType) parts.push(poster.productType);
       setResearchQuery(parts.join(' '));
     }
-  }, [poster?.artist, poster?.title, poster?.productType]);
+  }, [poster?.title, poster?.productType]);
 
   async function fetchPoster() {
     try {
