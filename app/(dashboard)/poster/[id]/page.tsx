@@ -1611,11 +1611,11 @@ export default function PosterDetailPage() {
                   <p className="text-xs text-slate-500 mb-2">Subscription sites:</p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     <a
-                      href="https://www.worthpoint.com/worthopedia"
+                      href={`https://www.worthpoint.com/inventory/search?query=${encodeURIComponent(researchQuery)}&sort=SaleDate&img=true&saleDate=ALL_TIME`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Opens Worthopedia - paste search term after logging in"
+                      title="Direct search - requires WorthPoint subscription"
                     >
                       Worthpoint
                     </a>
