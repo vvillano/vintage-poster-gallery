@@ -820,10 +820,15 @@ export default function PosterDetailPage() {
                   <button
                     onClick={refreshDescriptions}
                     disabled={refreshingDescriptions}
-                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50"
+                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50 flex items-center gap-1"
                     title="Generate new description variations"
                   >
-                    {refreshingDescriptions ? '...' : '↻'}
+                    {refreshingDescriptions ? (
+                      <>
+                        <span className="animate-spin">↻</span>
+                        <span>Refreshing...</span>
+                      </>
+                    ) : '↻'}
                   </button>
                   <button
                     onClick={() => {
@@ -874,10 +879,10 @@ export default function PosterDetailPage() {
                     // Check if content has bullet characters (•)
                     const hasBulletChars = text.includes('•');
                     // Split by bullet characters if present, otherwise split by sentences
-                    // Use negative lookbehind to avoid splitting on initials (single uppercase letter + period)
+                    // Only split after words of 2+ chars followed by period (avoids splitting initials like "P.")
                     const items = hasBulletChars
                       ? text.split(/\s*•\s*/).filter((s: string) => s.trim())
-                      : text.split(/(?<![A-Z])(?<=\.)\s+/).filter((s: string) => s.trim());
+                      : text.split(/(?<=\w{2,}\.)\s+/).filter((s: string) => s.trim());
                     return items.map((sentence: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
                         <span className="text-blue-600 mt-0.5">•</span>
@@ -887,11 +892,9 @@ export default function PosterDetailPage() {
                   })()}
                 </ul>
               ) : (
-                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
-                  {getCurrentDescription().split(/\n\n+/).map((paragraph: string, idx: number) => (
-                    <p key={idx}>{paragraph.trim()}</p>
-                  ))}
-                </div>
+                <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                  {getCurrentDescription()}
+                </p>
               )}
               <p className="text-xs text-slate-600 mt-3">
                 {hasMultipleTones()
