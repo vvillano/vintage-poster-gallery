@@ -870,6 +870,7 @@ export default function PosterDetailPage() {
               {selectedTone === 'concise' ? (
                 <ul className="space-y-1.5">
                   {getCurrentDescription()
+                    .replace(/[—–]/g, '-')
                     .split(/(?<=\.)\s+/)
                     .filter((sentence: string) => sentence.trim())
                     .map((sentence: string, idx: number) => (
