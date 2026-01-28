@@ -892,9 +892,11 @@ export default function PosterDetailPage() {
                   })()}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
-                  {getCurrentDescription()}
-                </p>
+                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
+                  {getCurrentDescription().split(/\n\n+|\[PARA\]/g).filter((p: string) => p.trim()).map((paragraph: string, idx: number) => (
+                    <p key={idx}>{paragraph.trim()}</p>
+                  ))}
+                </div>
               )}
               <p className="text-xs text-slate-600 mt-3">
                 {hasMultipleTones()

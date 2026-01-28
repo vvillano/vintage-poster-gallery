@@ -70,10 +70,10 @@ ITEM DETAILS:
 ${context}
 
 DESCRIPTIONS (150-200 words each):
-- "standard": ${BRAND_VOICE} Write in 2-3 flowing paragraphs separated by double newlines.
-- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs separated by double newlines.
+- "standard": ${BRAND_VOICE} Write in 2-3 flowing paragraphs. Use [PARA] to separate paragraphs.
+- "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs. Use [PARA] to separate paragraphs.
 - "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters (•) or dashes. Example format: "1970 Italian film poster for The Wild Racers. Designed by artist P. Franco. Printed using offset lithography in Eastmancolor."
-- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity. Write in 2-3 paragraphs separated by double newlines.
+- "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity. Write in 2-3 paragraphs. Use [PARA] to separate paragraphs.
 
 TALKING POINTS (6-8 bullet points for in-gallery storytelling):
 - Artist and date if known
@@ -124,6 +124,13 @@ Return ONLY valid JSON:
         })
       );
       descriptions = JSON.parse(sanitized);
+    }
+
+    // Convert [PARA] markers to actual newlines for paragraph breaks
+    for (const key of ['standard', 'scholarly', 'enthusiastic']) {
+      if (descriptions[key]) {
+        descriptions[key] = descriptions[key].replace(/\s*\[PARA\]\s*/g, '\n\n');
+      }
     }
 
     // Update poster with new descriptions (updates both productDescription and rawAiResponse)
