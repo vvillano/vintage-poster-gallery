@@ -867,9 +867,23 @@ export default function PosterDetailPage() {
                 </div>
               )}
 
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {getCurrentDescription()}
-              </p>
+              {selectedTone === 'concise' ? (
+                <ul className="space-y-1.5">
+                  {getCurrentDescription()
+                    .split(/(?<=\.)\s+/)
+                    .filter((sentence: string) => sentence.trim())
+                    .map((sentence: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="text-blue-600 mt-0.5">•</span>
+                        <span>{sentence.trim()}</span>
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {getCurrentDescription()}
+                </p>
+              )}
               <p className="text-xs text-slate-600 mt-3">
                 {hasMultipleTones()
                   ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
