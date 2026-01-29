@@ -5,6 +5,7 @@ import type {
   UpdatePosterInput,
   SupplementalImage,
   ComparableSale,
+  ShopifyData,
 } from '@/types/poster';
 
 /**
@@ -521,5 +522,11 @@ function dbRowToPoster(row: any): Poster {
     rawAiResponse: row.raw_ai_response,
     userNotes: row.user_notes,
     lastModified: new Date(row.last_modified),
+    // Shopify integration fields
+    shopifyProductId: row.shopify_product_id,
+    sku: row.sku,
+    shopifyStatus: row.shopify_status,
+    shopifySyncedAt: row.shopify_synced_at ? new Date(row.shopify_synced_at) : null,
+    shopifyData: row.shopify_data,
   };
 }

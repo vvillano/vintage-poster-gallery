@@ -6,6 +6,7 @@ import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, Comparab
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
+import ShopifyPanel from '@/components/ShopifyPanel';
 
 // Map printing techniques to their Wikipedia article URLs
 function getPrintingWikiUrl(technique: string): string {
@@ -1618,6 +1619,9 @@ export default function PosterDetailPage() {
                   </p>
                 </div>
               )}
+
+              {/* Shopify Integration */}
+              <ShopifyPanel poster={poster} onUpdate={fetchPoster} />
 
               {/* Price Research & Sales */}
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">

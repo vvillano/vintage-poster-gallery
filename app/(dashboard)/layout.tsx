@@ -30,11 +30,13 @@ export default function DashboardLayout({
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
     { name: 'Upload', href: '/upload', icon: '📤' },
+    { name: 'Import', href: '/import', icon: '📥' },
   ];
 
   const settingsLinks = [
     { name: 'Tags', href: '/settings/tags', icon: '🏷️' },
     { name: 'Research Sites', href: '/settings/research-sites', icon: '🔍' },
+    { name: 'Shopify', href: '/settings/shopify', icon: '🛒' },
   ];
 
   const isSettingsActive = pathname.startsWith('/settings');
