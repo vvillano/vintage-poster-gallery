@@ -181,7 +181,7 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     shippingCost: getMetafield('jadepuma.avp_shipping'),
     restorationCost: getMetafield('jadepuma.avp_restoration'),
     // Internal
-    internalTags: getMetafield('jadepuma.internal_tags'),
+    internalTags: cleanValue(getMetafield('jadepuma.internal_tags')),
     internalNotes: getMetafield('jadepuma.internal_notes'),
   };
 
@@ -478,6 +478,17 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Shopify Description */}
+              {shopifyDescription && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Shopify Description</div>
+                  <div
+                    className="text-sm text-slate-600 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: shopifyDescription }}
+                  />
                 </div>
               )}
             </div>
