@@ -396,7 +396,7 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
               )}
 
               {/* Source / Acquisition */}
-              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost || metafieldDisplay.purchaseDate) && (
+              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost || metafieldDisplay.purchaseDate || (cogs && !isNaN(parseFloat(cogs)))) && (
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Source / Acquisition</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -413,7 +413,7 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
                       <div className="col-span-2"><span className="text-slate-500">Email:</span> <span className="font-medium">{metafieldDisplay.privateSellerEmail}</span></div>
                     )}
                   </div>
-                  {/* Cost Breakdown */}
+                  {/* Cost Breakdown - shows if any breakdown fields exist */}
                   {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) && (
                     <div className="mt-3 pt-2 border-t border-slate-100">
                       <div className="grid grid-cols-3 gap-2 text-sm">
@@ -436,11 +436,15 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
                           </div>
                         )}
                       </div>
-                      {/* Total COGS validation */}
-                      {cogs && !isNaN(parseFloat(cogs)) && (
-                        <div className="mt-2 text-xs text-slate-500">
-                          Total COGS: <span className="font-semibold text-slate-700">${parseFloat(cogs).toFixed(2)}</span>
-                        </div>
+                    </div>
+                  )}
+                  {/* Total COGS - always show if available (from Variant Cost) */}
+                  {cogs && !isNaN(parseFloat(cogs)) && (
+                    <div className={`text-sm ${(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? 'mt-2 text-xs text-slate-500' : 'mt-3 pt-2 border-t border-slate-100'}`}>
+                      {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? (
+                        <>Total COGS: <span className="font-semibold text-slate-700">${parseFloat(cogs).toFixed(2)}</span></>
+                      ) : (
+                        <><span className="text-slate-500">COGS:</span> <span className="font-medium text-green-700">${parseFloat(cogs).toFixed(2)}</span></>
                       )}
                     </div>
                   )}
