@@ -5,7 +5,6 @@ import {
   saveShopifyOAuthCredentials,
   getShopifyOAuthUrl,
 } from '@/lib/shopify';
-import { randomBytes } from 'crypto';
 
 /**
  * POST /api/shopify/oauth
@@ -56,7 +55,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate state for CSRF protection
-    const state = randomBytes(16).toString('hex');
+    const stateArray = new Uint8Array(16);
+    crypto.getRandomValues(stateArray);
+    const state = Array.from(stateArray).map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Get the base URL for the redirect URI
     const baseUrl = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'http://localhost:3000';
