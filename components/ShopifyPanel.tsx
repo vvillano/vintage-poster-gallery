@@ -104,14 +104,8 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     return d.toLocaleDateString();
   }
 
-  // Compare descriptions
-  const ourDescription = poster.rawAiResponse?.productDescriptions?.standard || poster.productDescription;
+  // Shopify description for display
   const shopifyDescription = shopifyData?.bodyHtml;
-  const descriptionsMatch =
-    !ourDescription ||
-    !shopifyDescription ||
-    ourDescription.replace(/<[^>]*>/g, '').trim() ===
-      shopifyDescription.replace(/<[^>]*>/g, '').trim();
 
   // Compare tags
   const ourTags = poster.itemTags || [];
@@ -486,38 +480,13 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Shopify Description</div>
                   <div
-                    className="text-sm text-slate-600 prose prose-sm max-w-none"
+                    className="text-sm text-slate-600 [&_p]:mb-3 [&_p:last-child]:mb-0"
                     dangerouslySetInnerHTML={{ __html: shopifyDescription }}
                   />
                 </div>
               )}
             </div>
           )}
-
-          {/* Description Sync */}
-          <div className="border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-700">Description</span>
-              {descriptionsMatch ? (
-                <span className="text-xs text-green-600 flex items-center gap-1">
-                  <span>✓</span> In sync
-                </span>
-              ) : (
-                <span className="text-xs text-amber-600 flex items-center gap-1">
-                  <span>⚠</span> Different
-                </span>
-              )}
-            </div>
-            {ourDescription && (
-              <button
-                onClick={() => handlePush(['description'])}
-                disabled={pushing}
-                className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
-              >
-                {pushingField === 'description' ? 'Pushing...' : 'Push Description'}
-              </button>
-            )}
-          </div>
 
           {/* Tags Sync */}
           <div className="border-t border-slate-100 pt-4">
