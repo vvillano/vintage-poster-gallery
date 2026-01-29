@@ -478,7 +478,7 @@ export async function getImportedShopifyProductIds(): Promise<Set<string>> {
 // OAuth Functions
 // =====================
 
-const SHOPIFY_SCOPES = 'read_products';
+const SHOPIFY_SCOPES = 'read_products,read_inventory';
 
 /**
  * Generate OAuth authorization URL
