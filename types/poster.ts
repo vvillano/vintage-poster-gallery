@@ -61,6 +61,7 @@ export interface ShopifyData {
   price: string | null;
   compareAtPrice: string | null;
   inventoryQuantity: number | null;
+  cost: string | null; // Variant cost (COGS)
   productType: string | null;
   shopifyTags: string[];
   bodyHtml: string | null;
@@ -340,6 +341,7 @@ export interface ShopifyVariant {
   price: string;
   compareAtPrice: string | null;
   inventoryQuantity: number | null;
+  cost: string | null; // Variant cost (COGS)
 }
 
 // Shopify product image

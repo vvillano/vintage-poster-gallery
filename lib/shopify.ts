@@ -310,6 +310,7 @@ interface ShopifyApiVariant {
   price: string;
   compare_at_price: string | null;
   inventory_quantity: number | null;
+  cost: string | null; // Variant cost (COGS)
 }
 
 interface ShopifyApiImage {
@@ -346,6 +347,7 @@ function mapShopifyProduct(product: ShopifyApiProduct): ShopifyProduct {
       price: v.price,
       compareAtPrice: v.compare_at_price,
       inventoryQuantity: v.inventory_quantity,
+      cost: v.cost,
     })),
     images: product.images.map((img) => ({
       id: `gid://shopify/ProductImage/${img.id}`,
@@ -372,6 +374,7 @@ export function shopifyProductToData(
     price: firstVariant?.price || null,
     compareAtPrice: firstVariant?.compareAtPrice || null,
     inventoryQuantity: firstVariant?.inventoryQuantity ?? null,
+    cost: firstVariant?.cost || null,
     productType: product.productType,
     shopifyTags: product.tags,
     bodyHtml: product.bodyHtml,

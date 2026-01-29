@@ -180,10 +180,8 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
     internalNotes: getMetafield('jadepuma.internal_notes'),
   };
 
-  // Get COGS from Shopify variant cost (if available)
-  const cogs = shopifyData?.metafields?.find(m =>
-    m.key === 'cost' || m.key === 'cogs' || m.key === 'purchase_price'
-  )?.value || getMetafield('jadepuma.purchase_price');
+  // Get COGS from Shopify variant cost field (primary) or purchase_price metafield (fallback)
+  const cogs = shopifyData?.cost || getMetafield('jadepuma.purchase_price');
 
   // Not linked state
   if (!isLinked) {
