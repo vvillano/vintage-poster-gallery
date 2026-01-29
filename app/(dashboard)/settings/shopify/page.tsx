@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -13,6 +13,14 @@ interface ShopifyConfigState {
 }
 
 export default function ShopifySettingsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div></div>}>
+      <ShopifySettingsContent />
+    </Suspense>
+  );
+}
+
+function ShopifySettingsContent() {
   const searchParams = useSearchParams();
   const [config, setConfig] = useState<ShopifyConfigState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +64,6 @@ export default function ShopifySettingsPage() {
       if (!res.ok) throw new Error('Failed to fetch configuration');
       const data = await res.json();
       setConfig(data);
-      if (data.configured) {
-        setFormData({
-          shopDomain: data.shopDomain || '',
-          accessToken: '', // Don't pre-fill token
-          apiVersion: data.apiVersion || '2024-01',
-        });
-      }
     } catch (err) {
       setError('Failed to load configuration');
       console.error(err);
