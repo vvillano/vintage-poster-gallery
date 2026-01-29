@@ -6,17 +6,24 @@ export default function SettingsPage() {
   const settingsCards = [
     {
       title: 'Tags',
-      description: 'Manage item categorization tags for posters. Tags help organize items and are suggested by AI during analysis.',
+      description: 'Manage item categorization tags. Tags help organize items and are suggested by AI during analysis.',
       href: '/settings/tags',
       icon: '🏷️',
       color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',
     },
     {
       title: 'Research Sites',
-      description: 'Manage price research sites for comparable sales. Configure search URLs and store login credentials for quick access.',
+      description: 'Manage price research sites for comparable sales. Configure search URLs and store login credentials.',
       href: '/settings/research-sites',
       icon: '🔍',
       color: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
+    },
+    {
+      title: 'Shopify Integration',
+      description: 'Connect to Shopify to import products, sync descriptions, tags, and metadata between systems.',
+      href: '/settings/shopify',
+      icon: '🛒',
+      color: 'bg-green-50 border-green-200 hover:bg-green-100',
     },
   ];
 
