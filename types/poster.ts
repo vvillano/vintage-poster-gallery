@@ -48,6 +48,18 @@ export const RESEARCH_SOURCES = [
   { name: 'eBay Sold', urlTemplate: 'https://www.ebay.com/sch/i.html?_nkw={search}&LH_Complete=1&LH_Sold=1&_sop=13', requiresSubscription: false },
 ] as const;
 
+// Shopify data snapshot stored with poster (defined before Poster for reference)
+export interface ShopifyData {
+  price: string | null;
+  compareAtPrice: string | null;
+  inventoryQuantity: number | null;
+  productType: string | null;
+  shopifyTags: string[];
+  bodyHtml: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Core Poster type matching database schema
 export interface Poster {
   id: number;
@@ -100,6 +112,13 @@ export interface Poster {
   rawAiResponse?: any | null;
   userNotes?: string | null;
   lastModified: Date;
+
+  // Shopify Integration
+  shopifyProductId?: string | null;
+  sku?: string | null;
+  shopifyStatus?: 'draft' | 'active' | 'archived' | null;
+  shopifySyncedAt?: Date | null;
+  shopifyData?: ShopifyData | null;
 }
 
 // Product type classifications from Product Classification Guide - 2025
@@ -267,3 +286,54 @@ export interface UpdatePosterInput {
   userNotes?: string;
   supplementalImages?: SupplementalImage[];
 }
+
+// =====================
+// Shopify Integration Types
+// =====================
+
+// Shopify store configuration
+export interface ShopifyConfig {
+  id: number;
+  shopDomain: string;
+  accessToken: string;
+  apiVersion: string;
+  // OAuth credentials (for Dev Dashboard apps)
+  clientId?: string;
+  clientSecret?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Shopify product from API
+export interface ShopifyProduct {
+  id: string;
+  title: string;
+  handle: string;
+  status: 'draft' | 'active' | 'archived';
+  productType: string | null;
+  tags: string[];
+  bodyHtml: string | null;
+  variants: ShopifyVariant[];
+  images: ShopifyImage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Shopify product variant
+export interface ShopifyVariant {
+  id: string;
+  sku: string | null;
+  price: string;
+  compareAtPrice: string | null;
+  inventoryQuantity: number | null;
+}
+
+// Shopify product image
+export interface ShopifyImage {
+  id: string;
+  src: string;
+  altText: string | null;
+  width: number;
+  height: number;
+}
+
