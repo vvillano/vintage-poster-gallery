@@ -38,7 +38,7 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
         throw new Error(data.error || 'Failed to pull from Shopify');
       }
 
-      setSuccess('Updated from Shopify');
+      setSuccess('Refreshed! Metafields and product data updated from Shopify.');
       onUpdate();
 
       setTimeout(() => setSuccess(''), 3000);
@@ -186,9 +186,24 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
               handlePull();
             }}
             disabled={pulling}
-            className="text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50 flex items-center gap-1"
           >
-            {pulling ? '...' : 'Pull'}
+            {pulling ? (
+              <>
+                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh from Shopify
+              </>
+            )}
           </button>
           <svg
             className={`w-5 h-5 text-green-600 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -264,6 +279,26 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
           <div className="text-xs text-slate-400">
             Last synced: {formatDate(poster.shopifySyncedAt)}
           </div>
+
+          {/* Metafield Data (from last pull) */}
+          {shopifyData?.metafields && shopifyData.metafields.length > 0 && (
+            <div className="border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-700">Pulled Metafields</span>
+                <span className="text-xs text-slate-400">{shopifyData.metafields.length} fields</span>
+              </div>
+              <div className="max-h-32 overflow-y-auto bg-slate-50 rounded p-2 text-xs space-y-1">
+                {shopifyData.metafields.map((mf, idx) => (
+                  <div key={idx} className="flex justify-between gap-2">
+                    <span className="text-slate-500 truncate">{mf.namespace}.{mf.key}:</span>
+                    <span className="text-slate-700 font-medium truncate max-w-[150px]" title={mf.value}>
+                      {mf.value || '(empty)'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Description Sync */}
           <div className="border-t border-slate-100 pt-4">

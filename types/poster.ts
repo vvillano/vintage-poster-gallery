@@ -48,6 +48,14 @@ export const RESEARCH_SOURCES = [
   { name: 'eBay Sold', urlTemplate: 'https://www.ebay.com/sch/i.html?_nkw={search}&LH_Complete=1&LH_Sold=1&_sop=13', requiresSubscription: false },
 ] as const;
 
+// Metafield data from Shopify
+export interface ShopifyMetafieldData {
+  namespace: string;
+  key: string;
+  value: string;
+  type: string;
+}
+
 // Shopify data snapshot stored with poster (defined before Poster for reference)
 export interface ShopifyData {
   price: string | null;
@@ -58,6 +66,8 @@ export interface ShopifyData {
   bodyHtml: string | null;
   createdAt: string;
   updatedAt: string;
+  // All metafields stored for reference
+  metafields?: ShopifyMetafieldData[];
 }
 
 // Core Poster type matching database schema
@@ -105,6 +115,10 @@ export interface Poster {
   productDescriptions?: ProductDescriptions | null;  // All description tones
   sourceCitations?: any | null;  // JSON array of source links with descriptions
   similarProducts?: any | null;  // JSON array of similar products on other sites
+
+  // Condition (from Shopify metafields or manual entry)
+  condition?: string | null;
+  conditionDetails?: string | null;
 
   // Metadata
   analysisCompleted: boolean;

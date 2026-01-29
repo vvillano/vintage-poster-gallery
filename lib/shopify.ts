@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import type { ShopifyConfig, ShopifyProduct, ShopifyData } from '@/types/poster';
+import type { ShopifyConfig, ShopifyProduct, ShopifyData, ShopifyMetafieldData } from '@/types/poster';
 
 // =====================
 // Configuration Functions
@@ -362,7 +362,10 @@ function mapShopifyProduct(product: ShopifyApiProduct): ShopifyProduct {
 /**
  * Convert ShopifyProduct to ShopifyData for storage
  */
-export function shopifyProductToData(product: ShopifyProduct): ShopifyData {
+export function shopifyProductToData(
+  product: ShopifyProduct,
+  metafields?: ShopifyMetafield[]
+): ShopifyData {
   const firstVariant = product.variants[0];
 
   return {
@@ -374,7 +377,86 @@ export function shopifyProductToData(product: ShopifyProduct): ShopifyData {
     bodyHtml: product.bodyHtml,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
+    metafields: metafields?.map(mf => ({
+      namespace: mf.namespace,
+      key: mf.key,
+      value: mf.value,
+      type: mf.type,
+    })),
   };
+}
+
+/**
+ * Mapped poster fields from Shopify metafields
+ */
+export interface MappedMetafields {
+  artist?: string;
+  estimatedDate?: string;
+  dimensionsEstimate?: string;
+  condition?: string;
+  conditionDetails?: string;
+  userNotes?: string;
+  printingTechnique?: string;
+}
+
+/**
+ * Map Shopify metafields to poster fields
+ * Uses namespace.key format for mapping:
+ * - jadepuma.artist → artist
+ * - specs.year → estimatedDate
+ * - specs.height + specs.width → dimensionsEstimate
+ * - jadepuma.condition → condition
+ * - jadepuma.condition_details → conditionDetails
+ * - jadepuma.internal_notes → userNotes
+ * - jadepuma.medium → printingTechnique
+ */
+export function mapMetafieldsToPosterFields(
+  metafields: ShopifyMetafield[]
+): MappedMetafields {
+  const result: MappedMetafields = {};
+
+  // Create a map for easier lookup
+  const mfMap = new Map<string, string>();
+  for (const mf of metafields) {
+    const key = `${mf.namespace}.${mf.key}`;
+    mfMap.set(key, mf.value);
+  }
+
+  // Map artist
+  const artist = mfMap.get('jadepuma.artist');
+  if (artist) result.artist = artist;
+
+  // Map year to estimatedDate
+  const year = mfMap.get('specs.year');
+  if (year) result.estimatedDate = year;
+
+  // Map dimensions (combine height and width)
+  const height = mfMap.get('specs.height');
+  const width = mfMap.get('specs.width');
+  if (height || width) {
+    const parts: string[] = [];
+    if (height) parts.push(`${height}" H`);
+    if (width) parts.push(`${width}" W`);
+    result.dimensionsEstimate = parts.join(' x ');
+  }
+
+  // Map condition
+  const condition = mfMap.get('jadepuma.condition');
+  if (condition) result.condition = condition;
+
+  // Map condition details
+  const conditionDetails = mfMap.get('jadepuma.condition_details');
+  if (conditionDetails) result.conditionDetails = conditionDetails;
+
+  // Map internal notes to userNotes
+  const internalNotes = mfMap.get('jadepuma.internal_notes');
+  if (internalNotes) result.userNotes = internalNotes;
+
+  // Map medium to printingTechnique
+  const medium = mfMap.get('jadepuma.medium');
+  if (medium) result.printingTechnique = medium;
+
+  return result;
 }
 
 /**

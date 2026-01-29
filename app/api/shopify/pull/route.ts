@@ -6,6 +6,8 @@ import {
   getShopifyProduct,
   getShopifyConfig,
   shopifyProductToData,
+  getProductMetafields,
+  mapMetafieldsToPosterFields,
 } from '@/lib/shopify';
 
 /**
@@ -70,10 +72,23 @@ export async function POST(request: NextRequest) {
       try {
         // Get latest data from Shopify
         const product = await getShopifyProduct(row.shopify_product_id);
-        const shopifyData = shopifyProductToData(product);
+
+        // Fetch metafields
+        let metafields: Awaited<ReturnType<typeof getProductMetafields>> = [];
+        try {
+          metafields = await getProductMetafields(row.shopify_product_id);
+        } catch (mfErr) {
+          console.warn(`Could not fetch metafields for ${row.shopify_product_id}:`, mfErr);
+        }
+
+        // Map metafields to poster fields
+        const mappedFields = mapMetafieldsToPosterFields(metafields);
+
+        // Prepare shopify data with metafields
+        const shopifyData = shopifyProductToData(product, metafields);
         const firstVariant = product.variants[0];
 
-        // Update item in database
+        // Update item in database (including mapped metafield values)
         await sql`
           UPDATE posters
           SET
@@ -81,6 +96,13 @@ export async function POST(request: NextRequest) {
             shopify_status = ${product.status},
             shopify_synced_at = NOW(),
             shopify_data = ${JSON.stringify(shopifyData)},
+            artist = COALESCE(${mappedFields.artist || null}, artist),
+            estimated_date = COALESCE(${mappedFields.estimatedDate || null}, estimated_date),
+            dimensions_estimate = COALESCE(${mappedFields.dimensionsEstimate || null}, dimensions_estimate),
+            condition = COALESCE(${mappedFields.condition || null}, condition),
+            condition_details = COALESCE(${mappedFields.conditionDetails || null}, condition_details),
+            user_notes = COALESCE(${mappedFields.userNotes || null}, user_notes),
+            printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
             last_modified = NOW()
           WHERE id = ${row.id}
         `;

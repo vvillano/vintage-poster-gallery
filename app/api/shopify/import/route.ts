@@ -7,6 +7,8 @@ import {
   getShopifyProduct,
   getShopifyConfig,
   shopifyProductToData,
+  getProductMetafields,
+  mapMetafieldsToPosterFields,
 } from '@/lib/shopify';
 
 /**
@@ -77,6 +79,17 @@ export async function POST(request: NextRequest) {
         // Get product from Shopify
         const product = await getShopifyProduct(shopifyProductId);
 
+        // Fetch metafields for this product
+        let metafields: Awaited<ReturnType<typeof getProductMetafields>> = [];
+        try {
+          metafields = await getProductMetafields(shopifyProductId);
+        } catch (mfErr) {
+          console.warn(`Could not fetch metafields for ${shopifyProductId}:`, mfErr);
+        }
+
+        // Map metafields to poster fields
+        const mappedFields = mapMetafieldsToPosterFields(metafields);
+
         // Get first image
         const primaryImage = product.images[0];
         if (!primaryImage) {
@@ -110,11 +123,11 @@ export async function POST(request: NextRequest) {
           contentType: imageBlob.type || `image/${extension}`,
         });
 
-        // Prepare Shopify data snapshot
-        const shopifyData = shopifyProductToData(product);
+        // Prepare Shopify data snapshot (including metafields)
+        const shopifyData = shopifyProductToData(product, metafields);
         const firstVariant = product.variants[0];
 
-        // Create poster record
+        // Create poster record with mapped metafield values
         const result = await sql`
           INSERT INTO posters (
             image_url,
@@ -128,7 +141,14 @@ export async function POST(request: NextRequest) {
             shopify_status,
             shopify_synced_at,
             shopify_data,
-            analysis_completed
+            analysis_completed,
+            artist,
+            estimated_date,
+            dimensions_estimate,
+            condition,
+            condition_details,
+            user_notes,
+            printing_technique
           )
           VALUES (
             ${blob.url},
@@ -142,7 +162,14 @@ export async function POST(request: NextRequest) {
             ${product.status},
             NOW(),
             ${JSON.stringify(shopifyData)},
-            false
+            false,
+            ${mappedFields.artist || null},
+            ${mappedFields.estimatedDate || null},
+            ${mappedFields.dimensionsEstimate || null},
+            ${mappedFields.condition || null},
+            ${mappedFields.conditionDetails || null},
+            ${mappedFields.userNotes || null},
+            ${mappedFields.printingTechnique || null}
           )
           RETURNING id
         `;
