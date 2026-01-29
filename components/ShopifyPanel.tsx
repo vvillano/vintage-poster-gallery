@@ -127,14 +127,44 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
     return mf?.value || null;
   }
 
+  // Helper to clean JSON array brackets from values like ["Belgium"]
+  function cleanValue(value: string | null): string | null {
+    if (!value) return null;
+    // Remove JSON array brackets if present
+    if (value.startsWith('["') && value.endsWith('"]')) {
+      return value.slice(2, -2);
+    }
+    if (value.startsWith('[') && value.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch {
+        // Not valid JSON, return as-is
+      }
+    }
+    return value;
+  }
+
+  // Helper to format date as mm/dd/yyyy
+  function formatDisplayDate(dateStr: string | null): string | null {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+    } catch {
+      return dateStr;
+    }
+  }
+
   // Extract specific metafields for display
   const metafieldDisplay = {
     // Product Details
     artist: getMetafield('jadepuma.artist'),
     medium: getMetafield('jadepuma.medium'),
-    countryOfOrigin: getMetafield('jadepuma.country_of_origin'),
-    date: getMetafield('jadepuma.date'),
-    publishedDate: getMetafield('jadepuma.published_date'),
+    countryOfOrigin: cleanValue(getMetafield('jadepuma.country_of_origin')),
+    purchaseDate: getMetafield('jadepuma.date'), // This is purchase date, not product date
+    publishedDate: formatDisplayDate(getMetafield('jadepuma.published_date')),
     // Dimensions
     height: getMetafield('specs.height'),
     width: getMetafield('specs.width'),
@@ -312,7 +342,7 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
           {shopifyData?.metafields && shopifyData.metafields.length > 0 && (
             <div className="border-t border-slate-100 pt-4 space-y-4">
               {/* Product Details */}
-              {(metafieldDisplay.artist || metafieldDisplay.medium || metafieldDisplay.countryOfOrigin || metafieldDisplay.date || metafieldDisplay.publishedDate) && (
+              {(metafieldDisplay.artist || metafieldDisplay.medium || metafieldDisplay.countryOfOrigin || metafieldDisplay.publishedDate) && (
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Product Details</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -324,9 +354,6 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
                     )}
                     {metafieldDisplay.countryOfOrigin && (
                       <div><span className="text-slate-500">Origin:</span> <span className="font-medium">{metafieldDisplay.countryOfOrigin}</span></div>
-                    )}
-                    {metafieldDisplay.date && (
-                      <div><span className="text-slate-500">Date:</span> <span className="font-medium">{metafieldDisplay.date}</span></div>
                     )}
                     {metafieldDisplay.publishedDate && (
                       <div><span className="text-slate-500">Published:</span> <span className="font-medium">{metafieldDisplay.publishedDate}</span></div>
@@ -367,14 +394,17 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
               )}
 
               {/* Source / Acquisition */}
-              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || cogs) && (
+              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || cogs || metafieldDisplay.purchaseDate) && (
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Source / Acquisition</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                     {metafieldDisplay.sourcePlatform && (
                       <div><span className="text-slate-500">Source:</span> <span className="font-medium">{metafieldDisplay.sourcePlatform}</span></div>
                     )}
-                    {cogs && (
+                    {metafieldDisplay.purchaseDate && (
+                      <div><span className="text-slate-500">Purchased:</span> <span className="font-medium">{metafieldDisplay.purchaseDate}</span></div>
+                    )}
+                    {cogs && !isNaN(parseFloat(cogs)) && (
                       <div><span className="text-slate-500">COGS:</span> <span className="font-medium text-green-700">${parseFloat(cogs).toFixed(2)}</span></div>
                     )}
                     {metafieldDisplay.privateSellerName && (
