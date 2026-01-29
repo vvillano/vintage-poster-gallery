@@ -48,7 +48,7 @@ export async function saveShopifyConfig(config: {
     VALUES (
       ${config.shopDomain},
       ${config.accessToken},
-      ${config.apiVersion || '2024-01'},
+      ${config.apiVersion || '2025-01'},
       ${config.clientId || null},
       ${config.clientSecret || null}
     )
@@ -85,7 +85,7 @@ export async function saveShopifyOAuthCredentials(config: {
     VALUES (
       ${config.shopDomain},
       '',
-      ${config.apiVersion || '2024-01'},
+      ${config.apiVersion || '2025-01'},
       ${config.clientId},
       ${config.clientSecret}
     )
