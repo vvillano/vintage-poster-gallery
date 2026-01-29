@@ -175,6 +175,10 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
     sourcePlatform: getMetafield('jadepuma.source_platform'),
     privateSellerName: getMetafield('jadepuma.private_seller_name'),
     privateSellerEmail: getMetafield('jadepuma.private_seller_email'),
+    // Cost breakdown
+    purchasePrice: getMetafield('jadepuma.purchase_price'),
+    shippingCost: getMetafield('jadepuma.avp_shipping'),
+    restorationCost: getMetafield('jadepuma.avp_restoration'),
     // Internal
     internalTags: getMetafield('jadepuma.internal_tags'),
     internalNotes: getMetafield('jadepuma.internal_notes'),
@@ -392,7 +396,7 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
               )}
 
               {/* Source / Acquisition */}
-              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || cogs || metafieldDisplay.purchaseDate) && (
+              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost || metafieldDisplay.purchaseDate) && (
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Source / Acquisition</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -402,9 +406,6 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
                     {metafieldDisplay.purchaseDate && (
                       <div><span className="text-slate-500">Purchased:</span> <span className="font-medium">{metafieldDisplay.purchaseDate}</span></div>
                     )}
-                    {cogs && !isNaN(parseFloat(cogs)) && (
-                      <div><span className="text-slate-500">COGS:</span> <span className="font-medium text-green-700">${parseFloat(cogs).toFixed(2)}</span></div>
-                    )}
                     {metafieldDisplay.privateSellerName && (
                       <div><span className="text-slate-500">Seller:</span> <span className="font-medium">{metafieldDisplay.privateSellerName}</span></div>
                     )}
@@ -412,6 +413,37 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
                       <div className="col-span-2"><span className="text-slate-500">Email:</span> <span className="font-medium">{metafieldDisplay.privateSellerEmail}</span></div>
                     )}
                   </div>
+                  {/* Cost Breakdown */}
+                  {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) && (
+                    <div className="mt-3 pt-2 border-t border-slate-100">
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        {metafieldDisplay.purchasePrice && !isNaN(parseFloat(metafieldDisplay.purchasePrice)) && (
+                          <div>
+                            <span className="text-slate-500 text-xs block">Cost:</span>
+                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.purchasePrice).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {metafieldDisplay.shippingCost && !isNaN(parseFloat(metafieldDisplay.shippingCost)) && (
+                          <div>
+                            <span className="text-slate-500 text-xs block">Shipping/Other:</span>
+                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.shippingCost).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {metafieldDisplay.restorationCost && !isNaN(parseFloat(metafieldDisplay.restorationCost)) && (
+                          <div>
+                            <span className="text-slate-500 text-xs block">Restoration:</span>
+                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.restorationCost).toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Total COGS validation */}
+                      {cogs && !isNaN(parseFloat(cogs)) && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          Total COGS: <span className="font-semibold text-slate-700">${parseFloat(cogs).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
