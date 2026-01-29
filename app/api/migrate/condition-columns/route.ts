@@ -1,18 +1,18 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
 /**
- * POST /api/migrate/condition-columns
+ * POST /api/migrate/condition-columns?key=run-migration-2024
  * One-time migration to add condition columns
  * DELETE THIS FILE AFTER RUNNING
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Simple key check for one-time migration
+    const { searchParams } = new URL(request.url);
+    const key = searchParams.get('key');
+    if (key !== 'run-migration-2024') {
+      return NextResponse.json({ error: 'Invalid key' }, { status: 401 });
     }
 
     // Add condition columns if they don't exist
