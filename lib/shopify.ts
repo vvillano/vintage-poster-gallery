@@ -193,7 +193,7 @@ export async function getShopifyProducts(options?: {
 
   const data = await shopifyFetch<{ products: ShopifyApiProduct[] }>(endpoint);
 
-  return data.products.map(mapShopifyProduct);
+  return data.products.map((p) => mapShopifyProduct(p));
 }
 
 /**
