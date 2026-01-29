@@ -103,14 +103,6 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
     return d.toLocaleDateString();
   }
 
-  // Get Shopify admin URL
-  function getShopifyAdminUrl(): string | null {
-    if (!poster.shopifyProductId) return null;
-    const numericId = poster.shopifyProductId.replace('gid://shopify/Product/', '');
-    // We don't have the shop domain here, so link to settings instead
-    return null;
-  }
-
   // Compare descriptions
   const ourDescription = poster.rawAiResponse?.productDescriptions?.standard || poster.productDescription;
   const shopifyDescription = shopifyData?.bodyHtml;
@@ -126,6 +118,42 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
   const tagsMatch =
     ourTags.length === shopifyTags.length &&
     ourTags.every((t) => shopifyTags.includes(t));
+
+  // Helper to get metafield value by namespace.key
+  function getMetafield(namespaceKey: string): string | null {
+    if (!shopifyData?.metafields) return null;
+    const [namespace, key] = namespaceKey.split('.');
+    const mf = shopifyData.metafields.find(m => m.namespace === namespace && m.key === key);
+    return mf?.value || null;
+  }
+
+  // Extract specific metafields for display
+  const metafieldDisplay = {
+    // Product Details
+    artist: getMetafield('jadepuma.artist'),
+    medium: getMetafield('jadepuma.medium'),
+    countryOfOrigin: getMetafield('jadepuma.country_of_origin'),
+    date: getMetafield('jadepuma.date'),
+    publishedDate: getMetafield('jadepuma.published_date'),
+    // Dimensions
+    height: getMetafield('specs.height'),
+    width: getMetafield('specs.width'),
+    // Condition
+    condition: getMetafield('jadepuma.condition'),
+    conditionDetails: getMetafield('jadepuma.condition_details'),
+    // Source/Acquisition
+    sourcePlatform: getMetafield('jadepuma.source_platform'),
+    privateSellerName: getMetafield('jadepuma.private_seller_name'),
+    privateSellerEmail: getMetafield('jadepuma.private_seller_email'),
+    // Internal
+    internalTags: getMetafield('jadepuma.internal_tags'),
+    internalNotes: getMetafield('jadepuma.internal_notes'),
+  };
+
+  // Get COGS from Shopify variant cost (if available)
+  const cogs = shopifyData?.metafields?.find(m =>
+    m.key === 'cost' || m.key === 'cogs' || m.key === 'purchase_price'
+  )?.value || getMetafield('jadepuma.purchase_price');
 
   // Not linked state
   if (!isLinked) {
@@ -280,23 +308,104 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
             Last synced: {formatDate(poster.shopifySyncedAt)}
           </div>
 
-          {/* Metafield Data (from last pull) */}
+          {/* Shopify Data from Metafields */}
           {shopifyData?.metafields && shopifyData.metafields.length > 0 && (
-            <div className="border-t border-slate-100 pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Pulled Metafields</span>
-                <span className="text-xs text-slate-400">{shopifyData.metafields.length} fields</span>
-              </div>
-              <div className="max-h-32 overflow-y-auto bg-slate-50 rounded p-2 text-xs space-y-1">
-                {shopifyData.metafields.map((mf, idx) => (
-                  <div key={idx} className="flex justify-between gap-2">
-                    <span className="text-slate-500 truncate">{mf.namespace}.{mf.key}:</span>
-                    <span className="text-slate-700 font-medium truncate max-w-[150px]" title={mf.value}>
-                      {mf.value || '(empty)'}
-                    </span>
+            <div className="border-t border-slate-100 pt-4 space-y-4">
+              {/* Product Details */}
+              {(metafieldDisplay.artist || metafieldDisplay.medium || metafieldDisplay.countryOfOrigin || metafieldDisplay.date || metafieldDisplay.publishedDate) && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Product Details</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    {metafieldDisplay.artist && (
+                      <div><span className="text-slate-500">Artist:</span> <span className="font-medium">{metafieldDisplay.artist}</span></div>
+                    )}
+                    {metafieldDisplay.medium && (
+                      <div><span className="text-slate-500">Medium:</span> <span className="font-medium">{metafieldDisplay.medium}</span></div>
+                    )}
+                    {metafieldDisplay.countryOfOrigin && (
+                      <div><span className="text-slate-500">Origin:</span> <span className="font-medium">{metafieldDisplay.countryOfOrigin}</span></div>
+                    )}
+                    {metafieldDisplay.date && (
+                      <div><span className="text-slate-500">Date:</span> <span className="font-medium">{metafieldDisplay.date}</span></div>
+                    )}
+                    {metafieldDisplay.publishedDate && (
+                      <div><span className="text-slate-500">Published:</span> <span className="font-medium">{metafieldDisplay.publishedDate}</span></div>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Dimensions */}
+              {(metafieldDisplay.height || metafieldDisplay.width) && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Dimensions</div>
+                  <div className="text-sm">
+                    {metafieldDisplay.height && metafieldDisplay.width ? (
+                      <span className="font-medium">{metafieldDisplay.height}" H × {metafieldDisplay.width}" W</span>
+                    ) : metafieldDisplay.height ? (
+                      <span className="font-medium">{metafieldDisplay.height}" H</span>
+                    ) : (
+                      <span className="font-medium">{metafieldDisplay.width}" W</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Condition */}
+              {(metafieldDisplay.condition || metafieldDisplay.conditionDetails) && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Condition</div>
+                  <div className="text-sm space-y-1">
+                    {metafieldDisplay.condition && (
+                      <div><span className="font-medium">{metafieldDisplay.condition}</span></div>
+                    )}
+                    {metafieldDisplay.conditionDetails && (
+                      <div className="text-slate-600 text-xs">{metafieldDisplay.conditionDetails}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Source / Acquisition */}
+              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || cogs) && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Source / Acquisition</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    {metafieldDisplay.sourcePlatform && (
+                      <div><span className="text-slate-500">Source:</span> <span className="font-medium">{metafieldDisplay.sourcePlatform}</span></div>
+                    )}
+                    {cogs && (
+                      <div><span className="text-slate-500">COGS:</span> <span className="font-medium text-green-700">${parseFloat(cogs).toFixed(2)}</span></div>
+                    )}
+                    {metafieldDisplay.privateSellerName && (
+                      <div><span className="text-slate-500">Seller:</span> <span className="font-medium">{metafieldDisplay.privateSellerName}</span></div>
+                    )}
+                    {metafieldDisplay.privateSellerEmail && (
+                      <div className="col-span-2"><span className="text-slate-500">Email:</span> <span className="font-medium">{metafieldDisplay.privateSellerEmail}</span></div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Internal */}
+              {(metafieldDisplay.internalTags || metafieldDisplay.internalNotes) && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Internal</div>
+                  <div className="text-sm space-y-2">
+                    {metafieldDisplay.internalTags && (
+                      <div>
+                        <span className="text-slate-500">Tags:</span>{' '}
+                        <span className="font-medium">{metafieldDisplay.internalTags}</span>
+                      </div>
+                    )}
+                    {metafieldDisplay.internalNotes && (
+                      <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-800">
+                        <span className="font-semibold">Notes:</span> {metafieldDisplay.internalNotes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
