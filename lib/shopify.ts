@@ -197,7 +197,22 @@ export async function getShopifyProducts(options?: {
 }
 
 /**
- * Get a single product from Shopify
+ * Get inventory item cost from Shopify
+ */
+async function getInventoryItemCost(inventoryItemId: number): Promise<string | null> {
+  try {
+    const data = await shopifyFetch<{ inventory_item: ShopifyApiInventoryItem }>(
+      `/inventory_items/${inventoryItemId}.json`
+    );
+    return data.inventory_item.cost;
+  } catch (error) {
+    console.warn(`Could not fetch inventory item ${inventoryItemId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a single product from Shopify (with variant costs)
  */
 export async function getShopifyProduct(
   productId: string
@@ -209,7 +224,16 @@ export async function getShopifyProduct(
     `/products/${numericId}.json`
   );
 
-  return mapShopifyProduct(data.product);
+  // Fetch cost for each variant from inventory items
+  const variantCosts = new Map<number, string | null>();
+  for (const variant of data.product.variants) {
+    if (variant.inventory_item_id) {
+      const cost = await getInventoryItemCost(variant.inventory_item_id);
+      variantCosts.set(variant.id, cost);
+    }
+  }
+
+  return mapShopifyProduct(data.product, variantCosts);
 }
 
 /**
@@ -310,7 +334,12 @@ interface ShopifyApiVariant {
   price: string;
   compare_at_price: string | null;
   inventory_quantity: number | null;
-  cost: string | null; // Variant cost (COGS)
+  inventory_item_id: number; // Used to fetch cost from InventoryItem
+}
+
+interface ShopifyApiInventoryItem {
+  id: number;
+  cost: string | null;
 }
 
 interface ShopifyApiImage {
@@ -332,7 +361,10 @@ interface ShopifyMetafield {
 /**
  * Map Shopify API product to our ShopifyProduct type
  */
-function mapShopifyProduct(product: ShopifyApiProduct): ShopifyProduct {
+function mapShopifyProduct(
+  product: ShopifyApiProduct,
+  variantCosts?: Map<number, string | null>
+): ShopifyProduct {
   return {
     id: `gid://shopify/Product/${product.id}`,
     title: product.title,
@@ -347,7 +379,7 @@ function mapShopifyProduct(product: ShopifyApiProduct): ShopifyProduct {
       price: v.price,
       compareAtPrice: v.compare_at_price,
       inventoryQuantity: v.inventory_quantity,
-      cost: v.cost,
+      cost: variantCosts?.get(v.id) ?? null,
     })),
     images: product.images.map((img) => ({
       id: `gid://shopify/ProductImage/${img.id}`,
