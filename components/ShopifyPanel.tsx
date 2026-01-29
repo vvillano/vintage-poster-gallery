@@ -7,9 +7,10 @@ import type { Poster, ShopifyData } from '@/types/poster';
 interface ShopifyPanelProps {
   poster: Poster;
   onUpdate: () => void;
+  syncing?: boolean;  // Auto-sync from Shopify in progress
 }
 
-export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
+export default function ShopifyPanel({ poster, onUpdate, syncing = false }: ShopifyPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -238,6 +239,15 @@ export default function ShopifyPanel({ poster, onUpdate }: ShopifyPanelProps) {
           <span className="text-xs px-2 py-0.5 bg-green-200 text-green-700 rounded-full">
             Linked
           </span>
+          {syncing && (
+            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Syncing...
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-2">
           <button

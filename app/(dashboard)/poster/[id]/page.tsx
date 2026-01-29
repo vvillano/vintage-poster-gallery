@@ -213,6 +213,9 @@ export default function PosterDetailPage() {
   const [researchQuery, setResearchQuery] = useState('');
   const [researchSites, setResearchSites] = useState<ResearchSite[]>([]);
   const [copiedCredential, setCopiedCredential] = useState<string | null>(null);
+
+  // Shopify auto-refresh state
+  const [syncingFromShopify, setSyncingFromShopify] = useState(false);
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -267,6 +270,40 @@ export default function PosterDetailPage() {
       setResearchQuery(parts.join(' '));
     }
   }, [poster?.title, poster?.productType]);
+
+  // Auto-refresh from Shopify when poster loads (if linked)
+  useEffect(() => {
+    async function autoRefreshFromShopify() {
+      if (!poster?.shopifyProductId || syncingFromShopify) return;
+
+      try {
+        setSyncingFromShopify(true);
+        const res = await fetch('/api/shopify/pull', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ posterId: poster.id }),
+        });
+
+        if (res.ok) {
+          // Silently refetch poster data with updated Shopify info
+          const posterRes = await fetch(`/api/posters/${posterId}`);
+          if (posterRes.ok) {
+            const data = await posterRes.json();
+            setPoster(data);
+          }
+        }
+      } catch (err) {
+        // Silently fail - this is a background refresh
+        console.warn('Auto-refresh from Shopify failed:', err);
+      } finally {
+        setSyncingFromShopify(false);
+      }
+    }
+
+    autoRefreshFromShopify();
+    // Only run once when poster first loads with a Shopify ID
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poster?.id, poster?.shopifyProductId]);
 
   async function fetchPoster() {
     try {
@@ -1621,7 +1658,7 @@ export default function PosterDetailPage() {
               )}
 
               {/* Shopify Integration */}
-              <ShopifyPanel poster={poster} onUpdate={fetchPoster} />
+              <ShopifyPanel poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
 
               {/* Price Research & Sales */}
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">

@@ -89,9 +89,12 @@ export async function POST(request: NextRequest) {
         const firstVariant = product.variants[0];
 
         // Update item in database (including mapped metafield values)
+        // Note: title and product_type are overwritten from Shopify (authoritative source)
         await sql`
           UPDATE posters
           SET
+            title = ${product.title},
+            product_type = ${product.productType || null},
             sku = ${firstVariant?.sku || null},
             shopify_status = ${product.status},
             shopify_synced_at = NOW(),
