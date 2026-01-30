@@ -35,6 +35,7 @@ export default function DashboardLayout({
 
   const settingsLinks = [
     { name: 'Tags', href: '/settings/tags', icon: '🏷️' },
+    { name: 'Managed Lists', href: '/settings/lists', icon: '📋' },
     { name: 'Research Sites', href: '/settings/research-sites', icon: '🔍' },
     { name: 'Shopify', href: '/settings/shopify', icon: '🛒' },
   ];
