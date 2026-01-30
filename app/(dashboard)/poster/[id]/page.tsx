@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
 import ShopifyPanel from '@/components/ShopifyPanel';
+import Twemoji from '@/components/Twemoji';
 
 // Map printing techniques to their Wikipedia article URLs
 function getPrintingWikiUrl(technique: string): string {
@@ -1450,12 +1451,7 @@ export default function PosterDetailPage() {
                 {poster.rawAiResponse.historicalContext.timeAndPlace.world && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <img
-                        src="https://flagcdn.com/w40/us.png"
-                        srcSet="https://flagcdn.com/w80/us.png 2x"
-                        alt="US"
-                        className="h-4 w-auto"
-                      />
+                      <Twemoji emoji="🇺🇸" />
                       <label className="text-sm font-medium text-slate-700">
                         America in {poster.estimatedDate || 'the Era'}
                       </label>
