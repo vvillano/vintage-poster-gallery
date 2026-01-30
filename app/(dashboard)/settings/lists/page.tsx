@@ -175,12 +175,14 @@ function ManagedListsContent() {
     const editParam = searchParams.get('edit');
 
     if (typeParam && LIST_CONFIGS.some(c => c.key === typeParam)) {
-      setActiveList(typeParam);
+      if (typeParam !== activeList) {
+        setActiveList(typeParam);
+      }
       if (editParam) {
         setPendingEditId(parseInt(editParam));
       }
     }
-  }, [searchParams]);
+  }, [searchParams, activeList]);
 
   // When items load and we have a pending edit ID, start editing that item
   useEffect(() => {
@@ -190,10 +192,11 @@ function ManagedListsContent() {
         startEdit(itemToEdit);
         // Clear the URL params after editing starts
         router.replace('/settings/lists', { scroll: false });
+        setPendingEditId(null);
       }
-      setPendingEditId(null);
+      // Don't clear pendingEditId if item not found - might still be loading
     }
-  }, [items, pendingEditId, loading]);
+  }, [items, pendingEditId, loading, router]);
 
   useEffect(() => {
     fetchItems();
