@@ -1,5 +1,25 @@
 /**
- * Convert a 2-letter country code to Google Noto Emoji URL
+ * Historical country flags that don't exist in Twemoji
+ * Uses Wikimedia Commons SVGs converted to PNG via Wikipedia's thumb service
+ */
+const HISTORICAL_FLAGS: Record<string, string> = {
+  // Yugoslavia (1918-1992)
+  'YU': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Flag_of_Yugoslavia_%281946-1992%29.svg/80px-Flag_of_Yugoslavia_%281946-1992%29.svg.png',
+  // Czechoslovakia (1918-1992)
+  'CS': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/80px-Flag_of_the_Czech_Republic.svg.png',
+  // Soviet Union (1922-1991)
+  'SU': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/80px-Flag_of_the_Soviet_Union.svg.png',
+  // East Germany (1949-1990)
+  'DD': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Flag_of_East_Germany.svg/80px-Flag_of_East_Germany.svg.png',
+  // West Germany (use current German flag)
+  'DE': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Germany.svg/80px-Flag_of_Germany.svg.png',
+};
+
+/**
+ * Convert a 2-letter country code to flag image URL
+ *
+ * For current countries: Uses Twemoji via jsDelivr
+ * For historical countries: Uses Wikimedia Commons
  *
  * Country codes use Regional Indicator Symbols:
  * - Each letter A-Z maps to U+1F1E6 through U+1F1FF
@@ -11,6 +31,12 @@ export function getCountryFlagUrl(countryCode: string, size: 32 | 72 | 128 | 512
   }
 
   const code = countryCode.toUpperCase();
+
+  // Check for historical flags first
+  if (HISTORICAL_FLAGS[code]) {
+    return HISTORICAL_FLAGS[code];
+  }
+
   const codePoints: string[] = [];
 
   for (const char of code) {
