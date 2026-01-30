@@ -1451,9 +1451,10 @@ export default function PosterDetailPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <img
-                        src="https://flagcdn.com/24x18/us.png"
+                        src="https://flagcdn.com/w40/us.png"
+                        srcSet="https://flagcdn.com/w80/us.png 2x"
                         alt="US"
-                        className="w-6 h-4 object-cover rounded-sm"
+                        className="h-4 w-auto"
                       />
                       <label className="text-sm font-medium text-slate-700">
                         America in {poster.estimatedDate || 'the Era'}
