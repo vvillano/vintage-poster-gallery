@@ -26,7 +26,8 @@ export function getCountryFlagUrl(countryCode: string, size: 32 | 72 | 128 | 512
     return '';
   }
 
-  return `https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/${size}/emoji_u${codePoints.join('_')}.png`;
+  // Use jsDelivr CDN for reliable delivery
+  return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/png/${size}/emoji_u${codePoints.join('_')}.png`;
 }
 
 /**
@@ -53,7 +54,8 @@ export function getEmojiUrl(emoji: string, size: 32 | 72 | 128 | 512 = 72): stri
     return '';
   }
 
-  return `https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/${size}/emoji_u${codePoints.join('_')}.png`;
+  // Use jsDelivr CDN for reliable delivery
+  return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/png/${size}/emoji_u${codePoints.join('_')}.png`;
 }
 
 /**
