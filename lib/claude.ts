@@ -176,6 +176,12 @@ IMPORTANT: If professionVerified is false (the person wasn't an illustrator), co
 
 Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'P. Verger'", "printed credit below image")
 
+VERIFICATION NOTES - Write appropriate to confidence level:
+- If confidence >= 90%: Can include brief factual artist biography
+- If confidence 70-89%: Focus on what WAS verified and what remains uncertain. Example: "Signature 'P. Franco' is clearly readable. Style matches Italian cinema posters of this era. However, multiple artists may have used this name, so specific biographical details cannot be confirmed."
+- If confidence < 70%: Only describe what you observed, no biographical claims. Example: "Signature appears to read 'P. Franco' but artist identity could not be verified."
+- NEVER include confident biographical claims (e.g., "was an Italian movie poster artist known for...") unless confidence >= 90%
+
 DATE IDENTIFICATION:
 1. Look for dates printed on the piece (often near printer info or copyright)
 2. Check for exhibition dates, event dates, or publication years
