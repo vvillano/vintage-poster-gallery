@@ -1450,7 +1450,11 @@ export default function PosterDetailPage() {
                 {poster.rawAiResponse.historicalContext.timeAndPlace.world && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🇺🇸</span>
+                      <img
+                        src="https://flagcdn.com/24x18/us.png"
+                        alt="US"
+                        className="w-6 h-4 object-cover rounded-sm"
+                      />
                       <label className="text-sm font-medium text-slate-700">
                         America in {poster.estimatedDate || 'the Era'}
                       </label>
