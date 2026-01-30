@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface MigrationConfig {
@@ -9,6 +9,11 @@ interface MigrationConfig {
   description: string;
   endpoint: string;
   successLink?: { href: string; label: string };
+}
+
+interface MigrationStatusInfo {
+  completed: boolean;
+  details?: string;
 }
 
 const MIGRATIONS: MigrationConfig[] = [
@@ -50,6 +55,26 @@ export default function MigratePage() {
     });
     return initial;
   });
+  const [completedStatus, setCompletedStatus] = useState<Record<string, MigrationStatusInfo>>({});
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  // Check which migrations have been completed on mount
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/migrate/status');
+        if (res.ok) {
+          const data = await res.json();
+          setCompletedStatus(data.status || {});
+        }
+      } catch (err) {
+        console.error('Failed to check migration status:', err);
+      } finally {
+        setLoadingStatus(false);
+      }
+    }
+    checkStatus();
+  }, []);
 
   async function runMigration(migration: MigrationConfig) {
     setStates((prev) => ({
@@ -76,6 +101,17 @@ export default function MigratePage() {
           error: '',
         },
       }));
+
+      // Refresh completion status after successful migration
+      try {
+        const statusRes = await fetch('/api/migrate/status');
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setCompletedStatus(statusData.status || {});
+        }
+      } catch {
+        // Ignore status refresh errors
+      }
     } catch (err) {
       setStates((prev) => ({
         ...prev,
@@ -101,20 +137,39 @@ export default function MigratePage() {
       <div className="space-y-6">
         {MIGRATIONS.map((migration) => {
           const state = states[migration.id];
+          const completed = completedStatus[migration.id];
 
           return (
             <div key={migration.id} className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-1">
-                {migration.name}
-              </h2>
-              <p className="text-slate-600 text-sm mb-4">{migration.description}</p>
+              <div className="flex items-start justify-between mb-1">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {migration.name}
+                </h2>
+                {!loadingStatus && completed?.completed && state.status === 'idle' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Completed
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-600 text-sm mb-2">{migration.description}</p>
+              {!loadingStatus && completed?.completed && completed.details && state.status === 'idle' && (
+                <p className="text-xs text-slate-500 mb-4">{completed.details}</p>
+              )}
+              {!completed?.details && <div className="mb-2" />}
 
               {state.status === 'idle' && (
                 <button
                   onClick={() => runMigration(migration)}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium text-sm"
+                  className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                    completed?.completed
+                      ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-amber-600 text-white hover:bg-amber-700'
+                  }`}
                 >
-                  Run Migration
+                  {completed?.completed ? 'Run Again' : 'Run Migration'}
                 </button>
               )}
 
