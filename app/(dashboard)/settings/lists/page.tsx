@@ -186,7 +186,9 @@ function ManagedListsContent() {
 
   // When items load and we have a pending edit ID, start editing that item
   useEffect(() => {
-    if (pendingEditId !== null && items.length > 0 && !loading) {
+    const typeParam = searchParams.get('type');
+    // Only try to edit if we're on the correct list and items are loaded
+    if (pendingEditId !== null && items.length > 0 && !loading && activeList === typeParam) {
       const itemToEdit = items.find(item => item.id === pendingEditId);
       if (itemToEdit) {
         startEdit(itemToEdit);
@@ -194,11 +196,12 @@ function ManagedListsContent() {
         router.replace('/settings/lists', { scroll: false });
         setPendingEditId(null);
       }
-      // Don't clear pendingEditId if item not found - might still be loading
     }
-  }, [items, pendingEditId, loading, router]);
+  }, [items, pendingEditId, loading, router, activeList, searchParams]);
 
   useEffect(() => {
+    // Clear items when switching lists to prevent finding wrong item
+    setItems([]);
     fetchItems();
   }, [activeList]);
 
