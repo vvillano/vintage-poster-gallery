@@ -1848,7 +1848,18 @@ export default function PosterDetailPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-amber-900">{linkedArtist.name}</h4>
+                              {linkedArtist.wikipediaUrl ? (
+                                <a
+                                  href={linkedArtist.wikipediaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-amber-900 hover:text-blue-600 hover:underline"
+                                >
+                                  {linkedArtist.name}
+                                </a>
+                              ) : (
+                                <h4 className="font-medium text-amber-900">{linkedArtist.name}</h4>
+                              )}
                               {linkedArtist.verified && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -1887,7 +1898,7 @@ export default function PosterDetailPage() {
                                 </a>
                               )}
                               <Link
-                                href="/settings/lists"
+                                href={`/settings/lists?type=artists&edit=${linkedArtist.id}`}
                                 className="text-xs text-amber-600 hover:text-amber-800 hover:underline"
                               >
                                 View Profile →

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface ListItem {
@@ -150,6 +151,8 @@ const LIST_CONFIGS: ListConfig[] = [
 ];
 
 export default function ManagedListsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeList, setActiveList] = useState<string>('media-types');
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,11 +162,38 @@ export default function ManagedListsPage() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [fetchingWikipedia, setFetchingWikipedia] = useState(false);
+  const [pendingEditId, setPendingEditId] = useState<number | null>(null);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
 
   // Types that support Wikipedia fetching
   const wikipediaEnabledTypes = ['printers', 'publishers', 'artists'];
+
+  // Handle URL params for deep linking (e.g., /settings/lists?type=artists&edit=123)
+  useEffect(() => {
+    const typeParam = searchParams.get('type');
+    const editParam = searchParams.get('edit');
+
+    if (typeParam && LIST_CONFIGS.some(c => c.key === typeParam)) {
+      setActiveList(typeParam);
+      if (editParam) {
+        setPendingEditId(parseInt(editParam));
+      }
+    }
+  }, [searchParams]);
+
+  // When items load and we have a pending edit ID, start editing that item
+  useEffect(() => {
+    if (pendingEditId !== null && items.length > 0 && !loading) {
+      const itemToEdit = items.find(item => item.id === pendingEditId);
+      if (itemToEdit) {
+        startEdit(itemToEdit);
+        // Clear the URL params after editing starts
+        router.replace('/settings/lists', { scroll: false });
+      }
+      setPendingEditId(null);
+    }
+  }, [items, pendingEditId, loading]);
 
   useEffect(() => {
     fetchItems();

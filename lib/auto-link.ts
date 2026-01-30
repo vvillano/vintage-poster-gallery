@@ -330,6 +330,7 @@ Return ONLY valid JSON with these fields (use null for unknown):
 
 /**
  * Find or create a printer record, auto-fetching Wikipedia data if creating new
+ * Also updates existing records if they have incomplete data (no Wikipedia URL)
  * Returns the printer ID for linking
  */
 export async function findOrCreatePrinter(
@@ -343,15 +344,70 @@ export async function findOrCreatePrinter(
   try {
     // First, check if printer already exists (by name or alias)
     const existingResult = await sql`
-      SELECT id, name FROM printers
+      SELECT id, name, location, country, founded_year, wikipedia_url, bio, image_url FROM printers
       WHERE LOWER(name) = LOWER(${printerName})
          OR ${printerName} = ANY(aliases)
       LIMIT 1
     `;
 
     if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+
+      // Check if the existing record is incomplete (no Wikipedia data)
+      const isIncomplete = !existing.wikipedia_url &&
+                          !existing.location &&
+                          !existing.country &&
+                          !existing.founded_year &&
+                          !existing.bio;
+
+      if (isIncomplete) {
+        console.log(`Existing printer "${printerName}" has incomplete data, fetching Wikipedia...`);
+
+        // Try to fetch Wikipedia data for the existing incomplete record
+        const wikiData = await searchWikipedia(printerName, 'printer');
+
+        let location = wikiData?.location;
+        let country = wikiData?.country;
+        let foundedYear = wikiData?.foundedYear;
+        let closedYear = wikiData?.closedYear;
+        let bio = wikiData?.description;
+        let wikipediaUrl = wikiData?.wikipediaUrl;
+        let imageUrl = wikiData?.imageUrl;
+
+        // If Wikipedia didn't find data, try Claude AI research
+        if (!wikiData || (!wikiData.location && !wikiData.country && !wikiData.foundedYear)) {
+          console.log(`Wikipedia search failed for "${printerName}", trying Claude research...`);
+          const claudeData = await researchWithClaude(printerName, 'printer');
+          if (claudeData) {
+            location = location || claudeData.location;
+            country = country || claudeData.country;
+            foundedYear = foundedYear || claudeData.foundedYear;
+            closedYear = closedYear || claudeData.closedYear;
+            bio = bio || claudeData.bio;
+          }
+        }
+
+        // Update the existing record with the fetched data
+        if (location || country || foundedYear || bio || wikipediaUrl) {
+          await sql`
+            UPDATE printers SET
+              location = COALESCE(${location || null}, location),
+              country = COALESCE(${country || null}, country),
+              founded_year = COALESCE(${foundedYear || null}, founded_year),
+              closed_year = COALESCE(${closedYear || null}, closed_year),
+              wikipedia_url = COALESCE(${wikipediaUrl || null}, wikipedia_url),
+              bio = COALESCE(${bio || null}, bio),
+              image_url = COALESCE(${imageUrl || null}, image_url),
+              verified = ${wikipediaUrl ? true : false} OR verified,
+              updated_at = NOW()
+            WHERE id = ${existing.id}
+          `;
+          console.log(`Updated printer "${printerName}" with Wikipedia/Claude data`);
+        }
+      }
+
       return {
-        printerId: existingResult.rows[0].id,
+        printerId: existing.id,
         isNew: false,
       };
     }
@@ -412,6 +468,7 @@ export async function findOrCreatePrinter(
 
 /**
  * Find or create a publisher record, auto-fetching Wikipedia data if creating new
+ * Also updates existing records if they have incomplete data (no Wikipedia URL)
  * Returns the publisher ID for linking
  */
 export async function findOrCreatePublisher(
@@ -424,15 +481,70 @@ export async function findOrCreatePublisher(
   try {
     // First, check if publisher already exists (by name or alias)
     const existingResult = await sql`
-      SELECT id, name FROM publishers
+      SELECT id, name, publication_type, country, founded_year, wikipedia_url, bio, image_url FROM publishers
       WHERE LOWER(name) = LOWER(${publicationName})
          OR ${publicationName} = ANY(aliases)
       LIMIT 1
     `;
 
     if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+
+      // Check if the existing record is incomplete (no Wikipedia data)
+      const isIncomplete = !existing.wikipedia_url &&
+                          !existing.publication_type &&
+                          !existing.country &&
+                          !existing.founded_year &&
+                          !existing.bio;
+
+      if (isIncomplete) {
+        console.log(`Existing publisher "${publicationName}" has incomplete data, fetching Wikipedia...`);
+
+        // Try to fetch Wikipedia data for the existing incomplete record
+        const wikiData = await searchWikipedia(publicationName, 'publisher');
+
+        let publicationType = wikiData?.publicationType;
+        let country = wikiData?.country;
+        let foundedYear = wikiData?.foundedYear;
+        let ceasedYear = wikiData?.ceasedYear;
+        let bio = wikiData?.description;
+        let wikipediaUrl = wikiData?.wikipediaUrl;
+        let imageUrl = wikiData?.imageUrl;
+
+        // If Wikipedia didn't find data, try Claude AI research
+        if (!wikiData || (!wikiData.publicationType && !wikiData.country && !wikiData.foundedYear)) {
+          console.log(`Wikipedia search failed for "${publicationName}", trying Claude research...`);
+          const claudeData = await researchWithClaude(publicationName, 'publisher');
+          if (claudeData) {
+            publicationType = publicationType || claudeData.publicationType;
+            country = country || claudeData.country;
+            foundedYear = foundedYear || claudeData.foundedYear;
+            ceasedYear = ceasedYear || claudeData.ceasedYear;
+            bio = bio || claudeData.bio;
+          }
+        }
+
+        // Update the existing record with the fetched data
+        if (publicationType || country || foundedYear || bio || wikipediaUrl) {
+          await sql`
+            UPDATE publishers SET
+              publication_type = COALESCE(${publicationType || null}, publication_type),
+              country = COALESCE(${country || null}, country),
+              founded_year = COALESCE(${foundedYear || null}, founded_year),
+              ceased_year = COALESCE(${ceasedYear || null}, ceased_year),
+              wikipedia_url = COALESCE(${wikipediaUrl || null}, wikipedia_url),
+              bio = COALESCE(${bio || null}, bio),
+              image_url = COALESCE(${imageUrl || null}, image_url),
+              verified = ${wikipediaUrl ? true : false} OR verified,
+              updated_at = NOW()
+            WHERE id = ${existing.id}
+          `;
+          console.log(`Updated publisher "${publicationName}" with Wikipedia/Claude data`);
+        }
+      }
+
       return {
-        publisherId: existingResult.rows[0].id,
+        publisherId: existing.id,
         isNew: false,
       };
     }
@@ -493,6 +605,7 @@ export async function findOrCreatePublisher(
 
 /**
  * Find or create an artist record, auto-fetching Wikipedia data if creating new
+ * Also updates existing records if they have incomplete data (no Wikipedia URL)
  * Returns the artist ID for linking
  */
 export async function findOrCreateArtist(
@@ -506,15 +619,66 @@ export async function findOrCreateArtist(
   try {
     // First, check if artist already exists (by name or alias)
     const existingResult = await sql`
-      SELECT id, name FROM artists
+      SELECT id, name, nationality, birth_year, death_year, wikipedia_url, bio, image_url FROM artists
       WHERE LOWER(name) = LOWER(${artistName})
          OR ${artistName} = ANY(aliases)
       LIMIT 1
     `;
 
     if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+
+      // Check if the existing record is incomplete (no Wikipedia data)
+      const isIncomplete = !existing.wikipedia_url &&
+                          !existing.nationality &&
+                          !existing.birth_year &&
+                          !existing.bio;
+
+      if (isIncomplete) {
+        console.log(`Existing artist "${artistName}" has incomplete data, fetching Wikipedia...`);
+
+        // Try to fetch Wikipedia data for the existing incomplete record
+        const wikiData = await searchWikipedia(artistName, 'artist');
+
+        let nationality = wikiData?.nationality;
+        let birthYear = wikiData?.birthYear;
+        let deathYear = wikiData?.deathYear;
+        let bio = wikiData?.description;
+        let wikipediaUrl = wikiData?.wikipediaUrl;
+        let imageUrl = wikiData?.imageUrl;
+
+        // If Wikipedia didn't find data, try Claude AI research
+        if (!wikiData || (!wikiData.nationality && !wikiData.birthYear)) {
+          console.log(`Wikipedia search failed for "${artistName}", trying Claude research...`);
+          const claudeData = await researchWithClaude(artistName, 'artist');
+          if (claudeData) {
+            nationality = nationality || claudeData.nationality;
+            birthYear = birthYear || claudeData.birthYear;
+            deathYear = deathYear || claudeData.deathYear;
+            bio = bio || claudeData.bio;
+          }
+        }
+
+        // Update the existing record with the fetched data
+        if (nationality || birthYear || bio || wikipediaUrl) {
+          await sql`
+            UPDATE artists SET
+              nationality = COALESCE(${nationality || null}, nationality),
+              birth_year = COALESCE(${birthYear || null}, birth_year),
+              death_year = COALESCE(${deathYear || null}, death_year),
+              wikipedia_url = COALESCE(${wikipediaUrl || null}, wikipedia_url),
+              bio = COALESCE(${bio || null}, bio),
+              image_url = COALESCE(${imageUrl || null}, image_url),
+              verified = ${wikipediaUrl ? true : false} OR verified,
+              updated_at = NOW()
+            WHERE id = ${existing.id}
+          `;
+          console.log(`Updated artist "${artistName}" with Wikipedia/Claude data`);
+        }
+      }
+
       return {
-        artistId: existingResult.rows[0].id,
+        artistId: existing.id,
         isNew: false,
       };
     }
