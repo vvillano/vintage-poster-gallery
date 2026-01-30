@@ -275,12 +275,12 @@ export async function searchPosters(query: string): Promise<Poster[]> {
 }
 
 /**
- * Find a poster by SKU (exact match)
+ * Find a poster by SKU (case-insensitive exact match)
  */
 export async function findPosterBySku(sku: string): Promise<Poster | null> {
   const result = await sql`
     SELECT * FROM posters
-    WHERE sku = ${sku}
+    WHERE LOWER(sku) = LOWER(${sku})
     LIMIT 1
   `;
 

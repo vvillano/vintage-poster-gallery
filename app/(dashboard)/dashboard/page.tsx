@@ -80,7 +80,7 @@ export default function DashboardPage() {
             href="/upload"
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"
           >
-            + Upload New Poster
+            + Upload New Item
           </Link>
         </div>
 
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by artist, title, technique..."
+              placeholder="Search by artist, title, SKU, technique..."
               className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
             <button
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
-            <div className="text-sm text-slate-600">Total Posters</div>
+            <div className="text-sm text-slate-600">Total Items</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="text-3xl font-bold text-green-600">{stats.analyzed}</div>
@@ -132,19 +132,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Posters Grid */}
+      {/* Items Grid */}
       {posters.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <div className="text-6xl mb-4">🖼️</div>
           <p className="text-slate-600 mb-4 text-lg">
-            {searchQuery ? 'No posters found matching your search' : 'No posters uploaded yet'}
+            {searchQuery ? 'No items found matching your search' : 'No items uploaded yet'}
           </p>
           {!searchQuery && (
             <Link
               href="/upload"
               className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
             >
-              Upload Your First Poster
+              Upload Your First Item
             </Link>
           )}
         </div>

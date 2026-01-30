@@ -95,7 +95,7 @@ function OpenPageContent() {
           } else if (result?.error) {
             throw new Error(result.error);
           } else {
-            throw new Error('Import did not return a poster ID');
+            throw new Error('Import did not return an item ID');
           }
           return;
         }
@@ -152,7 +152,7 @@ function OpenPageContent() {
         } else if (result?.error) {
           throw new Error(result.error);
         } else {
-          throw new Error('Import did not return a poster ID');
+          throw new Error('Import did not return an item ID');
         }
       } catch (err) {
         console.error('Deep link error:', err);
