@@ -48,6 +48,67 @@ export const RESEARCH_SOURCES = [
   { name: 'eBay Sold', urlTemplate: 'https://www.ebay.com/sch/i.html?_nkw={search}&LH_Complete=1&LH_Sold=1&_sop=13', requiresSubscription: false },
 ] as const;
 
+// =====================
+// Managed Lists Types
+// =====================
+
+// Media Type (Printing Technique)
+export interface MediaType {
+  id: number;
+  name: string;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+// Artist with aliases for name matching
+export interface Artist {
+  id: number;
+  name: string;              // Canonical name
+  aliases: string[];         // Alternative spellings/forms
+  nationality?: string | null;
+  birthYear?: number | null;
+  deathYear?: number | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Internal Tag (separate from public item tags)
+export interface InternalTag {
+  id: number;
+  name: string;
+  color: string;             // Hex color for UI display
+  displayOrder: number;
+  createdAt: Date;
+}
+
+// Source Platform (acquisition source)
+export interface SourcePlatform {
+  id: number;
+  name: string;
+  urlTemplate?: string | null;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+// Physical Location (storage)
+export interface Location {
+  id: number;
+  name: string;
+  description?: string | null;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+// Country of Origin
+export interface Country {
+  id: number;
+  name: string;
+  code?: string | null;      // ISO country code
+  displayOrder: number;
+  createdAt: Date;
+}
+
 // Metafield data from Shopify
 export interface ShopifyMetafieldData {
   namespace: string;

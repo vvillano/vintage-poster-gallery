@@ -12,6 +12,13 @@ export default function SettingsPage() {
       color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',
     },
     {
+      title: 'Managed Lists',
+      description: 'Configure dropdown options: Media types, Artists, Internal tags, Sources, Locations, and Countries.',
+      href: '/settings/lists',
+      icon: '📋',
+      color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
+    },
+    {
       title: 'Research Sites',
       description: 'Manage price research sites for comparable sales. Configure search URLs and store login credentials.',
       href: '/settings/research-sites',
