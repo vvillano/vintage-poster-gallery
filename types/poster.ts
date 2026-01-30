@@ -141,6 +141,43 @@ export interface LinkedPublisher {
   verified: boolean;
 }
 
+// Book (source publication for antique prints/plates)
+export interface Book {
+  id: number;
+  title: string;                    // "Birds of Pennsylvania"
+  author?: string | null;           // "Dr. B.H. Warren"
+  publicationYear?: number | null;  // 1890
+  publisherId?: number | null;      // FK to publishers table (publishing house)
+  contributors?: string | null;     // "Illustrated by John James Audubon, engraved by Robert Havell"
+  country?: string | null;          // "United States"
+  edition?: string | null;          // "Second Edition"
+  volumeInfo?: string | null;       // "Volume II"
+  notes?: string | null;            // Research notes
+  wikipediaUrl?: string | null;
+  bio?: string | null;              // Description of the book
+  imageUrl?: string | null;         // Cover image
+  verified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Linked book data for display in poster detail
+export interface LinkedBook {
+  id: number;
+  title: string;
+  author?: string | null;
+  publicationYear?: number | null;
+  publisherId?: number | null;
+  contributors?: string | null;
+  country?: string | null;
+  edition?: string | null;
+  volumeInfo?: string | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  verified: boolean;
+}
+
 // Printer verification checklist for rigorous identification
 export interface PrinterVerification {
   marksReadable: boolean;        // Are printer marks/stamps visible?
@@ -259,6 +296,16 @@ export interface Poster {
   publisherId?: number | null;  // FK to publishers table
   publisherConfidence?: string | null;  // confirmed, likely, uncertain, unknown
   publisherSource?: string | null;  // Where the publisher was found
+
+  // Publication identification (for periodicals - magazines, newspapers, weeklies)
+  publication?: string | null;  // Normalized publication name (e.g., "Harper's Weekly")
+  publicationConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  publicationSource?: string | null;  // How the publication was identified
+
+  // Book source (for antique prints/plates from books)
+  bookId?: number | null;  // FK to books table
+  linkedBook?: LinkedBook | null;  // Joined book data for display
+
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
   validationNotes?: string | null;  // AI notes on validating initial information
@@ -386,9 +433,16 @@ export interface PosterAnalysis {
     periodMovement: string;
     culturalSignificance: string;
     originalPurpose: string;
-    publication?: string;  // For cover art/illustrations: The New Yorker, Fortune, etc.
-    advertiser?: string;   // For advertising: Cognac Briand, Campari, etc.
-    eraContext?: string;   // How contemporary audiences perceived it, cultural moment
+    // For periodicals (magazines, newspapers, illustrated weeklies)
+    publication?: string;  // Publication name: "Harper's Weekly", "The New Yorker", etc.
+    publicationConfidence?: 'confirmed' | 'likely' | 'uncertain' | 'unknown';
+    publicationSource?: string;  // How publication was identified
+    // For book plates/prints
+    bookTitle?: string;     // Book title if from a book source
+    bookAuthor?: string;    // Book author if known
+    bookYear?: number;      // Book publication year if known
+    advertiser?: string;    // For advertising: Cognac Briand, Campari, etc.
+    eraContext?: string;    // How contemporary audiences perceived it, cultural moment
     timeAndPlace?: {
       world?: string;      // US perspective: What Americans experienced, global events in US news
       regional?: string;   // Country of origin: Politics, economy, social movements
@@ -487,6 +541,12 @@ export interface UpdatePosterInput {
   publisherId?: number | null;
   publisherConfidence?: string;
   publisherSource?: string;
+  // Publication (periodicals) fields
+  publication?: string;
+  publicationConfidence?: string;
+  publicationSource?: string;
+  // Book source fields
+  bookId?: number | null;
   rarityAnalysis?: string;
   valueInsights?: string;
   validationNotes?: string;

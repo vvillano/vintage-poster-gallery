@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -231,6 +231,10 @@ export default function PosterDetailPage() {
   // Publisher linking state
   const [linkedPublisher, setLinkedPublisher] = useState<LinkedPublisher | null>(null);
   const [unlinkingPublisher, setUnlinkingPublisher] = useState(false);
+
+  // Book linking state
+  const [linkedBook, setLinkedBook] = useState<LinkedBook | null>(null);
+  const [unlinkingBook, setUnlinkingBook] = useState(false);
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -401,6 +405,33 @@ export default function PosterDetailPage() {
     fetchLinkedPublisher();
   }, [poster?.id, poster?.publisherId]);
 
+  // Fetch linked book when poster loads
+  useEffect(() => {
+    async function fetchLinkedBook() {
+      if (!poster?.bookId) {
+        setLinkedBook(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/posters/${poster.id}/book-link`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked && data.book) {
+            setLinkedBook(data.book);
+          } else {
+            setLinkedBook(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch linked book:', err);
+        setLinkedBook(null);
+      }
+    }
+
+    fetchLinkedBook();
+  }, [poster?.id, poster?.bookId]);
+
   async function fetchPoster() {
     try {
       setLoading(true);
@@ -486,6 +517,30 @@ export default function PosterDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to unlink publisher');
     } finally {
       setUnlinkingPublisher(false);
+    }
+  }
+
+  async function unlinkBook() {
+    if (!poster) return;
+
+    try {
+      setUnlinkingBook(true);
+      const res = await fetch(`/api/posters/${poster.id}/book-link`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to unlink book');
+      }
+
+      // Update poster to clear bookId
+      setPoster(prev => prev ? { ...prev, bookId: null } : null);
+      setLinkedBook(null);
+    } catch (err) {
+      console.error('Failed to unlink book:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlink book');
+    } finally {
+      setUnlinkingBook(false);
     }
   }
 
@@ -1947,7 +2002,7 @@ export default function PosterDetailPage() {
                   </div>
 
                   {/* Dimensions */}
-                  <div>
+                  <div className="border-b border-slate-100 pb-3">
                     <label className="text-sm font-medium text-slate-700">
                       Dimensions
                     </label>
@@ -1955,6 +2010,195 @@ export default function PosterDetailPage() {
                       {poster.dimensionsEstimate || 'Unknown'}
                     </p>
                   </div>
+
+                  {/* Publication with Confidence */}
+                  {(poster.publication || linkedPublisher) && (
+                    <div className="border-b border-slate-100 pb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-slate-700">Publication</label>
+                        {poster.publicationConfidence && (
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            poster.publicationConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            poster.publicationConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                            poster.publicationConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {poster.publicationConfidence}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-900 font-medium">{poster.publication || linkedPublisher?.name}</p>
+                      {poster.publicationSource && (
+                        <p className="text-xs text-slate-500 mt-1">Source: {poster.publicationSource}</p>
+                      )}
+
+                      {/* Linked Publisher Card */}
+                      {linkedPublisher && (
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {linkedPublisher.wikipediaUrl ? (
+                                  <a
+                                    href={linkedPublisher.wikipediaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-amber-900 hover:text-blue-600 hover:underline"
+                                  >
+                                    {linkedPublisher.name}
+                                  </a>
+                                ) : (
+                                  <h4 className="font-medium text-amber-900">{linkedPublisher.name}</h4>
+                                )}
+                                {linkedPublisher.verified && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                              {(linkedPublisher.publicationType || linkedPublisher.country || linkedPublisher.foundedYear) && (
+                                <p className="text-sm text-amber-800">
+                                  {linkedPublisher.publicationType}
+                                  {linkedPublisher.publicationType && linkedPublisher.country && ' · '}
+                                  {linkedPublisher.country}
+                                  {(linkedPublisher.publicationType || linkedPublisher.country) && linkedPublisher.foundedYear && ' · '}
+                                  {linkedPublisher.foundedYear && (
+                                    <span>Founded {linkedPublisher.foundedYear}{linkedPublisher.ceasedYear ? `–${linkedPublisher.ceasedYear}` : ''}</span>
+                                  )}
+                                </p>
+                              )}
+                              {linkedPublisher.bio && (
+                                <p className="text-xs text-amber-700 mt-1 line-clamp-2">
+                                  {linkedPublisher.bio}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2">
+                                {linkedPublisher.wikipediaUrl && (
+                                  <a
+                                    href={linkedPublisher.wikipediaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    Wikipedia →
+                                  </a>
+                                )}
+                                <Link
+                                  href={`/settings/lists?type=publishers&edit=${linkedPublisher.id}`}
+                                  className="text-xs text-amber-600 hover:text-amber-800 hover:underline"
+                                >
+                                  View Profile →
+                                </Link>
+                              </div>
+                            </div>
+                            <button
+                              onClick={unlinkPublisher}
+                              disabled={unlinkingPublisher}
+                              className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+                              title="Remove publisher link"
+                            >
+                              {unlinkingPublisher ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Book Source (for antique prints/plates) */}
+                  {linkedBook && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-slate-700">Source Book</label>
+                        {linkedBook.verified && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-900 font-medium">{linkedBook.title}</p>
+                      {(linkedBook.author || linkedBook.publicationYear) && (
+                        <p className="text-sm text-slate-600">
+                          {linkedBook.author && `by ${linkedBook.author}`}
+                          {linkedBook.author && linkedBook.publicationYear && ' · '}
+                          {linkedBook.publicationYear && `${linkedBook.publicationYear}`}
+                        </p>
+                      )}
+
+                      {/* Linked Book Card */}
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {linkedBook.wikipediaUrl ? (
+                                <a
+                                  href={linkedBook.wikipediaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-amber-900 hover:text-blue-600 hover:underline"
+                                >
+                                  {linkedBook.title}
+                                </a>
+                              ) : (
+                                <h4 className="font-medium text-amber-900">{linkedBook.title}</h4>
+                              )}
+                            </div>
+                            {(linkedBook.author || linkedBook.publicationYear || linkedBook.country) && (
+                              <p className="text-sm text-amber-800">
+                                {linkedBook.author}
+                                {linkedBook.author && linkedBook.publicationYear && ' · '}
+                                {linkedBook.publicationYear}
+                                {(linkedBook.author || linkedBook.publicationYear) && linkedBook.country && ' · '}
+                                {linkedBook.country}
+                              </p>
+                            )}
+                            {linkedBook.contributors && (
+                              <p className="text-xs text-amber-700 mt-1 italic">
+                                {linkedBook.contributors}
+                              </p>
+                            )}
+                            {linkedBook.bio && (
+                              <p className="text-xs text-amber-700 mt-1 line-clamp-2">
+                                {linkedBook.bio}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2">
+                              {linkedBook.wikipediaUrl && (
+                                <a
+                                  href={linkedBook.wikipediaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  Wikipedia →
+                                </a>
+                              )}
+                              <Link
+                                href={`/settings/lists?type=books&edit=${linkedBook.id}`}
+                                className="text-xs text-amber-600 hover:text-amber-800 hover:underline"
+                              >
+                                View Profile →
+                              </Link>
+                            </div>
+                          </div>
+                          <button
+                            onClick={unlinkBook}
+                            disabled={unlinkingBook}
+                            className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+                            title="Remove book link"
+                          >
+                            {unlinkingBook ? 'Unlinking...' : 'Unlink'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

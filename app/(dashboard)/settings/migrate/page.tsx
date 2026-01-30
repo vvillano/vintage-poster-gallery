@@ -51,6 +51,13 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/printer-publisher',
     successLink: { href: '/settings/lists', label: 'Manage Printers & Publishers' },
   },
+  {
+    id: 'publication-books',
+    name: 'Publications & Books',
+    description: 'Add publication confidence fields and create books table for antique print sources. Enables tracking book sources (natural history, atlases, etc.) with author and contributor info.',
+    endpoint: '/api/migrate/publication-books',
+    successLink: { href: '/settings/lists', label: 'Manage Books' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';

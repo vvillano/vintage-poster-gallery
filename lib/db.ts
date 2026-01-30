@@ -118,6 +118,9 @@ export async function updatePosterAnalysis(
       printer_verification = ${analysis.printerVerification ? JSON.stringify(analysis.printerVerification) : null},
       publisher_confidence = ${analysis.publisherConfidence || null},
       publisher_source = ${analysis.publisherSource || null},
+      publication = ${analysis.publication || null},
+      publication_confidence = ${analysis.publicationConfidence || null},
+      publication_source = ${analysis.publicationSource || null},
       rarity_analysis = ${analysis.rarityAnalysis || null},
       value_insights = ${analysis.valueInsights || null},
       validation_notes = ${analysis.validationNotes || null},
@@ -548,6 +551,12 @@ function dbRowToPoster(row: any): Poster {
     publisherId: row.publisher_id,
     publisherConfidence: row.publisher_confidence,
     publisherSource: row.publisher_source,
+    // Publication (periodicals) fields
+    publication: row.publication,
+    publicationConfidence: row.publication_confidence,
+    publicationSource: row.publication_source,
+    // Book source fields
+    bookId: row.book_id,
     rarityAnalysis: row.rarity_analysis,
     valueInsights: row.value_insights,
     validationNotes: row.validation_notes,

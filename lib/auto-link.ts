@@ -862,7 +862,82 @@ export async function findOrCreateArtist(
 }
 
 /**
- * Auto-link a poster to printer, publisher, and artist based on analysis results
+ * Find or create a book record for antique prints/plates
+ * Returns the book ID for linking
+ */
+export async function findOrCreateBook(
+  bookTitle: string,
+  bookAuthor?: string,
+  bookYear?: number
+): Promise<{ bookId: number; isNew: boolean } | null> {
+  if (!bookTitle) {
+    return null;
+  }
+
+  try {
+    // First, check if book already exists by title (case-insensitive)
+    const existingResult = await sql`
+      SELECT id, title, author, publication_year, wikipedia_url, bio FROM books
+      WHERE LOWER(title) = LOWER(${bookTitle})
+      LIMIT 1
+    `;
+
+    if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+
+      // Check if the existing record is incomplete (no Wikipedia data and missing author/year)
+      const isIncomplete = !existing.wikipedia_url &&
+                          !existing.bio &&
+                          (!existing.author && bookAuthor) ||
+                          (!existing.publication_year && bookYear);
+
+      if (isIncomplete) {
+        console.log(`Existing book "${bookTitle}" has incomplete data, updating...`);
+
+        // Update with any new data we have
+        await sql`
+          UPDATE books SET
+            author = COALESCE(${bookAuthor || null}, author),
+            publication_year = COALESCE(${bookYear || null}, publication_year),
+            updated_at = NOW()
+          WHERE id = ${existing.id}
+        `;
+        console.log(`Updated book "${bookTitle}" with additional data`);
+      }
+
+      return {
+        bookId: existing.id,
+        isNew: false,
+      };
+    }
+
+    // Not found - create new book
+    console.log(`Creating new book: ${bookTitle}`);
+
+    // Insert new book with what we have
+    const insertResult = await sql`
+      INSERT INTO books (title, author, publication_year, verified)
+      VALUES (
+        ${bookTitle},
+        ${bookAuthor || null},
+        ${bookYear || null},
+        false
+      )
+      RETURNING id
+    `;
+
+    return {
+      bookId: insertResult.rows[0].id,
+      isNew: true,
+    };
+  } catch (error) {
+    console.error('Error finding/creating book:', error);
+    return null;
+  }
+}
+
+/**
+ * Auto-link a poster to printer, publisher, artist, and book based on analysis results
  * Call this after updatePosterAnalysis to set the foreign key links
  */
 export async function autoLinkPosterEntities(
@@ -873,16 +948,21 @@ export async function autoLinkPosterEntities(
     printer?: string;
     printerConfidence?: string;
     publication?: string;
+    bookTitle?: string;
+    bookAuthor?: string;
+    bookYear?: number;
   }
 ): Promise<{
   artistLinked?: { id: number; isNew: boolean };
   printerLinked?: { id: number; isNew: boolean };
   publisherLinked?: { id: number; isNew: boolean };
+  bookLinked?: { id: number; isNew: boolean };
 }> {
   const result: {
     artistLinked?: { id: number; isNew: boolean };
     printerLinked?: { id: number; isNew: boolean };
     publisherLinked?: { id: number; isNew: boolean };
+    bookLinked?: { id: number; isNew: boolean };
   } = {};
 
   // Auto-link artist if confirmed
@@ -918,6 +998,22 @@ export async function autoLinkPosterEntities(
         WHERE id = ${posterId}
       `;
       result.publisherLinked = { id: publisherResult.publisherId, isNew: publisherResult.isNew };
+    }
+  }
+
+  // Auto-link book if book title is identified (for antique prints/plates)
+  if (analysis.bookTitle) {
+    const bookResult = await findOrCreateBook(
+      analysis.bookTitle,
+      analysis.bookAuthor,
+      analysis.bookYear
+    );
+    if (bookResult) {
+      await sql`
+        UPDATE posters SET book_id = ${bookResult.bookId}, last_modified = NOW()
+        WHERE id = ${posterId}
+      `;
+      result.bookLinked = { id: bookResult.bookId, isNew: bookResult.isNew };
     }
   }
 

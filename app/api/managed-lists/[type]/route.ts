@@ -29,6 +29,12 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
     updateColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
   },
+  'books': {
+    table: 'books',
+    columns: ['id', 'title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'created_at', 'updated_at'],
+    insertColumns: ['title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
+    updateColumns: ['title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
+  },
   'internal-tags': {
     table: 'internal_tags',
     columns: ['id', 'name', 'color', 'display_order', 'created_at'],
@@ -91,6 +97,10 @@ export async function GET(
     if (type === 'artists' || type === 'printers' || type === 'publishers') {
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY name ASC`
+      );
+    } else if (type === 'books') {
+      result = await sql.query(
+        `SELECT * FROM ${config.table} ORDER BY title ASC`
       );
     } else {
       result = await sql.query(
@@ -210,6 +220,28 @@ export async function POST(
             ${body.country || null},
             ${body.foundedYear || null},
             ${body.ceasedYear || null},
+            ${body.notes || null},
+            ${body.wikipediaUrl || null},
+            ${body.bio || null},
+            ${body.imageUrl || null},
+            ${body.verified || false}
+          )
+          RETURNING *
+        `;
+        break;
+      }
+      case 'books': {
+        result = await sql`
+          INSERT INTO books (title, author, publication_year, publisher_id, contributors, country, edition, volume_info, notes, wikipedia_url, bio, image_url, verified)
+          VALUES (
+            ${body.title},
+            ${body.author || null},
+            ${body.publicationYear || null},
+            ${body.publisherId || null},
+            ${body.contributors || null},
+            ${body.country || null},
+            ${body.edition || null},
+            ${body.volumeInfo || null},
             ${body.notes || null},
             ${body.wikipediaUrl || null},
             ${body.bio || null},
@@ -377,6 +409,29 @@ export async function PUT(
             country = ${body.country || null},
             founded_year = ${body.foundedYear || null},
             ceased_year = ${body.ceasedYear || null},
+            notes = ${body.notes || null},
+            wikipedia_url = ${body.wikipediaUrl || null},
+            bio = ${body.bio || null},
+            image_url = ${body.imageUrl || null},
+            verified = ${body.verified || false},
+            updated_at = NOW()
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      }
+      case 'books': {
+        result = await sql`
+          UPDATE books
+          SET
+            title = ${body.title},
+            author = ${body.author || null},
+            publication_year = ${body.publicationYear || null},
+            publisher_id = ${body.publisherId || null},
+            contributors = ${body.contributors || null},
+            country = ${body.country || null},
+            edition = ${body.edition || null},
+            volume_info = ${body.volumeInfo || null},
             notes = ${body.notes || null},
             wikipedia_url = ${body.wikipediaUrl || null},
             bio = ${body.bio || null},

@@ -129,6 +129,35 @@ export async function GET() {
       status['printer-publisher'] = { completed: false };
     }
 
+    // Check Publication & Books migration - look for books table and publication columns
+    try {
+      const booksResult = await sql`
+        SELECT COUNT(*) as count FROM books
+      `;
+      await sql`SELECT publication, publication_confidence, book_id FROM posters LIMIT 1`;
+
+      const booksCount = parseInt(booksResult.rows[0].count || '0');
+
+      // Count linked posters
+      const linkedResult = await sql`
+        SELECT COUNT(*) as count FROM posters WHERE book_id IS NOT NULL
+      `;
+      const linkedBooks = parseInt(linkedResult.rows[0].count || '0');
+
+      let details = 'Tables and columns created';
+      const parts = [];
+      if (booksCount > 0) parts.push(`${booksCount} books`);
+      if (linkedBooks > 0) parts.push(`${linkedBooks} linked`);
+      if (parts.length > 0) details = parts.join(', ');
+
+      status['publication-books'] = {
+        completed: true,
+        details,
+      };
+    } catch {
+      status['publication-books'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

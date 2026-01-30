@@ -105,9 +105,9 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
     parts.push(`- Condition Details: "${context.conditionDetails}"`);
   }
 
-  // Only include auction description if it looks like it contains useful catalog info
-  // (not just internal notes like "check inventory" or "needs cleaning")
-  if (context.auctionDescription && context.auctionDescription.length > 50) {
+  // Include auction description as valuable intelligence (lower threshold)
+  const hasAuctionDescription = context.auctionDescription && context.auctionDescription.length > 30;
+  if (hasAuctionDescription) {
     parts.push(`- Auction/Catalog Description: "${context.auctionDescription}"`);
   }
 
@@ -115,12 +115,33 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
     return '';
   }
 
-  return `
+  // Enhanced context section that treats descriptions as valuable intelligence
+  let contextSection = `
 
-EXISTING CATALOG DATA (verify against image):
-The following information exists in our inventory system. Use it as a starting point but VERIFY against what you see in the image. If the data conflicts with visual evidence, trust your analysis and note the discrepancy. If the data is accurate, build upon it with additional details.
+EXISTING CATALOG DATA & PROVENANCE:
+The following information comes from auction catalogs, dealer notes, or prior research. Treat this as VALUABLE INTELLIGENCE - not gospel, but informed context worth considering and building upon.
+
 ${parts.join('\n')}
 `;
+
+  // Add specific instructions for handling auction descriptions
+  if (hasAuctionDescription) {
+    contextSection += `
+IMPORTANT - Look for specific claims in the auction/catalog description:
+- Attribution claims ("attributed to...", "by...", "signed...", "manner of...")
+- Publication sources ("from Harper's Weekly", "New Yorker cover", "Fortune magazine")
+- Date claims ("circa 1890", "published March 1925", "early 20th century")
+- Provenance ("from the collection of...", "estate of...", "ex-library")
+- Historical context the AI might not independently know
+
+For each claim found:
+1. If visual evidence supports it → confirm with high confidence
+2. If visual evidence contradicts it → note the discrepancy in validationNotes
+3. If cannot verify but plausible → accept as likely and note "per catalog description"
+`;
+  }
+
+  return contextSection;
 }
 
 // Construct analysis prompt with optional initial information, research context, product type, and tag list
@@ -199,12 +220,32 @@ PRINTER IDENTIFICATION:
 - Set printerSource: describe WHERE you found the printer info (e.g., "Imp. DAN at bottom right", "style matches Italian theatrical printers")
 - Complete printerVerification checklist for rigorous identification
 
-PUBLICATION & CLIENT (when applicable):
-- For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, Popular Mechanics, etc.)
-- For advertising: Identify the advertiser/client (e.g., Cognac Briand, Campari, Air France)
-- IMPORTANT: The "publication" field should contain ONLY the publication name (e.g., "Popular Mechanics", "The New Yorker"), NOT a description
-- Put any context about the publication (founding date, editorial focus, notable artists) in the eraContext field instead
-- Use publication history to help verify artist identification and date
+PUBLICATION/BOOK IDENTIFICATION (when applicable):
+Identify the SOURCE of this piece - could be a periodical OR a book:
+
+FOR PERIODICALS (magazines, newspapers, illustrated weeklies):
+- Examples: The New Yorker, Fortune, Harper's Weekly, Leslie's Illustrated, La Vie Parisienne, Vogue, Saturday Evening Post, Popular Mechanics, Le Petit Journal
+- Set publication: ONLY the publication name (e.g., "Harper's Weekly")
+- Set publicationConfidence:
+  * confirmed (90-100%): Masthead/title visible, or unmistakable signature style
+  * likely (70-89%): Strong stylistic match, period-appropriate, typical subject matter
+  * uncertain (50-69%): Could be from this publication but not definitive
+  * unknown (<50%): Cannot determine source publication
+- Set publicationSource: How you identified it (e.g., "masthead visible", "typography matches", "illustration style")
+
+FOR BOOK PLATES/PRINTS (natural history, atlases, encyclopedias):
+- Examples: "Birds of America" (Audubon), "Birds of Pennsylvania" (Warren), atlas plates, encyclopedia illustrations
+- Set bookTitle: The book title if identifiable
+- Set bookAuthor: The author if known
+- Set bookYear: Publication year if visible/known
+- Look for: title pages, plate captions, typical natural history/atlas formatting
+- Use same confidence tiers as periodicals
+
+FOR ADVERTISING:
+- Set advertiser: The client (e.g., Cognac Briand, Campari, Air France)
+
+Put context about the publication/book (founding date, editorial focus, notable artists) in the eraContext field.
+Use publication/book history to help verify artist identification and date.
 
 NOTABLE FIGURES - CRITICAL for historical context:
 - Look for names of PEOPLE mentioned anywhere in the image text (corners, margins, captions, body text)
@@ -327,7 +368,7 @@ JSON:
     "dateSource": "",
     "estimatedDimensions": ""
   },
-  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": "", "publication": "", "advertiser": "", "eraContext": "", "timeAndPlace": {"world": "", "regional": "", "local": ""}},
+  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": "", "publication": "", "publicationConfidence": "confirmed|likely|uncertain|unknown", "publicationSource": "", "bookTitle": "", "bookAuthor": "", "bookYear": null, "advertiser": "", "eraContext": "", "timeAndPlace": {"world": "", "regional": "", "local": ""}},
   "technicalAnalysis": {
     "printingTechnique": "",
     "printer": "",
@@ -602,6 +643,10 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     printerConfidence: analysis.technicalAnalysis.printerConfidence || undefined,
     printerSource: analysis.technicalAnalysis.printerSource || undefined,
     printerVerification: analysis.technicalAnalysis.printerVerification || undefined,
+    // Publication (periodical) identification
+    publication: analysis.historicalContext.publication || undefined,
+    publicationConfidence: analysis.historicalContext.publicationConfidence || undefined,
+    publicationSource: analysis.historicalContext.publicationSource || undefined,
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
     validationNotes: analysis.validationNotes || undefined,
