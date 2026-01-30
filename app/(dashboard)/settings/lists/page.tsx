@@ -158,8 +158,12 @@ export default function ManagedListsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [fetchingWikipedia, setFetchingWikipedia] = useState(false);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
+
+  // Types that support Wikipedia fetching
+  const wikipediaEnabledTypes = ['printers', 'publishers', 'artists'];
 
   useEffect(() => {
     fetchItems();
@@ -256,6 +260,77 @@ export default function ManagedListsPage() {
     setFormData(prev => ({ ...prev, [key]: value }));
   }
 
+  async function fetchWikipediaData() {
+    const wikiUrl = formData.wikipediaUrl as string;
+    if (!wikiUrl || !wikiUrl.includes('wikipedia.org')) {
+      setError('Please enter a valid Wikipedia URL first');
+      return;
+    }
+
+    try {
+      setFetchingWikipedia(true);
+      setError('');
+
+      const res = await fetch('/api/wikipedia/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: wikiUrl,
+          type: activeList === 'printers' ? 'printer' : activeList === 'publishers' ? 'publisher' : 'artist',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch Wikipedia data');
+      }
+
+      // Update form fields with extracted data
+      const extracted = data.data;
+      const updates: Record<string, unknown> = {};
+
+      // Common fields
+      if (extracted.description && !formData.bio) {
+        updates.bio = extracted.description;
+      }
+
+      // Printer-specific fields
+      if (activeList === 'printers') {
+        if (extracted.location && !formData.location) updates.location = extracted.location;
+        if (extracted.country && !formData.country) updates.country = extracted.country;
+        if (extracted.foundedYear && !formData.foundedYear) updates.foundedYear = extracted.foundedYear;
+        if (extracted.closedYear && !formData.closedYear) updates.closedYear = extracted.closedYear;
+      }
+
+      // Publisher-specific fields
+      if (activeList === 'publishers') {
+        if (extracted.publicationType && !formData.publicationType) updates.publicationType = extracted.publicationType;
+        if (extracted.country && !formData.country) updates.country = extracted.country;
+        if (extracted.foundedYear && !formData.foundedYear) updates.foundedYear = extracted.foundedYear;
+        if (extracted.ceasedYear && !formData.ceasedYear) updates.ceasedYear = extracted.ceasedYear;
+      }
+
+      // Artist-specific fields
+      if (activeList === 'artists') {
+        if (extracted.nationality && !formData.nationality) updates.nationality = extracted.nationality;
+        if (extracted.birthYear && !formData.birthYear) updates.birthYear = extracted.birthYear;
+        if (extracted.deathYear && !formData.deathYear) updates.deathYear = extracted.deathYear;
+      }
+
+      // Apply updates if any
+      if (Object.keys(updates).length > 0) {
+        setFormData(prev => ({ ...prev, ...updates }));
+      } else {
+        setError('No new data found to populate. Fields may already be filled.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch Wikipedia data');
+    } finally {
+      setFetchingWikipedia(false);
+    }
+  }
+
   function renderField(field: ListConfig['fields'][0]) {
     const value = formData[field.key];
 
@@ -349,14 +424,39 @@ export default function ManagedListsPage() {
           </div>
         );
       case 'url':
+        // Add fetch button for Wikipedia URL field on supported types
+        const showFetchButton = field.key === 'wikipediaUrl' && wikipediaEnabledTypes.includes(activeList);
         return (
-          <input
-            type="url"
-            value={(value as string) || ''}
-            onChange={e => updateFormField(field.key, e.target.value)}
-            placeholder={field.placeholder}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-          />
+          <div className={showFetchButton ? 'flex gap-2' : ''}>
+            <input
+              type="url"
+              value={(value as string) || ''}
+              onChange={e => updateFormField(field.key, e.target.value)}
+              placeholder={field.placeholder}
+              className={`${showFetchButton ? 'flex-1' : 'w-full'} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500`}
+            />
+            {showFetchButton && (
+              <button
+                type="button"
+                onClick={fetchWikipediaData}
+                disabled={fetchingWikipedia || !formData.wikipediaUrl}
+                className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                title="Fetch data from Wikipedia to auto-populate fields"
+              >
+                {fetchingWikipedia ? (
+                  <span className="flex items-center gap-1">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Fetching...
+                  </span>
+                ) : (
+                  'Fetch from Wikipedia'
+                )}
+              </button>
+            )}
+          </div>
         );
       case 'checkbox':
         return (
