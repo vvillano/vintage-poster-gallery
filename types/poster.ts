@@ -160,7 +160,10 @@ export interface Poster {
   // AI Analysis Results
   artist?: string | null;
   artistConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  artistConfidenceScore?: number | null;  // 0-100 percentage
   artistSource?: string | null;  // Where the artist name was found
+  artistSignatureText?: string | null;  // Exact signature text (e.g., "P. Verger")
+  artistVerification?: ArtistVerification | null;  // Verification checklist
   title?: string | null;
   estimatedDate?: string | null;
   dateConfidence?: string | null;  // confirmed, likely, uncertain, unknown
@@ -254,12 +257,25 @@ export interface SimilarProduct {
   condition?: string;  // Condition note if available
 }
 
+// Artist verification checklist for rigorous identification
+export interface ArtistVerification {
+  signatureReadable: boolean;      // Is there a clear signature?
+  signatureText: string;           // Exact text of signature (e.g., "P. Verger")
+  professionVerified: boolean;     // Was this person actually an illustrator/poster artist?
+  eraMatches: boolean;             // Was artist active during the estimated date?
+  styleMatches: boolean;           // Is the style consistent with known works?
+  multipleArtistsWithName: boolean; // Are there other artists with similar names?
+  verificationNotes: string;       // Explanation of verification process and any concerns
+}
+
 // Structured analysis response from Claude
 export interface PosterAnalysis {
   identification: {
-    artist: string;
-    artistConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // How confident is the identification
-    artistSource: string;  // Where the artist name was found (e.g., "signed bottom right", "visible in image", "research")
+    artist: string;                 // Full attributed name (e.g., "Pierre Verger")
+    artistConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // Categorical confidence
+    artistConfidenceScore: number;  // 0-100 percentage for granular confidence
+    artistSource: string;           // Where the artist name was found
+    artistVerification: ArtistVerification;  // Detailed verification checklist
     title: string;
     estimatedDate: string;
     dateConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // How confident is the date
@@ -342,7 +358,10 @@ export interface CreatePosterInput {
 export interface UpdatePosterInput {
   artist?: string;
   artistConfidence?: string;
+  artistConfidenceScore?: number;
   artistSource?: string;
+  artistSignatureText?: string;
+  artistVerification?: ArtistVerification;
   title?: string;
   estimatedDate?: string;
   dateConfidence?: string;

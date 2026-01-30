@@ -2,6 +2,22 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage } from '@/types/poster';
 import { getTagNames } from '@/lib/tags';
 
+/**
+ * Existing data from Shopify metafields to provide as context for analysis
+ * This helps Claude verify and build upon existing catalog information
+ */
+export interface ShopifyAnalysisContext {
+  artist?: string | null;
+  estimatedDate?: string | null;
+  dimensions?: string | null;
+  condition?: string | null;
+  conditionDetails?: string | null;
+  printingTechnique?: string | null;
+  title?: string | null;
+  // Auction description from internal notes (may be mixed with other notes)
+  auctionDescription?: string | null;
+}
+
 // Initialize Anthropic client
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -63,9 +79,59 @@ AVOID: Exclamation points, generic phrases ("perfect for your wall"), casual lan
 EXAMPLES: "marked a turning point in modern design", "turns political graphics into something sharp and unforgettable", "captures the spirit of the era with bold geometric forms"
 `;
 
+/**
+ * Build a context section from Shopify metafield data
+ * This data should be used to verify and enhance the analysis
+ */
+function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
+  const parts: string[] = [];
+
+  if (context.artist) {
+    parts.push(`- Artist: "${context.artist}"`);
+  }
+  if (context.estimatedDate) {
+    parts.push(`- Date: "${context.estimatedDate}"`);
+  }
+  if (context.printingTechnique) {
+    parts.push(`- Medium/Technique: "${context.printingTechnique}"`);
+  }
+  if (context.dimensions) {
+    parts.push(`- Dimensions: "${context.dimensions}"`);
+  }
+  if (context.condition) {
+    parts.push(`- Condition: "${context.condition}"`);
+  }
+  if (context.conditionDetails) {
+    parts.push(`- Condition Details: "${context.conditionDetails}"`);
+  }
+
+  // Only include auction description if it looks like it contains useful catalog info
+  // (not just internal notes like "check inventory" or "needs cleaning")
+  if (context.auctionDescription && context.auctionDescription.length > 50) {
+    parts.push(`- Auction/Catalog Description: "${context.auctionDescription}"`);
+  }
+
+  if (parts.length === 0) {
+    return '';
+  }
+
+  return `
+
+EXISTING CATALOG DATA (verify against image):
+The following information exists in our inventory system. Use it as a starting point but VERIFY against what you see in the image. If the data conflicts with visual evidence, trust your analysis and note the discrepancy. If the data is accurate, build upon it with additional details.
+${parts.join('\n')}
+`;
+}
 
 // Construct analysis prompt with optional initial information, research context, product type, and tag list
-function buildAnalysisPrompt(initialInfo?: string, researchContext?: string, productType?: string, hasSupplementalImages?: boolean, tagList?: string[]): string {
+function buildAnalysisPrompt(
+  initialInfo?: string,
+  researchContext?: string,
+  productType?: string,
+  hasSupplementalImages?: boolean,
+  tagList?: string[],
+  shopifyContext?: ShopifyAnalysisContext
+): string {
   const imageNote = hasSupplementalImages
     ? `\n\nIMPORTANT: Multiple images have been provided. The FIRST image is the primary item being analyzed. Additional images are supplemental reference photos that may show:
 - Different angles or details (back, close-ups of signatures, condition issues)
@@ -76,23 +142,39 @@ Use ALL provided images to inform your analysis, cross-referencing details visib
 
   const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.${imageNote}
 
-CRITICAL - ARTIST IDENTIFICATION:
+CRITICAL - ARTIST IDENTIFICATION (Two-Step Process):
+
+STEP 1: SIGNATURE READING (What is literally visible?)
 1. SYSTEMATICALLY examine ALL FOUR CORNERS of the image for signatures:
    - Lower LEFT corner (very common location for signatures)
    - Lower RIGHT corner (also very common)
    - Upper left and upper right corners
    - Along bottom edge, in margins, or integrated into the design
 2. READ SIGNATURES CAREFULLY letter by letter - do not guess or assume names
-   - If you see "Bade" do NOT assume it says "Paul" or another common name
-   - Transcribe EXACTLY what is written, then research the full artist name
+   - If you see "P. Verger" record EXACTLY "P. Verger" - do not expand to a full name yet
+   - Transcribe EXACTLY what is written in signatureText field
 3. Look for printed artist credits near the title or in small text
-4. CROSS-VERIFY the artist using multiple indicators:
-   - Does the signature match the art style?
-   - Is the publication/era consistent with when this artist was active?
-   - Do other visible text elements (printer, date, publication) support this identification?
-5. Research the exact transcribed name to find the artist's full name and career details
-6. Set artistConfidence: "confirmed" ONLY if clearly signed AND verified through style/context, "likely" if strong evidence, "uncertain" if conflicting indicators, "unknown" if cannot determine
-7. Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'Bade'", "printed credit below image")
+4. Set signatureReadable: true if there's a clear signature, false if none or illegible
+
+STEP 2: ARTIST ATTRIBUTION (Who do we think this is?)
+After recording the exact signature, attempt to identify the full artist:
+1. Research the signature/name to find possible matching artists
+2. VERIFY THE PROFESSION: Was this person actually an illustrator, poster artist, or commercial artist?
+   - If "Pierre Verger" was a photographer/ethnographer, NOT an illustrator, set professionVerified: false
+   - Many names match famous people who were NOT artists - this is a red flag
+3. VERIFY THE ERA: Was this artist active during the estimated date of the piece?
+4. VERIFY THE STYLE: Is this consistent with the artist's known body of work?
+5. CHECK FOR DUPLICATES: Are there multiple artists with similar names? (e.g., multiple "P. Verger"s)
+
+CONFIDENCE SCORING (0-100%):
+- 90-100% (confirmed): Clear signature + profession verified + era matches + style matches
+- 70-89% (likely): Strong evidence but one verification check failed or uncertain
+- 40-69% (uncertain): Signature readable but verification checks failed or conflicting
+- 0-39% (unknown): Cannot determine or major verification failures
+
+IMPORTANT: If professionVerified is false (the person wasn't an illustrator), confidence should be "uncertain" or lower, even with a clear signature. Example: "P. Verger" might be signed, but if Pierre Verger was a photographer, there may be a DIFFERENT P. Verger who was the actual illustrator.
+
+Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'P. Verger'", "printed credit below image")
 
 DATE IDENTIFICATION:
 1. Look for dates printed on the piece (often near printer info or copyright)
@@ -143,8 +225,21 @@ PRINTING TECHNIQUE - Be precise:
 - Photolithograph, screenprint, etc.
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
-
+${shopifyContext ? buildShopifyContextSection(shopifyContext) : ''}
 PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words):
+
+IMPORTANT - ARTIST ATTRIBUTION IN DESCRIPTIONS:
+- If artistConfidenceScore >= 80%: Use the artist name directly ("by Leonetto Cappiello", "Cappiello's masterful...")
+- If artistConfidenceScore 50-79%: Use hedged language ("attributed to...", "bearing the signature of...")
+- If artistConfidenceScore < 50%: DO NOT name the artist in descriptions. Instead use "signed [signatureText]" or describe the style without attribution
+- If professionVerified is false: Always use hedged language regardless of signature clarity
+
+Examples:
+- High confidence: "This striking poster by Jules Chéret showcases his signature style..."
+- Medium confidence: "Attributed to P. Verger based on the signature, this illustration..."
+- Low confidence: "Signed 'P. Verger' in the lower left, this charming illustration features..."
+- Unknown: "This unsigned Art Deco poster captures the energy of 1920s Paris..."
+
 - "standard": ${BRAND_VOICE_GUIDELINES.replace(/\n\n/g, ' ').replace(/\n/g, ' ')} Write in 2-3 flowing paragraphs separated by double newlines.
 - "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs separated by double newlines.
 - "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters or dashes. Focus on: artist, date, technique, subject, significance.
@@ -188,7 +283,17 @@ JSON:
   "identification": {
     "artist": "",
     "artistConfidence": "confirmed|likely|uncertain|unknown",
+    "artistConfidenceScore": 0,
     "artistSource": "",
+    "artistVerification": {
+      "signatureReadable": true,
+      "signatureText": "",
+      "professionVerified": true,
+      "eraMatches": true,
+      "styleMatches": true,
+      "multipleArtistsWithName": false,
+      "verificationNotes": ""
+    },
     "title": "",
     "estimatedDate": "",
     "dateConfidence": "confirmed|likely|uncertain|unknown",
@@ -222,13 +327,15 @@ JSON:
  * @param initialInformation - Optional user-provided information to validate
  * @param productType - The type of product being analyzed
  * @param supplementalImages - Optional array of additional images for context
+ * @param shopifyContext - Optional existing data from Shopify to verify/use
  * @returns Structured poster analysis
  */
 export async function analyzePoster(
   imageUrl: string,
   initialInformation?: string,
   productType?: string,
-  supplementalImages?: SupplementalImage[]
+  supplementalImages?: SupplementalImage[],
+  shopifyContext?: ShopifyAnalysisContext
 ): Promise<PosterAnalysis> {
   try {
     console.log('[analyzePoster] Starting analysis for image:', imageUrl);
@@ -249,7 +356,7 @@ export async function analyzePoster(
     }
 
     const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList);
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
     console.log('[analyzePoster] Product type:', productType);
@@ -441,7 +548,10 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
   return {
     artist: analysis.identification.artist,
     artistConfidence: analysis.identification.artistConfidence,
+    artistConfidenceScore: analysis.identification.artistConfidenceScore,
     artistSource: analysis.identification.artistSource,
+    artistSignatureText: analysis.identification.artistVerification?.signatureText,
+    artistVerification: analysis.identification.artistVerification,
     title: analysis.identification.title,
     estimatedDate: analysis.identification.estimatedDate,
     dateConfidence: analysis.identification.dateConfidence,

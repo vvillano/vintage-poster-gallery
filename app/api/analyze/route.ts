@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { analyzePoster, flattenAnalysis } from '@/lib/claude';
+import { analyzePoster, flattenAnalysis, ShopifyAnalysisContext } from '@/lib/claude';
 import { getPosterById, updatePosterAnalysis } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -59,12 +59,27 @@ export async function POST(request: NextRequest) {
         : additionalContext;
     }
 
-    // Analyze with Claude (including any supplemental images)
+    // Build Shopify context from existing metafield data
+    // This provides Claude with existing catalog information to verify and build upon
+    const shopifyContext: ShopifyAnalysisContext | undefined = poster.shopifyProductId ? {
+      artist: poster.artist,
+      estimatedDate: poster.estimatedDate,
+      dimensions: poster.dimensionsEstimate,
+      condition: poster.condition,
+      conditionDetails: poster.conditionDetails,
+      printingTechnique: poster.printingTechnique,
+      title: poster.title,
+      // userNotes may contain auction descriptions mixed with internal notes
+      auctionDescription: poster.userNotes,
+    } : undefined;
+
+    // Analyze with Claude (including any supplemental images and Shopify context)
     const analysis = await analyzePoster(
       poster.imageUrl,
       combinedInfo || undefined,
       poster.productType || undefined,
-      poster.supplementalImages || undefined
+      poster.supplementalImages || undefined,
+      shopifyContext
     );
 
     console.log('Analysis completed successfully');
