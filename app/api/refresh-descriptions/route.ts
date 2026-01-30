@@ -64,7 +64,7 @@ Collector Interest: ${analysis.rarityValue?.collectorInterest || poster.valueIns
       messages: [
         {
           role: 'user',
-          content: `Based on this vintage item analysis, write 4 product descriptions in different tones plus talking points for in-gallery conversations.
+          content: `Based on this vintage item analysis, write 5 product descriptions in different tones plus talking points for in-gallery conversations.
 
 ITEM DETAILS:
 ${context}
@@ -74,6 +74,7 @@ DESCRIPTIONS (150-200 words each):
 - "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs. Use [PARA] to separate paragraphs.
 - "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters (•) or dashes. Example format: "1970 Italian film poster for The Wild Racers. Designed by artist P. Franco. Printed using offset lithography in Eastmancolor."
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity. Write in 2-3 paragraphs. Use [PARA] to separate paragraphs.
+- "immersive": Transport the reader to the moment this piece existed. Describe what someone in the original time and place would see, feel, and experience. Weave in world events (from a US perspective), the cultural climate, and daily life of the era. Use sensory details and present-tense perspective shifts to create a vivid sense of "being there." Use [PARA] to separate paragraphs.
 
 TALKING POINTS (6-8 bullet points for in-gallery storytelling):
 - Artist and date if known
@@ -87,7 +88,7 @@ TALKING POINTS (6-8 bullet points for in-gallery storytelling):
 Keep each point 15-30 words - enough context to spark a conversation.
 
 Return ONLY valid JSON:
-{"standard": "...", "scholarly": "...", "concise": "...", "enthusiastic": "...", "talkingPoints": ["...", "..."]}`
+{"standard": "...", "scholarly": "...", "concise": "...", "enthusiastic": "...", "immersive": "...", "talkingPoints": ["...", "..."]}`
         }
       ]
     });
@@ -127,7 +128,7 @@ Return ONLY valid JSON:
     }
 
     // Convert [PARA] markers to actual newlines for paragraph breaks
-    for (const key of ['standard', 'scholarly', 'enthusiastic']) {
+    for (const key of ['standard', 'scholarly', 'enthusiastic', 'immersive']) {
       if (descriptions[key]) {
         descriptions[key] = descriptions[key].replace(/\s*\[PARA\]\s*/g, '\n\n');
       }

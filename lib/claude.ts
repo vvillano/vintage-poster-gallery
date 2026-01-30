@@ -232,7 +232,7 @@ PRINTING TECHNIQUE - Be precise:
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
 ${shopifyContext ? buildShopifyContextSection(shopifyContext) : ''}
-PRODUCT DESCRIPTIONS: Write 4 versions (each 150-200 words):
+PRODUCT DESCRIPTIONS: Write 5 versions (each 150-200 words):
 
 IMPORTANT - ARTIST ATTRIBUTION IN DESCRIPTIONS:
 - If artistConfidenceScore >= 80%: Use the artist name directly ("by Leonetto Cappiello", "Cappiello's masterful...")
@@ -250,6 +250,7 @@ Examples:
 - "scholarly": Academic tone - formal language, detailed provenance, art-historical analysis, museum-quality descriptions. Write in 2-3 paragraphs separated by double newlines.
 - "concise": Short, factual sentences - each sentence states ONE key detail (artist, date, technique, subject, etc.). Write as plain sentences ending with periods. Do NOT use bullet point characters or dashes. Focus on: artist, date, technique, subject, significance.
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece. Write in 2-3 paragraphs separated by double newlines.
+- "immersive": Transport the reader to the moment this piece existed. Describe what someone in the original time and place would see, feel, and experience. Weave in world events (from a US perspective), the cultural climate, and daily life of the era. Use sensory details and present-tense perspective shifts to create a vivid sense of "being there."
 
 TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help gallery staff engage customers with interesting facts and context. Include:
 - Artist and date (if known) - BUT follow hedging rules below
@@ -280,6 +281,12 @@ NOTABLE FIGURES RESEARCH: Carefully examine the item for any named individuals o
 - Include a Wikipedia search term that would find their article
 - If text mentions someone like "Dr. Gully" or "Prof. Smith", research their full identity
 - Empty array ONLY if genuinely no named/depicted individuals
+
+TIME & PLACE: Research what was happening when this piece was created. Frame for a US audience.
+- World (US perspective): What were Americans experiencing in [year]? Major US and global events that would be in American newspapers. How did world events affect American daily life? Cultural moments Americans would recognize. Connect foreign pieces to how they reached or influenced American culture.
+- Regional: What was happening in [country of origin] at this time? Politics, economy, social movements that influenced this piece. What was life like there?
+- Local: City-specific or industry context. Who commissioned this? What was the advertising/entertainment/publishing landscape? Who was the intended audience?
+Focus on context that helps tell THIS piece's story. Not every tier needs content - prioritize what's most relevant and interesting.
 
 LISTINGS: Find THIS EXACT item only (same title/artist/date). Empty array if none found.
 ${tagList && tagList.length > 0 ? `
@@ -313,7 +320,7 @@ JSON:
     "dateSource": "",
     "estimatedDimensions": ""
   },
-  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": "", "publication": "", "advertiser": "", "eraContext": ""},
+  "historicalContext": {"periodMovement": "", "culturalSignificance": "", "originalPurpose": "", "publication": "", "advertiser": "", "eraContext": "", "timeAndPlace": {"world": "", "regional": "", "local": ""}},
   "technicalAnalysis": {
     "printingTechnique": "",
     "printer": "",
@@ -323,7 +330,7 @@ JSON:
   },
   "conditionAuthenticity": {"ageIndicators": [], "conditionIssues": []},
   "rarityValue": {"rarityAssessment": "", "valueFactors": [], "comparableExamples": "", "collectorInterest": ""}${initialInfo ? `,\n  "validationNotes": ""` : ''},
-  "productDescriptions": {"standard": "", "scholarly": "", "concise": "", "enthusiastic": ""},
+  "productDescriptions": {"standard": "", "scholarly": "", "concise": "", "enthusiastic": "", "immersive": ""},
   "talkingPoints": ["point 1", "point 2", "..."],
   "notableFigures": [{"name": "Full Name", "role": "Scientist/Politician/etc", "context": "Why they appear in this piece", "wikiSearch": "search term for Wikipedia"}],
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
@@ -518,7 +525,8 @@ export async function analyzePoster(
         standard: '',
         scholarly: '',
         concise: '',
-        enthusiastic: ''
+        enthusiastic: '',
+        immersive: ''
       };
     }
     if (!analysis.talkingPoints) {

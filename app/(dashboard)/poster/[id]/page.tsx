@@ -1285,6 +1285,59 @@ export default function PosterDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Time & Place Section */}
+          {poster.rawAiResponse?.historicalContext?.timeAndPlace && (
+            poster.rawAiResponse.historicalContext.timeAndPlace.world ||
+            poster.rawAiResponse.historicalContext.timeAndPlace.regional ||
+            poster.rawAiResponse.historicalContext.timeAndPlace.local
+          ) && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Time & Place</h3>
+              <div className="space-y-4">
+                {/* World - US Perspective */}
+                {poster.rawAiResponse.historicalContext.timeAndPlace.world && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🇺🇸</span>
+                      <label className="text-sm font-medium text-slate-700">
+                        America in {poster.estimatedDate || 'the Era'}
+                      </label>
+                    </div>
+                    <p className="text-slate-700 text-sm pl-7">
+                      {poster.rawAiResponse.historicalContext.timeAndPlace.world}
+                    </p>
+                  </div>
+                )}
+
+                {/* Regional - Country of Origin */}
+                {poster.rawAiResponse.historicalContext.timeAndPlace.regional && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🌍</span>
+                      <label className="text-sm font-medium text-slate-700">Regional Context</label>
+                    </div>
+                    <p className="text-slate-700 text-sm pl-7">
+                      {poster.rawAiResponse.historicalContext.timeAndPlace.regional}
+                    </p>
+                  </div>
+                )}
+
+                {/* Local - City/Industry */}
+                {poster.rawAiResponse.historicalContext.timeAndPlace.local && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">📍</span>
+                      <label className="text-sm font-medium text-slate-700">Local Context</label>
+                    </div>
+                    <p className="text-slate-700 text-sm pl-7">
+                      {poster.rawAiResponse.historicalContext.timeAndPlace.local}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Analysis */}

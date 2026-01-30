@@ -226,7 +226,7 @@ export const PRODUCT_TYPES = [
 export type ProductType = typeof PRODUCT_TYPES[number];
 
 // Description tone options
-export const DESCRIPTION_TONES = ['standard', 'scholarly', 'concise', 'enthusiastic'] as const;
+export const DESCRIPTION_TONES = ['standard', 'scholarly', 'concise', 'enthusiastic', 'immersive'] as const;
 export type DescriptionTone = typeof DESCRIPTION_TONES[number];
 
 // Product descriptions in multiple tones
@@ -235,6 +235,7 @@ export interface ProductDescriptions {
   scholarly: string;     // Academic tone - more formal, detailed provenance focus
   concise: string;       // Just the facts - minimal prose, key details only
   enthusiastic: string;  // Collector-focused - energetic, highlights appeal
+  immersive: string;     // Narrative storytelling - transports reader to the historical moment
 }
 
 // Notable figure mentioned or depicted in the item
@@ -307,6 +308,11 @@ export interface PosterAnalysis {
     publication?: string;  // For cover art/illustrations: The New Yorker, Fortune, etc.
     advertiser?: string;   // For advertising: Cognac Briand, Campari, etc.
     eraContext?: string;   // How contemporary audiences perceived it, cultural moment
+    timeAndPlace?: {
+      world?: string;      // US perspective: What Americans experienced, global events in US news
+      regional?: string;   // Country of origin: Politics, economy, social movements
+      local?: string;      // City/industry: Who commissioned this, local context
+    };
   };
   technicalAnalysis: {
     printingTechnique: string;
