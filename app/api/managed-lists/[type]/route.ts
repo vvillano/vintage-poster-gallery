@@ -136,12 +136,17 @@ export async function POST(
           RETURNING *
         `;
         break;
-      case 'artists':
+      case 'artists': {
+        // Convert aliases array to PostgreSQL array literal
+        const aliasesArray = body.aliases || [];
+        const aliasesLiteral = aliasesArray.length > 0
+          ? `{${aliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
         result = await sql`
           INSERT INTO artists (name, aliases, nationality, birth_year, death_year, notes)
           VALUES (
             ${body.name},
-            ${body.aliases || []},
+            ${aliasesLiteral}::TEXT[],
             ${body.nationality || null},
             ${body.birthYear || null},
             ${body.deathYear || null},
@@ -150,6 +155,7 @@ export async function POST(
           RETURNING *
         `;
         break;
+      }
       case 'internal-tags':
         result = await sql`
           INSERT INTO internal_tags (name, color, display_order)
@@ -243,12 +249,17 @@ export async function PUT(
           RETURNING *
         `;
         break;
-      case 'artists':
+      case 'artists': {
+        // Convert aliases array to PostgreSQL array literal
+        const aliasesArray = body.aliases || [];
+        const aliasesLiteral = aliasesArray.length > 0
+          ? `{${aliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
         result = await sql`
           UPDATE artists
           SET
             name = ${body.name},
-            aliases = ${body.aliases || []},
+            aliases = ${aliasesLiteral}::TEXT[],
             nationality = ${body.nationality || null},
             birth_year = ${body.birthYear || null},
             death_year = ${body.deathYear || null},
@@ -258,6 +269,7 @@ export async function PUT(
           RETURNING *
         `;
         break;
+      }
       case 'internal-tags':
         result = await sql`
           UPDATE internal_tags
