@@ -62,6 +62,18 @@ export default function SettingsPage() {
           </Link>
         ))}
       </div>
+
+      {/* Admin Section */}
+      <div className="mt-8 pt-6 border-t border-slate-200">
+        <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Admin</h2>
+        <Link
+          href="/settings/migrate"
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+        >
+          <span>🔧</span>
+          Run Database Migrations
+        </Link>
+      </div>
     </div>
   );
 }
