@@ -248,22 +248,23 @@ export async function POST() {
 
         if (existing.rows.length > 0) {
           // Update aliases if artist exists
-          const currentAliases = existing.rows[0].aliases || [];
+          const currentAliases: string[] = existing.rows[0].aliases || [];
           const newAliases = [...new Set([...currentAliases, ...artist.aliases])];
+          // Convert array to PostgreSQL array literal
+          const aliasesLiteral = `{${newAliases.map(a => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`;
           await sql`
             UPDATE artists
-            SET aliases = ${newAliases}, updated_at = NOW()
+            SET aliases = ${aliasesLiteral}::TEXT[], updated_at = NOW()
             WHERE id = ${existing.rows[0].id}
           `;
           merged++;
         } else {
           // Insert new artist with aliases
+          const aliasesLiteral = `{${artist.aliases.map(a => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`;
           await sql`
             INSERT INTO artists (name, aliases)
-            VALUES (${artist.canonical}, ${artist.aliases})
-            ON CONFLICT ((LOWER(TRIM(name)))) DO UPDATE
-            SET aliases = COALESCE(artists.aliases, ARRAY[]::TEXT[]) || ${artist.aliases},
-                updated_at = NOW()
+            VALUES (${artist.canonical}, ${aliasesLiteral}::TEXT[])
+            ON CONFLICT ((LOWER(TRIM(name)))) DO NOTHING
           `;
           inserted++;
         }
