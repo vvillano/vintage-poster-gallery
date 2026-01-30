@@ -374,11 +374,11 @@ export default function ManagedListsPage() {
                 </div>
               )}
 
-              {/* Add/Edit Form */}
-              {(isAdding || editingItem) && (
+              {/* Add Form (only shown when adding new) */}
+              {isAdding && (
                 <div className="p-4 bg-slate-50 border-b border-slate-200">
                   <h3 className="text-sm font-semibold text-slate-700 mb-4">
-                    {isAdding ? 'Add New Item' : 'Edit Item'}
+                    Add New Item
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {activeConfig.fields.map(field => (
@@ -421,49 +421,84 @@ export default function ManagedListsPage() {
                 ) : (
                   <div className="space-y-2">
                     {items.map(item => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
-                      >
-                        <div className="flex items-center gap-3">
-                          {item.color && (
-                            <div
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: item.color }}
-                            />
-                          )}
-                          <div>
-                            <div className="font-medium text-slate-900">{item.name}</div>
-                            {item.aliases && item.aliases.length > 0 && (
-                              <div className="text-xs text-slate-500">
-                                Also: {item.aliases.join(', ')}
-                              </div>
-                            )}
-                            {item.code && (
-                              <div className="text-xs text-slate-500">Code: {item.code}</div>
-                            )}
-                            {item.nationality && (
-                              <div className="text-xs text-slate-500">
-                                {item.nationality}
-                                {item.birthYear && ` (${item.birthYear}${item.deathYear ? `-${item.deathYear}` : ''})`}
-                              </div>
-                            )}
+                      <div key={item.id}>
+                        {editingItem?.id === item.id ? (
+                          /* Inline Edit Form */
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4">
+                              {activeConfig.fields.map(field => (
+                                <div key={field.key} className={field.type === 'textarea' || field.type === 'aliases' ? 'col-span-2' : ''}>
+                                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    {field.label}
+                                    {field.required && <span className="text-red-500">*</span>}
+                                  </label>
+                                  {renderField(field)}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                              <button
+                                onClick={cancelEdit}
+                                className="px-4 py-2 text-slate-600 hover:text-slate-800"
+                                disabled={saving}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={saveItem}
+                                disabled={saving || !formData.name}
+                                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                              >
+                                {saving ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => startEdit(item)}
-                            className="px-3 py-1 text-sm text-slate-600 hover:text-amber-600"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteItem(item.id)}
-                            className="px-3 py-1 text-sm text-slate-600 hover:text-red-600"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        ) : (
+                          /* Normal Item Display */
+                          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                            <div className="flex items-center gap-3">
+                              {item.color && (
+                                <div
+                                  className="w-4 h-4 rounded-full"
+                                  style={{ backgroundColor: item.color }}
+                                />
+                              )}
+                              <div>
+                                <div className="font-medium text-slate-900">{item.name}</div>
+                                {item.aliases && item.aliases.length > 0 && (
+                                  <div className="text-xs text-slate-500">
+                                    Also: {item.aliases.join(', ')}
+                                  </div>
+                                )}
+                                {item.code && (
+                                  <div className="text-xs text-slate-500">Code: {item.code}</div>
+                                )}
+                                {item.nationality && (
+                                  <div className="text-xs text-slate-500">
+                                    {item.nationality}
+                                    {item.birthYear && ` (${item.birthYear}${item.deathYear ? `-${item.deathYear}` : ''})`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => startEdit(item)}
+                                className="px-3 py-1 text-sm text-slate-600 hover:text-amber-600"
+                                disabled={!!editingItem || isAdding}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => deleteItem(item.id)}
+                                className="px-3 py-1 text-sm text-slate-600 hover:text-red-600"
+                                disabled={!!editingItem || isAdding}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
