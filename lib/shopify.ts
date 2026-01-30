@@ -563,3 +563,149 @@ export async function exchangeCodeForToken(
     scope: data.scope,
   };
 }
+
+// =====================
+// SKU Search Functions
+// =====================
+
+/**
+ * Search Shopify products by SKU using GraphQL (more efficient than REST)
+ * Returns the product if found, null otherwise
+ */
+export async function searchShopifyBySku(
+  sku: string
+): Promise<ShopifyProduct | null> {
+  const config = await getShopifyConfig();
+
+  if (!config) {
+    throw new Error('Shopify not configured');
+  }
+
+  // GraphQL query to find product variant by SKU
+  const query = `
+    query getProductBySku($sku: String!) {
+      productVariants(first: 1, query: $sku) {
+        edges {
+          node {
+            id
+            sku
+            product {
+              id
+              title
+              handle
+              status
+              productType
+              tags
+              descriptionHtml
+              createdAt
+              updatedAt
+              images(first: 10) {
+                edges {
+                  node {
+                    id
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+              }
+              variants(first: 10) {
+                edges {
+                  node {
+                    id
+                    sku
+                    price
+                    compareAtPrice
+                    inventoryQuantity
+                    inventoryItem {
+                      unitCost {
+                        amount
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const url = `https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': config.accessToken,
+    },
+    body: JSON.stringify({
+      query,
+      variables: { sku: `sku:${sku}` },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Shopify GraphQL error: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  if (result.errors) {
+    throw new Error(`Shopify GraphQL error: ${JSON.stringify(result.errors)}`);
+  }
+
+  const edges = result.data?.productVariants?.edges;
+  if (!edges || edges.length === 0) {
+    return null;
+  }
+
+  // Find the variant that exactly matches the SKU (GraphQL query is case-insensitive)
+  const matchingEdge = edges.find(
+    (edge: any) => edge.node.sku?.toLowerCase() === sku.toLowerCase()
+  );
+
+  if (!matchingEdge) {
+    return null;
+  }
+
+  const product = matchingEdge.node.product;
+
+  // Map GraphQL response to ShopifyProduct format
+  return mapGraphQLProductToShopifyProduct(product);
+}
+
+/**
+ * Map GraphQL product response to ShopifyProduct type
+ */
+function mapGraphQLProductToShopifyProduct(product: any): ShopifyProduct {
+  return {
+    id: product.id, // Already in gid format
+    title: product.title,
+    handle: product.handle,
+    status: product.status.toLowerCase() as 'active' | 'draft' | 'archived',
+    productType: product.productType,
+    tags: product.tags || [],
+    bodyHtml: product.descriptionHtml,
+    variants: product.variants.edges.map((edge: any) => ({
+      id: edge.node.id,
+      sku: edge.node.sku,
+      price: edge.node.price,
+      compareAtPrice: edge.node.compareAtPrice,
+      inventoryQuantity: edge.node.inventoryQuantity,
+      cost: edge.node.inventoryItem?.unitCost?.amount || null,
+    })),
+    images: product.images.edges.map((edge: any) => ({
+      id: edge.node.id,
+      src: edge.node.url,
+      altText: edge.node.altText,
+      width: edge.node.width,
+      height: edge.node.height,
+    })),
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+  };
+}

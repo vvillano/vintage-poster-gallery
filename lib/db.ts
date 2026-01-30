@@ -254,7 +254,7 @@ export async function updatePosterDescriptions(
 }
 
 /**
- * Search posters by artist, title, or other text fields
+ * Search posters by artist, title, SKU, or other text fields
  */
 export async function searchPosters(query: string): Promise<Poster[]> {
   const searchTerm = `%${query}%`;
@@ -265,12 +265,30 @@ export async function searchPosters(query: string): Promise<Poster[]> {
       artist ILIKE ${searchTerm} OR
       title ILIKE ${searchTerm} OR
       estimated_date ILIKE ${searchTerm} OR
-      printing_technique ILIKE ${searchTerm}
+      printing_technique ILIKE ${searchTerm} OR
+      sku ILIKE ${searchTerm}
     ORDER BY upload_date DESC
     LIMIT 50
   `;
 
   return result.rows.map(dbRowToPoster);
+}
+
+/**
+ * Find a poster by SKU (exact match)
+ */
+export async function findPosterBySku(sku: string): Promise<Poster | null> {
+  const result = await sql`
+    SELECT * FROM posters
+    WHERE sku = ${sku}
+    LIMIT 1
+  `;
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return dbRowToPoster(result.rows[0]);
 }
 
 /**

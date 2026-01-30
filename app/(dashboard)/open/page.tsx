@@ -2,32 +2,114 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 /**
  * Deep link handler for Shopify products
- * URL: /open?id=123456 (numeric ID) or /open?id=gid://shopify/Product/123456
+ * URL formats:
+ *   /open?id=123456 (numeric ID)
+ *   /open?id=gid://shopify/Product/123456
+ *   /open?sku=ABC123 (search by SKU)
  *
- * Flow:
+ * Flow for ID:
  * 1. Check if poster exists with this Shopify product ID
  * 2. If yes → redirect to poster detail page
  * 3. If no → import from Shopify, then redirect
+ *
+ * Flow for SKU:
+ * 1. Check local database for SKU
+ * 2. If found → redirect to poster detail page
+ * 3. If not → search Shopify by SKU
+ * 4. If found in Shopify → import, then redirect
+ * 5. If not found → show error with option to go to Import page
  */
 function OpenPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'loading' | 'importing' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'importing' | 'not-found' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [searchedSku, setSearchedSku] = useState<string | null>(null);
 
   useEffect(() => {
     async function handleDeepLink() {
       const idParam = searchParams.get('id') || searchParams.get('product_id');
+      const skuParam = searchParams.get('sku');
 
-      if (!idParam) {
-        setStatus('error');
-        setError('Missing product ID parameter. Use ?id=123456');
+      // Handle SKU-based lookup
+      if (skuParam) {
+        setSearchedSku(skuParam);
+        await handleSkuLookup(skuParam);
         return;
       }
 
+      // Handle ID-based lookup (existing logic)
+      if (idParam) {
+        await handleIdLookup(idParam);
+        return;
+      }
+
+      // No valid parameter
+      setStatus('error');
+      setError('Missing parameter. Use ?id=123456 or ?sku=ABC123');
+    }
+
+    async function handleSkuLookup(sku: string) {
+      try {
+        // Use the unified lookup API
+        const lookupRes = await fetch(`/api/lookup?sku=${encodeURIComponent(sku)}`);
+        const lookupData = await lookupRes.json();
+
+        if (!lookupRes.ok) {
+          throw new Error(lookupData.error || 'Lookup failed');
+        }
+
+        if (lookupData.found && lookupData.source === 'local') {
+          // Found locally - redirect to poster page
+          router.replace(`/poster/${lookupData.posterId}`);
+          return;
+        }
+
+        if (lookupData.found && lookupData.source === 'shopify') {
+          // Found in Shopify - import it
+          setStatus('importing');
+
+          const importRes = await fetch('/api/shopify/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shopifyProductIds: [lookupData.shopifyProduct.id] }),
+          });
+
+          const importData = await importRes.json();
+
+          if (!importRes.ok) {
+            throw new Error(importData.error || 'Import failed');
+          }
+
+          // Find the result for our product
+          const result = importData.results?.find(
+            (r: { shopifyProductId: string }) => r.shopifyProductId === lookupData.shopifyProduct.id
+          );
+
+          if (result?.posterId) {
+            router.replace(`/poster/${result.posterId}`);
+          } else if (result?.error) {
+            throw new Error(result.error);
+          } else {
+            throw new Error('Import did not return a poster ID');
+          }
+          return;
+        }
+
+        // Not found anywhere
+        setStatus('not-found');
+      } catch (err) {
+        console.error('SKU lookup error:', err);
+        setStatus('error');
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
+    }
+
+    async function handleIdLookup(idParam: string) {
       // Normalize to gid format if just a number
       const shopifyProductId = idParam.startsWith('gid://')
         ? idParam
@@ -102,6 +184,39 @@ function OpenPageContent() {
               Importing from Shopify...
             </h1>
             <p className="text-slate-500">Creating a new record with product data</p>
+          </>
+        )}
+
+        {status === 'not-found' && (
+          <>
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-semibold text-slate-800 mb-2">
+              SKU Not Found
+            </h1>
+            <p className="text-slate-600 mb-2">
+              No product found with SKU: <span className="font-mono font-semibold">{searchedSku}</span>
+            </p>
+            <p className="text-slate-500 text-sm mb-4">
+              This SKU was not found in your local database or Shopify store.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Link
+                href="/import"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Browse Shopify Products
+              </Link>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+              >
+                Go to Dashboard
+              </button>
+            </div>
           </>
         )}
 
