@@ -1282,58 +1282,6 @@ export default function PosterDetailPage() {
                   </div>
                 )}
 
-                {/* Artist Section */}
-                {poster.artist && poster.artist !== 'Unknown' && (
-                  <div className="pt-4 border-t border-slate-200">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <label className="text-sm font-medium text-slate-700">Artist</label>
-                        <p className="text-lg font-semibold text-slate-900">{poster.artist}</p>
-                      </div>
-                      {poster.artistConfidence && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                          poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {poster.artistConfidence}
-                        </span>
-                      )}
-                    </div>
-                    {poster.artistSource && (
-                      <p className="text-sm text-slate-600 mb-3">
-                        <strong>Attribution:</strong> {poster.artistSource}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`https://www.google.com/search?q=${encodeURIComponent(poster.artist + ' artist biography')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        Google
-                      </a>
-                      <a
-                        href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(poster.artist)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        Wikipedia
-                      </a>
-                      <a
-                        href={`https://www.wikiart.org/en/search/${encodeURIComponent(poster.artist)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        WikiArt
-                      </a>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}

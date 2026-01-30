@@ -246,7 +246,7 @@ Examples:
 - "enthusiastic": Collector-focused - energetic but not cheesy, highlights appeal and rarity, why someone would want this piece. Write in 2-3 paragraphs separated by double newlines.
 
 TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help gallery staff engage customers with interesting facts and context. Include:
-- Artist and date (if known)
+- Artist and date (if known) - BUT follow hedging rules below
 - Notable visual elements or techniques (e.g., "Droste effect with the cats", "Bold Art Deco geometric forms")
 - Interesting details visible in the image (e.g., "Tax stamp visible lower left", "Signed in the stone")
 - CRITICAL - Named individuals: If any scientists, inventors, politicians, or historical figures are mentioned or depicted, include a talking point about who they were and why they're significant
@@ -258,6 +258,13 @@ TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help 
 - Why collectors find this piece interesting
 - Any fun facts, anecdotes, or surprising details about the artist, subject, or era
 Keep each point 15-30 words - enough context to spark a conversation.
+
+IMPORTANT - ARTIST ATTRIBUTION IN TALKING POINTS:
+- If artistConfidenceScore >= 90%: Use factual statements about the artist ("By Leonetto Cappiello, the father of modern advertising")
+- If artistConfidenceScore 70-89%: Use signature-focused language ("Signed 'P. Franco' in the lower right", "Attributed to P. Franco")
+- If artistConfidenceScore < 70%: Only reference the signature text, do NOT make claims about the artist's career or biography
+- NEVER include biographical claims (e.g., "known for dynamic compositions", "Italian movie poster artist") unless artistConfidenceScore >= 90% AND professionVerified is true
+- When uncertain, focus talking points on the artwork itself (subject, technique, era, visual elements) rather than the artist
 
 NOTABLE FIGURES RESEARCH: Carefully examine the item for any named individuals or recognizable faces.
 - Look for: names in text, portraits, caricatures, photographs of people
