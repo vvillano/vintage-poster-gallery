@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { analyzePoster, flattenAnalysis, ShopifyAnalysisContext } from '@/lib/claude';
 import { getPosterById, updatePosterAnalysis } from '@/lib/db';
+import { autoLinkPosterEntities } from '@/lib/auto-link';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,10 +94,29 @@ export async function POST(request: NextRequest) {
       rawAiResponse: analysis,
     });
 
+    // Auto-link to artist, printer, and publisher records
+    // Creates new records if needed, fetching Wikipedia data automatically
+    const linkResults = await autoLinkPosterEntities(posterId, {
+      artist: flattenedAnalysis.artist,
+      artistConfidence: flattenedAnalysis.artistConfidence,
+      printer: flattenedAnalysis.printer,
+      printerConfidence: flattenedAnalysis.printerConfidence,
+      publication: analysis.historicalContext?.publication,
+    });
+
+    if (linkResults.artistLinked || linkResults.printerLinked || linkResults.publisherLinked) {
+      console.log('Auto-linked entities:', {
+        artist: linkResults.artistLinked ? `ID ${linkResults.artistLinked.id}${linkResults.artistLinked.isNew ? ' (new)' : ''}` : null,
+        printer: linkResults.printerLinked ? `ID ${linkResults.printerLinked.id}${linkResults.printerLinked.isNew ? ' (new)' : ''}` : null,
+        publisher: linkResults.publisherLinked ? `ID ${linkResults.publisherLinked.id}${linkResults.publisherLinked.isNew ? ' (new)' : ''}` : null,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       posterId: updatedPoster.id,
       analysis,
+      linkedEntities: linkResults,
     });
   } catch (error) {
     console.error('Analysis error:', error);
