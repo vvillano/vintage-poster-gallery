@@ -26,6 +26,8 @@ function ShopifySettingsContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState<{ updated: number; errors: number } | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -144,6 +146,38 @@ function ShopifySettingsContent() {
       setError('Connection test failed');
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function handleRefreshAll() {
+    if (!confirm('This will refresh Shopify data (SKU, title, status, metafields) for all linked items. AI analysis will NOT be affected. Continue?')) {
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      setError('');
+      setSuccess('');
+      setRefreshResult(null);
+
+      const res = await fetch('/api/shopify/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Refresh failed');
+      }
+
+      setRefreshResult({ updated: data.updated, errors: data.errors });
+      setSuccess(`Updated ${data.updated} item${data.updated !== 1 ? 's' : ''} from Shopify`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -386,6 +420,47 @@ function ShopifySettingsContent() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Refresh */}
+      {config?.configured && (
+        <div className="bg-white border border-slate-200 rounded-lg p-6">
+          <h3 className="font-semibold text-slate-900 mb-2">Refresh All from Shopify</h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Update Shopify data for all linked items. This pulls the latest SKU, title, status, price,
+            and metafields (artist, dimensions, condition, etc.) from Shopify.
+            <span className="font-medium text-slate-700"> AI analysis and descriptions are NOT affected.</span>
+          </p>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshing}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition text-sm flex items-center gap-2"
+            >
+              {refreshing ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <span>🔄</span>
+                  Refresh All Items
+                </>
+              )}
+            </button>
+
+            {refreshResult && (
+              <span className="text-sm text-slate-600">
+                {refreshResult.updated} updated
+                {refreshResult.errors > 0 && (
+                  <span className="text-red-600 ml-2">({refreshResult.errors} errors)</span>
+                )}
+              </span>
+            )}
           </div>
         </div>
       )}
