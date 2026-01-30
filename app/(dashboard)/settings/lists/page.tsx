@@ -40,9 +40,10 @@ interface ListConfig {
   fields: {
     key: string;
     label: string;
-    type: 'text' | 'number' | 'color' | 'textarea' | 'aliases' | 'url' | 'checkbox';
+    type: 'text' | 'number' | 'color' | 'textarea' | 'aliases' | 'url' | 'checkbox' | 'select';
     required?: boolean;
     placeholder?: string;
+    relatedList?: string;  // For 'select' type - references another list
   }[];
 }
 
@@ -185,6 +186,7 @@ function ManagedListsContent() {
   const [fetchingWikipedia, setFetchingWikipedia] = useState(false);
   const [pendingEditId, setPendingEditId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [relatedItems, setRelatedItems] = useState<Record<string, ListItem[]>>({});
   const editingRowRef = useRef<HTMLDivElement>(null);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
@@ -204,6 +206,27 @@ function ManagedListsContent() {
 
   // Types that support Wikipedia fetching
   const wikipediaEnabledTypes = ['printers', 'publishers', 'artists'];
+
+  // Fetch related items for select fields when needed
+  useEffect(() => {
+    const fetchRelatedItems = async () => {
+      const selectFields = activeConfig.fields.filter(f => f.type === 'select' && f.relatedList);
+      for (const field of selectFields) {
+        if (field.relatedList && !relatedItems[field.relatedList]) {
+          try {
+            const res = await fetch(`/api/managed-lists/${field.relatedList}`);
+            if (res.ok) {
+              const data = await res.json();
+              setRelatedItems(prev => ({ ...prev, [field.relatedList!]: data.items || [] }));
+            }
+          } catch (err) {
+            console.error(`Failed to fetch ${field.relatedList}:`, err);
+          }
+        }
+      }
+    };
+    fetchRelatedItems();
+  }, [activeConfig, relatedItems]);
 
   // Handle URL params for deep linking (e.g., /settings/lists?type=artists&edit=123)
   useEffect(() => {
@@ -553,6 +576,22 @@ function ManagedListsContent() {
               {value ? 'Yes' : 'No'}
             </span>
           </label>
+        );
+      case 'select':
+        const options = field.relatedList ? (relatedItems[field.relatedList] || []) : [];
+        return (
+          <select
+            value={(value as number) || ''}
+            onChange={e => updateFormField(field.key, e.target.value ? parseInt(e.target.value) : null)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+          >
+            <option value="">Select {field.label}...</option>
+            {options.map(opt => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
         );
       default:
         return null;
