@@ -26,12 +26,12 @@ export function getCountryFlagUrl(countryCode: string, size: 32 | 72 | 128 | 512
     return '';
   }
 
-  // Use jsDelivr CDN for reliable delivery
-  return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/png/${size}/emoji_u${codePoints.join('_')}.png`;
+  // Use Twemoji via jsDelivr (more reliable, has all flags)
+  return `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/${codePoints.join('-')}.png`;
 }
 
 /**
- * Convert an emoji character to Google Noto Emoji URL
+ * Convert an emoji character to Twemoji URL
  * Works for any emoji, not just flags
  */
 export function getEmojiUrl(emoji: string, size: 32 | 72 | 128 | 512 = 72): string {
@@ -43,7 +43,7 @@ export function getEmojiUrl(emoji: string, size: 32 | 72 | 128 | 512 = 72): stri
   for (const char of emoji) {
     const codePoint = char.codePointAt(0);
     if (codePoint) {
-      // Skip variation selectors (FE0F) as Noto doesn't include them in filenames
+      // Skip variation selectors (FE0F) as Twemoji doesn't include them in filenames
       if (codePoint !== 0xFE0F) {
         codePoints.push(codePoint.toString(16));
       }
@@ -54,8 +54,9 @@ export function getEmojiUrl(emoji: string, size: 32 | 72 | 128 | 512 = 72): stri
     return '';
   }
 
-  // Use jsDelivr CDN for reliable delivery
-  return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/png/${size}/emoji_u${codePoints.join('_')}.png`;
+  // Use Twemoji via jsDelivr - uses dashes between codepoints
+  // Size 72x72 is available, for SVG use /assets/svg/
+  return `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/${codePoints.join('-')}.png`;
 }
 
 /**
