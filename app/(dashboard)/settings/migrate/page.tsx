@@ -44,6 +44,13 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/artist-profiles',
     successLink: { href: '/settings/lists', label: 'Manage Artists' },
   },
+  {
+    id: 'printer-publisher',
+    name: 'Printers & Publishers',
+    description: 'Create printers and publishers tables for verification. Enables linking posters to verified printer/publisher records with Wikipedia links.',
+    endpoint: '/api/migrate/printer-publisher',
+    successLink: { href: '/settings/lists', label: 'Manage Printers & Publishers' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';

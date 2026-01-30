@@ -188,9 +188,16 @@ DATE IDENTIFICATION:
 3. Use style/technique to estimate period if no date visible
 4. Set dateConfidence and dateSource similarly to artist
 
-PRINTER/PUBLISHER:
-- Look for printer marks, typically at bottom: "Imp.", "Imprimerie", "Printed by", etc.
-- Common printers: Chaix, Lemercier, Verneau, etc.
+PRINTER IDENTIFICATION:
+- Look for printer marks, typically at bottom: "Imp.", "Imprimerie", "Printed by", "Stampato da", etc.
+- Common printers: Chaix, Lemercier, Verneau (French); DAN, IFI, Staderini (Italian); etc.
+- Set printerConfidence based on how clearly the printer is identified:
+  * confirmed (90-100%): Clear printer marks with known printer name
+  * likely (70-89%): Partial marks or style strongly suggests specific printer
+  * uncertain (50-69%): Marks visible but unclear, or multiple possible printers
+  * unknown (<50%): No printer marks found
+- Set printerSource: describe WHERE you found the printer info (e.g., "Imp. DAN at bottom right", "style matches Italian theatrical printers")
+- Complete printerVerification checklist for rigorous identification
 
 PUBLICATION & CLIENT (when applicable):
 - For cover art/illustrations: Identify the publication (The New Yorker, Fortune, La Vie Parisienne, Vogue, Saturday Evening Post, Popular Mechanics, etc.)
@@ -324,6 +331,16 @@ JSON:
   "technicalAnalysis": {
     "printingTechnique": "",
     "printer": "",
+    "printerConfidence": "confirmed|likely|uncertain|unknown",
+    "printerSource": "",
+    "printerVerification": {
+      "marksReadable": false,
+      "marksText": "",
+      "historyVerified": false,
+      "locationMatches": false,
+      "styleMatches": false,
+      "verificationNotes": ""
+    },
     "colorPalette": "",
     "typography": "",
     "composition": ""
@@ -582,6 +599,9 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     significance: analysis.historicalContext.culturalSignificance,
     printingTechnique: analysis.technicalAnalysis.printingTechnique,
     printer: analysis.technicalAnalysis.printer || undefined,
+    printerConfidence: analysis.technicalAnalysis.printerConfidence || undefined,
+    printerSource: analysis.technicalAnalysis.printerSource || undefined,
+    printerVerification: analysis.technicalAnalysis.printerVerification || undefined,
     rarityAnalysis: `${analysis.rarityValue.rarityAssessment}\n\n${analysis.rarityValue.comparableExamples}`,
     valueInsights: `Collector Interest: ${analysis.rarityValue.collectorInterest}\n\nValue Factors:\n${analysis.rarityValue.valueFactors.map((f) => `- ${f}`).join('\n')}`,
     validationNotes: analysis.validationNotes || undefined,

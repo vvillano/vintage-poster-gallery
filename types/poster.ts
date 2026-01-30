@@ -77,6 +77,80 @@ export interface Artist {
   updatedAt: Date;
 }
 
+// Printer with verification fields
+export interface Printer {
+  id: number;
+  name: string;              // Canonical name: "DAN", "Imprimerie Chaix"
+  aliases: string[];         // Variations: ["Danesi", "DAN Roma"]
+  location?: string | null;  // "Rome, Italy"
+  country?: string | null;   // "Italy"
+  foundedYear?: number | null;
+  closedYear?: number | null;
+  notes?: string | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  verified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Publisher (magazines, newspapers, publishing houses)
+export interface Publisher {
+  id: number;
+  name: string;              // Canonical name: "The New Yorker", "Fortune"
+  aliases: string[];         // Variations: ["New Yorker", "The New-Yorker"]
+  publicationType?: string | null;  // "Magazine", "Newspaper", "Book Publisher"
+  country?: string | null;   // "United States"
+  foundedYear?: number | null;
+  ceasedYear?: number | null;
+  notes?: string | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;       // Editorial focus, notable artists
+  imageUrl?: string | null;  // Logo or cover image
+  verified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Linked printer data for display in poster detail
+export interface LinkedPrinter {
+  id: number;
+  name: string;
+  location?: string | null;
+  country?: string | null;
+  foundedYear?: number | null;
+  closedYear?: number | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  verified: boolean;
+}
+
+// Linked publisher data for display in poster detail
+export interface LinkedPublisher {
+  id: number;
+  name: string;
+  publicationType?: string | null;
+  country?: string | null;
+  foundedYear?: number | null;
+  ceasedYear?: number | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  verified: boolean;
+}
+
+// Printer verification checklist for rigorous identification
+export interface PrinterVerification {
+  marksReadable: boolean;        // Are printer marks/stamps visible?
+  marksText: string;             // Exact text: "Imp. DAN", "Stamperia..."
+  historyVerified: boolean;      // Did this printer exist in that era?
+  locationMatches: boolean;      // Printer location matches poster origin?
+  styleMatches: boolean;         // Printing style consistent with known works?
+  verificationNotes: string;     // Explanation
+}
+
 // Internal Tag (separate from public item tags)
 export interface InternalTag {
   id: number;
@@ -178,6 +252,13 @@ export interface Poster {
   significance?: string | null;
   printingTechnique?: string | null;
   printer?: string | null;  // Printer/publisher if known
+  printerId?: number | null;  // FK to printers table
+  printerConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  printerSource?: string | null;  // Where the printer was found
+  printerVerification?: PrinterVerification | null;  // Verification checklist
+  publisherId?: number | null;  // FK to publishers table
+  publisherConfidence?: string | null;  // confirmed, likely, uncertain, unknown
+  publisherSource?: string | null;  // Where the publisher was found
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
   validationNotes?: string | null;  // AI notes on validating initial information
@@ -316,7 +397,10 @@ export interface PosterAnalysis {
   };
   technicalAnalysis: {
     printingTechnique: string;
-    printer?: string;  // Printer/publisher if visible or known
+    printer?: string;  // Printer name if identified
+    printerConfidence?: 'confirmed' | 'likely' | 'uncertain' | 'unknown';
+    printerSource?: string;  // Where printer was found
+    printerVerification?: PrinterVerification;
     colorPalette: string;
     typography: string;
     composition: string;
@@ -396,6 +480,13 @@ export interface UpdatePosterInput {
   significance?: string;
   printingTechnique?: string;
   printer?: string;
+  printerId?: number | null;
+  printerConfidence?: string;
+  printerSource?: string;
+  printerVerification?: PrinterVerification;
+  publisherId?: number | null;
+  publisherConfidence?: string;
+  publisherSource?: string;
   rarityAnalysis?: string;
   valueInsights?: string;
   validationNotes?: string;

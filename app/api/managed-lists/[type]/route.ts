@@ -17,6 +17,18 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
     updateColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
   },
+  'printers': {
+    table: 'printers',
+    columns: ['id', 'name', 'aliases', 'location', 'country', 'founded_year', 'closed_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'created_at', 'updated_at'],
+    insertColumns: ['name', 'aliases', 'location', 'country', 'founded_year', 'closed_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
+    updateColumns: ['name', 'aliases', 'location', 'country', 'founded_year', 'closed_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
+  },
+  'publishers': {
+    table: 'publishers',
+    columns: ['id', 'name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'created_at', 'updated_at'],
+    insertColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
+    updateColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
+  },
   'internal-tags': {
     table: 'internal_tags',
     columns: ['id', 'name', 'color', 'display_order', 'created_at'],
@@ -76,7 +88,7 @@ export async function GET(
 
     // Build query based on table type
     let result;
-    if (type === 'artists') {
+    if (type === 'artists' || type === 'printers' || type === 'publishers') {
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY name ASC`
       );
@@ -150,6 +162,54 @@ export async function POST(
             ${body.nationality || null},
             ${body.birthYear || null},
             ${body.deathYear || null},
+            ${body.notes || null},
+            ${body.wikipediaUrl || null},
+            ${body.bio || null},
+            ${body.imageUrl || null},
+            ${body.verified || false}
+          )
+          RETURNING *
+        `;
+        break;
+      }
+      case 'printers': {
+        const printerAliasesArray = body.aliases || [];
+        const printerAliasesLiteral = printerAliasesArray.length > 0
+          ? `{${printerAliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
+        result = await sql`
+          INSERT INTO printers (name, aliases, location, country, founded_year, closed_year, notes, wikipedia_url, bio, image_url, verified)
+          VALUES (
+            ${body.name},
+            ${printerAliasesLiteral}::TEXT[],
+            ${body.location || null},
+            ${body.country || null},
+            ${body.foundedYear || null},
+            ${body.closedYear || null},
+            ${body.notes || null},
+            ${body.wikipediaUrl || null},
+            ${body.bio || null},
+            ${body.imageUrl || null},
+            ${body.verified || false}
+          )
+          RETURNING *
+        `;
+        break;
+      }
+      case 'publishers': {
+        const publisherAliasesArray = body.aliases || [];
+        const publisherAliasesLiteral = publisherAliasesArray.length > 0
+          ? `{${publisherAliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
+        result = await sql`
+          INSERT INTO publishers (name, aliases, publication_type, country, founded_year, ceased_year, notes, wikipedia_url, bio, image_url, verified)
+          VALUES (
+            ${body.name},
+            ${publisherAliasesLiteral}::TEXT[],
+            ${body.publicationType || null},
+            ${body.country || null},
+            ${body.foundedYear || null},
+            ${body.ceasedYear || null},
             ${body.notes || null},
             ${body.wikipediaUrl || null},
             ${body.bio || null},
@@ -267,6 +327,56 @@ export async function PUT(
             nationality = ${body.nationality || null},
             birth_year = ${body.birthYear || null},
             death_year = ${body.deathYear || null},
+            notes = ${body.notes || null},
+            wikipedia_url = ${body.wikipediaUrl || null},
+            bio = ${body.bio || null},
+            image_url = ${body.imageUrl || null},
+            verified = ${body.verified || false},
+            updated_at = NOW()
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      }
+      case 'printers': {
+        const printerAliasesArray = body.aliases || [];
+        const printerAliasesLiteral = printerAliasesArray.length > 0
+          ? `{${printerAliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
+        result = await sql`
+          UPDATE printers
+          SET
+            name = ${body.name},
+            aliases = ${printerAliasesLiteral}::TEXT[],
+            location = ${body.location || null},
+            country = ${body.country || null},
+            founded_year = ${body.foundedYear || null},
+            closed_year = ${body.closedYear || null},
+            notes = ${body.notes || null},
+            wikipedia_url = ${body.wikipediaUrl || null},
+            bio = ${body.bio || null},
+            image_url = ${body.imageUrl || null},
+            verified = ${body.verified || false},
+            updated_at = NOW()
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      }
+      case 'publishers': {
+        const publisherAliasesArray = body.aliases || [];
+        const publisherAliasesLiteral = publisherAliasesArray.length > 0
+          ? `{${publisherAliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
+        result = await sql`
+          UPDATE publishers
+          SET
+            name = ${body.name},
+            aliases = ${publisherAliasesLiteral}::TEXT[],
+            publication_type = ${body.publicationType || null},
+            country = ${body.country || null},
+            founded_year = ${body.foundedYear || null},
+            ceased_year = ${body.ceasedYear || null},
             notes = ${body.notes || null},
             wikipedia_url = ${body.wikipediaUrl || null},
             bio = ${body.bio || null},

@@ -91,6 +91,44 @@ export async function GET() {
       status['artist-profiles'] = { completed: false };
     }
 
+    // Check Printer & Publisher migration - look for printers and publishers tables
+    try {
+      const printersResult = await sql`
+        SELECT COUNT(*) as count FROM printers
+      `;
+      const publishersResult = await sql`
+        SELECT COUNT(*) as count FROM publishers
+      `;
+      await sql`SELECT printer_id FROM posters LIMIT 1`;
+
+      const printersCount = parseInt(printersResult.rows[0].count || '0');
+      const publishersCount = parseInt(publishersResult.rows[0].count || '0');
+
+      // Count linked posters
+      const linkedResult = await sql`
+        SELECT
+          (SELECT COUNT(*) FROM posters WHERE printer_id IS NOT NULL) as linked_printers,
+          (SELECT COUNT(*) FROM posters WHERE publisher_id IS NOT NULL) as linked_publishers
+      `;
+      const linkedPrinters = parseInt(linkedResult.rows[0].linked_printers || '0');
+      const linkedPublishers = parseInt(linkedResult.rows[0].linked_publishers || '0');
+
+      let details = 'Tables created';
+      const parts = [];
+      if (printersCount > 0) parts.push(`${printersCount} printers`);
+      if (publishersCount > 0) parts.push(`${publishersCount} publishers`);
+      if (linkedPrinters > 0) parts.push(`${linkedPrinters} linked printers`);
+      if (linkedPublishers > 0) parts.push(`${linkedPublishers} linked publishers`);
+      if (parts.length > 0) details = parts.join(', ');
+
+      status['printer-publisher'] = {
+        completed: true,
+        details,
+      };
+    } catch {
+      status['printer-publisher'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -221,6 +221,15 @@ export default function PosterDetailPage() {
   const [linkedArtist, setLinkedArtist] = useState<LinkedArtist | null>(null);
   const [showVerificationDetails, setShowVerificationDetails] = useState(false);
   const [unlinkingArtist, setUnlinkingArtist] = useState(false);
+
+  // Printer linking state
+  const [linkedPrinter, setLinkedPrinter] = useState<LinkedPrinter | null>(null);
+  const [showPrinterVerificationDetails, setShowPrinterVerificationDetails] = useState(false);
+  const [unlinkingPrinter, setUnlinkingPrinter] = useState(false);
+
+  // Publisher linking state
+  const [linkedPublisher, setLinkedPublisher] = useState<LinkedPublisher | null>(null);
+  const [unlinkingPublisher, setUnlinkingPublisher] = useState(false);
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -337,6 +346,60 @@ export default function PosterDetailPage() {
     fetchLinkedArtist();
   }, [poster?.id, poster?.artistId]);
 
+  // Fetch linked printer when poster loads
+  useEffect(() => {
+    async function fetchLinkedPrinter() {
+      if (!poster?.printerId) {
+        setLinkedPrinter(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/posters/${poster.id}/printer-link`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked && data.printer) {
+            setLinkedPrinter(data.printer);
+          } else {
+            setLinkedPrinter(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch linked printer:', err);
+        setLinkedPrinter(null);
+      }
+    }
+
+    fetchLinkedPrinter();
+  }, [poster?.id, poster?.printerId]);
+
+  // Fetch linked publisher when poster loads
+  useEffect(() => {
+    async function fetchLinkedPublisher() {
+      if (!poster?.publisherId) {
+        setLinkedPublisher(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/posters/${poster.id}/publisher-link`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked && data.publisher) {
+            setLinkedPublisher(data.publisher);
+          } else {
+            setLinkedPublisher(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch linked publisher:', err);
+        setLinkedPublisher(null);
+      }
+    }
+
+    fetchLinkedPublisher();
+  }, [poster?.id, poster?.publisherId]);
+
   async function fetchPoster() {
     try {
       setLoading(true);
@@ -374,6 +437,54 @@ export default function PosterDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to unlink artist');
     } finally {
       setUnlinkingArtist(false);
+    }
+  }
+
+  async function unlinkPrinter() {
+    if (!poster) return;
+
+    try {
+      setUnlinkingPrinter(true);
+      const res = await fetch(`/api/posters/${poster.id}/printer-link`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to unlink printer');
+      }
+
+      // Update poster to clear printerId
+      setPoster(prev => prev ? { ...prev, printerId: null } : null);
+      setLinkedPrinter(null);
+    } catch (err) {
+      console.error('Failed to unlink printer:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlink printer');
+    } finally {
+      setUnlinkingPrinter(false);
+    }
+  }
+
+  async function unlinkPublisher() {
+    if (!poster) return;
+
+    try {
+      setUnlinkingPublisher(true);
+      const res = await fetch(`/api/posters/${poster.id}/publisher-link`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to unlink publisher');
+      }
+
+      // Update poster to clear publisherId
+      setPoster(prev => prev ? { ...prev, publisherId: null } : null);
+      setLinkedPublisher(null);
+    } catch (err) {
+      console.error('Failed to unlink publisher:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlink publisher');
+    } finally {
+      setUnlinkingPublisher(false);
     }
   }
 
@@ -1182,18 +1293,6 @@ export default function PosterDetailPage() {
             </div>
           )}
 
-          {/* Historical Context - moved to left column */}
-          {poster.analysisCompleted && poster.historicalContext && (
-            <div className="bg-white rounded-lg shadow p-6 mt-4">
-              <h3 className="text-xl font-bold text-slate-900 mb-4">
-                Historical Context
-              </h3>
-              <p className="text-slate-700 whitespace-pre-wrap">
-                {poster.historicalContext}
-              </p>
-            </div>
-          )}
-
           {/* Design Profile - moved to left column */}
           {poster.analysisCompleted && poster.rawAiResponse && (
             <div className="bg-white rounded-lg shadow p-6 mt-4">
@@ -1211,7 +1310,7 @@ export default function PosterDetailPage() {
 
                 {/* Publication & Advertiser */}
                 {(poster.rawAiResponse.historicalContext?.publication || poster.rawAiResponse.historicalContext?.advertiser) && (
-                  <div className="flex flex-wrap gap-4">
+                  <div className="space-y-3">
                     {poster.rawAiResponse.historicalContext.publication && (
                       <div>
                         <label className="text-sm font-medium text-slate-700">Publication</label>
@@ -1228,6 +1327,58 @@ export default function PosterDetailPage() {
                             Learn more →
                           </a>
                         </div>
+
+                        {/* Linked Publisher Card */}
+                        {linkedPublisher && (
+                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-medium text-amber-900">{linkedPublisher.name}</h4>
+                                {linkedPublisher.verified && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium mt-1">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {(linkedPublisher.publicationType || linkedPublisher.country || linkedPublisher.foundedYear) && (
+                              <p className="text-xs text-amber-700 mt-1">
+                                {linkedPublisher.publicationType}
+                                {linkedPublisher.publicationType && linkedPublisher.country && ' · '}
+                                {linkedPublisher.country}
+                                {(linkedPublisher.publicationType || linkedPublisher.country) && linkedPublisher.foundedYear && ' · '}
+                                {linkedPublisher.foundedYear && (
+                                  <>Founded {linkedPublisher.foundedYear}{linkedPublisher.ceasedYear ? `–${linkedPublisher.ceasedYear}` : ''}</>
+                                )}
+                              </p>
+                            )}
+                            {linkedPublisher.bio && (
+                              <p className="text-xs text-amber-800 mt-2 line-clamp-3">{linkedPublisher.bio}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2">
+                              {linkedPublisher.wikipediaUrl && (
+                                <a
+                                  href={linkedPublisher.wikipediaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  Wikipedia →
+                                </a>
+                              )}
+                              <button
+                                onClick={unlinkPublisher}
+                                disabled={unlinkingPublisher}
+                                className="text-xs text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
+                              >
+                                {unlinkingPublisher ? 'Unlinking...' : 'Unlink'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                     {poster.rawAiResponse.historicalContext.advertiser && (
@@ -1292,7 +1443,7 @@ export default function PosterDetailPage() {
             poster.rawAiResponse.historicalContext.timeAndPlace.regional ||
             poster.rawAiResponse.historicalContext.timeAndPlace.local
           ) && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 mt-6">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Time & Place</h3>
               <div className="space-y-4">
                 {/* World - US Perspective */}
@@ -1795,14 +1946,15 @@ export default function PosterDetailPage() {
                 </div>
               </div>
 
-              {/* Printing Technique */}
+              {/* Printing Information */}
               {(poster.printingTechnique || poster.printer) && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-xl font-bold text-slate-900 mb-4">
                     Printing Information
                   </h3>
+                  {/* Technique */}
                   {poster.printingTechnique && (
-                    <div className="mb-3">
+                    <div className="mb-4">
                       <label className="text-sm font-medium text-slate-700">Technique</label>
                       <div className="flex items-center gap-2">
                         <p className="text-slate-700">
@@ -1819,12 +1971,133 @@ export default function PosterDetailPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Printer with Verification */}
                   {poster.printer && (
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Printer/Publisher</label>
-                      <p className="text-slate-700">
-                        {poster.printer}
-                      </p>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-slate-700">Printer</label>
+                        {poster.printerConfidence && (
+                          <button
+                            onClick={() => setShowPrinterVerificationDetails(!showPrinterVerificationDetails)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
+                              poster.printerConfidence === 'confirmed'
+                                ? 'bg-green-100 text-green-700'
+                                : poster.printerConfidence === 'likely'
+                                ? 'bg-blue-100 text-blue-700'
+                                : poster.printerConfidence === 'uncertain'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {poster.printerConfidence}
+                            <svg
+                              className={`w-3 h-3 transition-transform ${showPrinterVerificationDetails ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-slate-900 font-medium">{poster.printer}</p>
+                      {poster.printerSource && (
+                        <p className="text-xs text-slate-500 mt-1">Source: {poster.printerSource}</p>
+                      )}
+
+                      {/* Expandable Printer Verification Details */}
+                      {showPrinterVerificationDetails && poster.printerVerification && (
+                        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                          {poster.printerVerification.marksText && (
+                            <p className="text-slate-700 mb-2">
+                              <span className="font-medium">Marks text:</span> &quot;{poster.printerVerification.marksText}&quot;
+                            </p>
+                          )}
+                          <ul className="space-y-1">
+                            <li className="flex items-center gap-2">
+                              <span className={poster.printerVerification.marksReadable ? 'text-green-600' : 'text-red-500'}>
+                                {poster.printerVerification.marksReadable ? '✓' : '✗'}
+                              </span>
+                              <span>Printer Marks Readable</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <span className={poster.printerVerification.historyVerified ? 'text-green-600' : 'text-red-500'}>
+                                {poster.printerVerification.historyVerified ? '✓' : '✗'}
+                              </span>
+                              <span>History Verified</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <span className={poster.printerVerification.locationMatches ? 'text-green-600' : 'text-red-500'}>
+                                {poster.printerVerification.locationMatches ? '✓' : '✗'}
+                              </span>
+                              <span>Location Matches</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <span className={poster.printerVerification.styleMatches ? 'text-green-600' : 'text-red-500'}>
+                                {poster.printerVerification.styleMatches ? '✓' : '✗'}
+                              </span>
+                              <span>Style Consistent</span>
+                            </li>
+                          </ul>
+                          {poster.printerVerification.verificationNotes && (
+                            <p className="mt-2 text-slate-600 border-t border-slate-200 pt-2">
+                              {poster.printerVerification.verificationNotes}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Linked Printer Card */}
+                      {linkedPrinter && (
+                        <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium text-amber-900">{linkedPrinter.name}</h4>
+                              {linkedPrinter.verified && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium mt-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                  Verified
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {(linkedPrinter.location || linkedPrinter.foundedYear) && (
+                            <p className="text-xs text-amber-700 mt-1">
+                              {linkedPrinter.location}
+                              {linkedPrinter.location && linkedPrinter.foundedYear && ' · '}
+                              {linkedPrinter.foundedYear && (
+                                <>Founded {linkedPrinter.foundedYear}{linkedPrinter.closedYear ? `–${linkedPrinter.closedYear}` : ''}</>
+                              )}
+                            </p>
+                          )}
+                          {linkedPrinter.bio && (
+                            <p className="text-xs text-amber-800 mt-2 line-clamp-3">{linkedPrinter.bio}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            {linkedPrinter.wikipediaUrl && (
+                              <a
+                                href={linkedPrinter.wikipediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                Wikipedia →
+                              </a>
+                            )}
+                            <button
+                              onClick={unlinkPrinter}
+                              disabled={unlinkingPrinter}
+                              className="text-xs text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
+                            >
+                              {unlinkingPrinter ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -21,6 +21,14 @@ interface ListItem {
   bio?: string;
   imageUrl?: string;
   verified?: boolean;
+  // Printer fields
+  location?: string;
+  country?: string;
+  foundedYear?: number;
+  closedYear?: number;
+  // Publisher fields
+  publicationType?: string;
+  ceasedYear?: number;
 }
 
 interface ListConfig {
@@ -58,6 +66,42 @@ const LIST_CONFIGS: ListConfig[] = [
       { key: 'deathYear', label: 'Death Year', type: 'number' },
       { key: 'wikipediaUrl', label: 'Wikipedia URL', type: 'url', placeholder: 'https://en.wikipedia.org/wiki/...' },
       { key: 'bio', label: 'Biography', type: 'textarea' },
+      { key: 'imageUrl', label: 'Image URL', type: 'url', placeholder: 'https://...' },
+      { key: 'verified', label: 'Verified Profile', type: 'checkbox' },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  {
+    key: 'printers',
+    label: 'Printers',
+    description: 'Physical printing companies (DAN, Imprimerie Chaix, etc.)',
+    fields: [
+      { key: 'name', label: 'Canonical Name', type: 'text', required: true },
+      { key: 'aliases', label: 'Aliases', type: 'aliases' },
+      { key: 'location', label: 'Location', type: 'text', placeholder: 'Rome, Italy' },
+      { key: 'country', label: 'Country', type: 'text' },
+      { key: 'foundedYear', label: 'Founded Year', type: 'number' },
+      { key: 'closedYear', label: 'Closed Year', type: 'number' },
+      { key: 'wikipediaUrl', label: 'Wikipedia URL', type: 'url', placeholder: 'https://en.wikipedia.org/wiki/...' },
+      { key: 'bio', label: 'Description', type: 'textarea' },
+      { key: 'imageUrl', label: 'Image URL', type: 'url', placeholder: 'https://...' },
+      { key: 'verified', label: 'Verified Profile', type: 'checkbox' },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  {
+    key: 'publishers',
+    label: 'Publishers',
+    description: 'Magazines, newspapers, publishing houses (The New Yorker, Fortune, etc.)',
+    fields: [
+      { key: 'name', label: 'Canonical Name', type: 'text', required: true },
+      { key: 'aliases', label: 'Aliases', type: 'aliases' },
+      { key: 'publicationType', label: 'Publication Type', type: 'text', placeholder: 'Magazine, Newspaper, etc.' },
+      { key: 'country', label: 'Country', type: 'text' },
+      { key: 'foundedYear', label: 'Founded Year', type: 'number' },
+      { key: 'ceasedYear', label: 'Ceased Year', type: 'number' },
+      { key: 'wikipediaUrl', label: 'Wikipedia URL', type: 'url', placeholder: 'https://en.wikipedia.org/wiki/...' },
+      { key: 'bio', label: 'Description', type: 'textarea' },
       { key: 'imageUrl', label: 'Image URL', type: 'url', placeholder: 'https://...' },
       { key: 'verified', label: 'Verified Profile', type: 'checkbox' },
       { key: 'notes', label: 'Notes', type: 'textarea' },
