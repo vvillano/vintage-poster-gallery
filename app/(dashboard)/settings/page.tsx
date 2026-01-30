@@ -32,6 +32,13 @@ export default function SettingsPage() {
       icon: '🛒',
       color: 'bg-green-50 border-green-200 hover:bg-green-100',
     },
+    {
+      title: 'Database Migrations',
+      description: 'Run database schema updates. Required after deploying new features that add tables or columns.',
+      href: '/settings/migrate',
+      icon: '🔧',
+      color: 'bg-amber-50 border-amber-200 hover:bg-amber-100',
+    },
   ];
 
   return (
@@ -63,17 +70,6 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Admin Section */}
-      <div className="mt-8 pt-6 border-t border-slate-200">
-        <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Admin</h2>
-        <Link
-          href="/settings/migrate"
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
-        >
-          <span>🔧</span>
-          Run Database Migrations
-        </Link>
-      </div>
     </div>
   );
 }
