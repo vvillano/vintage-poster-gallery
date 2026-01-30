@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -216,6 +216,11 @@ export default function PosterDetailPage() {
 
   // Shopify auto-refresh state
   const [syncingFromShopify, setSyncingFromShopify] = useState(false);
+
+  // Artist linking state
+  const [linkedArtist, setLinkedArtist] = useState<LinkedArtist | null>(null);
+  const [showVerificationDetails, setShowVerificationDetails] = useState(false);
+  const [unlinkingArtist, setUnlinkingArtist] = useState(false);
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -305,6 +310,33 @@ export default function PosterDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poster?.id, poster?.shopifyProductId]);
 
+  // Fetch linked artist when poster loads
+  useEffect(() => {
+    async function fetchLinkedArtist() {
+      if (!poster?.artistId) {
+        setLinkedArtist(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/posters/${poster.id}/artist-link`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked && data.artist) {
+            setLinkedArtist(data.artist);
+          } else {
+            setLinkedArtist(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch linked artist:', err);
+        setLinkedArtist(null);
+      }
+    }
+
+    fetchLinkedArtist();
+  }, [poster?.id, poster?.artistId]);
+
   async function fetchPoster() {
     try {
       setLoading(true);
@@ -318,6 +350,30 @@ export default function PosterDetailPage() {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function unlinkArtist() {
+    if (!poster) return;
+
+    try {
+      setUnlinkingArtist(true);
+      const res = await fetch(`/api/posters/${poster.id}/artist-link`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to unlink artist');
+      }
+
+      // Update poster to clear artistId
+      setPoster(prev => prev ? { ...prev, artistId: null } : null);
+      setLinkedArtist(null);
+    } catch (err) {
+      console.error('Failed to unlink artist:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlink artist');
+    } finally {
+      setUnlinkingArtist(false);
     }
   }
 
@@ -1538,24 +1594,167 @@ export default function PosterDetailPage() {
                     </div>
                   )}
 
-                  {/* Artist with confidence */}
+                  {/* Artist with confidence and linked profile */}
                   <div className="border-b border-slate-100 pb-3">
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-sm font-medium text-slate-700">Artist</label>
                       {poster.artistConfidence && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                          poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <button
+                          onClick={() => setShowVerificationDetails(!showVerificationDetails)}
+                          className={`text-xs px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition flex items-center gap-1 ${
+                            poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                            poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {poster.artistConfidence}
-                        </span>
+                          {poster.artistConfidenceScore && (
+                            <span className="opacity-70">({poster.artistConfidenceScore}%)</span>
+                          )}
+                          <svg
+                            className={`w-3 h-3 transition-transform ${showVerificationDetails ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                       )}
                     </div>
+
+                    {/* Artist Name */}
                     <p className="text-slate-900 font-medium">{poster.artist || 'Unknown'}</p>
+
+                    {/* Artist Source */}
                     {poster.artistSource && (
                       <p className="text-xs text-slate-500 mt-1">Source: {poster.artistSource}</p>
+                    )}
+
+                    {/* Expandable Verification Details */}
+                    {showVerificationDetails && poster.artistVerification && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg text-sm">
+                        <h4 className="font-medium text-slate-700 mb-2">Verification Details</h4>
+                        {poster.artistSignatureText && (
+                          <p className="text-slate-600 mb-2">
+                            <span className="font-medium">Signature:</span> "{poster.artistSignatureText}"
+                          </p>
+                        )}
+                        <ul className="space-y-1 text-slate-600">
+                          <li className="flex items-center gap-2">
+                            {poster.artistVerification.signatureReadable ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-500">✗</span>
+                            )}
+                            Signature Readable
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {poster.artistVerification.professionVerified ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-500">✗</span>
+                            )}
+                            Profession Verified (illustrator/poster artist)
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {poster.artistVerification.eraMatches ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-500">✗</span>
+                            )}
+                            Era Matches
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {poster.artistVerification.styleMatches ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-500">✗</span>
+                            )}
+                            Style Matches Known Works
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {poster.artistVerification.multipleArtistsWithName ? (
+                              <span className="text-yellow-600">⚠</span>
+                            ) : (
+                              <span className="text-green-600">✓</span>
+                            )}
+                            {poster.artistVerification.multipleArtistsWithName
+                              ? 'Multiple Artists With Similar Name'
+                              : 'Unique Name'}
+                          </li>
+                        </ul>
+                        {poster.artistVerification.verificationNotes && (
+                          <p className="mt-2 text-xs text-slate-500 italic">
+                            {poster.artistVerification.verificationNotes}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Linked Artist Card */}
+                    {linkedArtist && (
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-amber-900">{linkedArtist.name}</h4>
+                              {linkedArtist.verified && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                  Verified
+                                </span>
+                              )}
+                            </div>
+                            {(linkedArtist.nationality || linkedArtist.birthYear) && (
+                              <p className="text-sm text-amber-800">
+                                {linkedArtist.nationality}
+                                {linkedArtist.nationality && linkedArtist.birthYear && ' · '}
+                                {linkedArtist.birthYear && (
+                                  <span>
+                                    {linkedArtist.birthYear}
+                                    {linkedArtist.deathYear ? `–${linkedArtist.deathYear}` : '–present'}
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                            {linkedArtist.bio && (
+                              <p className="text-xs text-amber-700 mt-1 line-clamp-2">
+                                {linkedArtist.bio}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2">
+                              {linkedArtist.wikipediaUrl && (
+                                <a
+                                  href={linkedArtist.wikipediaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  Wikipedia →
+                                </a>
+                              )}
+                              <Link
+                                href="/settings/lists"
+                                className="text-xs text-amber-600 hover:text-amber-800 hover:underline"
+                              >
+                                View Profile →
+                              </Link>
+                            </div>
+                          </div>
+                          <button
+                            onClick={unlinkArtist}
+                            disabled={unlinkingArtist}
+                            className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+                            title="Remove artist link"
+                          >
+                            {unlinkingArtist ? 'Unlinking...' : 'Unlink'}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
 

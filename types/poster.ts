@@ -69,6 +69,10 @@ export interface Artist {
   birthYear?: number | null;
   deathYear?: number | null;
   notes?: string | null;
+  wikipediaUrl?: string | null;  // Wikipedia page URL
+  bio?: string | null;           // Biographical summary
+  imageUrl?: string | null;      // Artist portrait/photo URL
+  verified: boolean;             // Is this a verified artist profile?
   createdAt: Date;
   updatedAt: Date;
 }
@@ -164,6 +168,7 @@ export interface Poster {
   artistSource?: string | null;  // Where the artist name was found
   artistSignatureText?: string | null;  // Exact signature text (e.g., "P. Verger")
   artistVerification?: ArtistVerification | null;  // Verification checklist
+  artistId?: number | null;  // FK to artists table for confirmed attributions
   title?: string | null;
   estimatedDate?: string | null;
   dateConfidence?: string | null;  // confirmed, likely, uncertain, unknown
@@ -255,6 +260,19 @@ export interface SimilarProduct {
   url: string;  // Direct link to listing
   price?: string;  // Price if available
   condition?: string;  // Condition note if available
+}
+
+// Linked artist data for display in poster detail
+export interface LinkedArtist {
+  id: number;
+  name: string;
+  nationality?: string | null;
+  birthYear?: number | null;
+  deathYear?: number | null;
+  wikipediaUrl?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  verified: boolean;
 }
 
 // Artist verification checklist for rigorous identification
@@ -362,6 +380,7 @@ export interface UpdatePosterInput {
   artistSource?: string;
   artistSignatureText?: string;
   artistVerification?: ArtistVerification;
+  artistId?: number | null;  // FK to artists table for confirmed attributions
   title?: string;
   estimatedDate?: string;
   dateConfidence?: string;

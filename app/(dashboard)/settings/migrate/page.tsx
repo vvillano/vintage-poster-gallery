@@ -37,6 +37,13 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/seed-artists',
     successLink: { href: '/settings/lists', label: 'View Artists' },
   },
+  {
+    id: 'artist-profiles',
+    name: 'Artist Profiles & Linking',
+    description: 'Add enhanced artist profile fields (Wikipedia URL, bio, image, verified status) and enable poster-to-artist linking for confirmed attributions.',
+    endpoint: '/api/migrate/artist-profiles',
+    successLink: { href: '/settings/lists', label: 'Manage Artists' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';

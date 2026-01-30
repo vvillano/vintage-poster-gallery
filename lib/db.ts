@@ -526,6 +526,7 @@ function dbRowToPoster(row: any): Poster {
     artistSource: row.artist_source,
     artistSignatureText: row.artist_signature_text,
     artistVerification: row.artist_verification,
+    artistId: row.artist_id,
     title: row.title,
     estimatedDate: row.estimated_date,
     dateConfidence: row.date_confidence,

@@ -13,9 +13,9 @@ const LIST_CONFIGS = {
   },
   'artists': {
     table: 'artists',
-    columns: ['id', 'name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'created_at', 'updated_at'],
-    insertColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes'],
-    updateColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'updated_at'],
+    columns: ['id', 'name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'created_at', 'updated_at'],
+    insertColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
+    updateColumns: ['name', 'aliases', 'nationality', 'birth_year', 'death_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
   },
   'internal-tags': {
     table: 'internal_tags',
@@ -143,14 +143,18 @@ export async function POST(
           ? `{${aliasesArray.map((a: string) => `"${a.replace(/"/g, '\\"')}"`).join(',')}}`
           : null;
         result = await sql`
-          INSERT INTO artists (name, aliases, nationality, birth_year, death_year, notes)
+          INSERT INTO artists (name, aliases, nationality, birth_year, death_year, notes, wikipedia_url, bio, image_url, verified)
           VALUES (
             ${body.name},
             ${aliasesLiteral}::TEXT[],
             ${body.nationality || null},
             ${body.birthYear || null},
             ${body.deathYear || null},
-            ${body.notes || null}
+            ${body.notes || null},
+            ${body.wikipediaUrl || null},
+            ${body.bio || null},
+            ${body.imageUrl || null},
+            ${body.verified || false}
           )
           RETURNING *
         `;
@@ -264,6 +268,10 @@ export async function PUT(
             birth_year = ${body.birthYear || null},
             death_year = ${body.deathYear || null},
             notes = ${body.notes || null},
+            wikipedia_url = ${body.wikipediaUrl || null},
+            bio = ${body.bio || null},
+            image_url = ${body.imageUrl || null},
+            verified = ${body.verified || false},
             updated_at = NOW()
           WHERE id = ${idNum}
           RETURNING *

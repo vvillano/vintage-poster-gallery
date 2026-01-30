@@ -64,6 +64,33 @@ export async function GET() {
       status['seed-artists'] = { completed: false };
     }
 
+    // Check Artist Profiles migration - look for wikipedia_url column on artists and artist_id on posters
+    try {
+      await sql`SELECT wikipedia_url FROM artists LIMIT 1`;
+      await sql`SELECT artist_id FROM posters LIMIT 1`;
+
+      // Count verified artists and linked posters
+      const verifiedResult = await sql`
+        SELECT
+          (SELECT COUNT(*) FROM artists WHERE verified = true) as verified_artists,
+          (SELECT COUNT(*) FROM posters WHERE artist_id IS NOT NULL) as linked_posters
+      `;
+      const verifiedArtists = parseInt(verifiedResult.rows[0].verified_artists || '0');
+      const linkedPosters = parseInt(verifiedResult.rows[0].linked_posters || '0');
+
+      let details = 'Columns added';
+      if (verifiedArtists > 0 || linkedPosters > 0) {
+        details = `${verifiedArtists} verified artists, ${linkedPosters} linked posters`;
+      }
+
+      status['artist-profiles'] = {
+        completed: true,
+        details,
+      };
+    } catch {
+      status['artist-profiles'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);
