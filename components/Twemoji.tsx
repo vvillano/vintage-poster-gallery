@@ -1,42 +1,67 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import twemoji from '@twemoji/api';
+import { getEmojiUrl, getCountryFlagUrl } from '@/lib/emoji';
 
-interface TwemojiProps {
+interface EmojiProps {
   emoji: string;
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export default function Twemoji({ emoji, className = '' }: TwemojiProps) {
-  const spanRef = useRef<HTMLSpanElement>(null);
+interface CountryFlagProps {
+  countryCode: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
 
-  useEffect(() => {
-    if (spanRef.current) {
-      twemoji.parse(spanRef.current, {
-        folder: 'svg',
-        ext: '.svg',
-        base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/',
-      });
-    }
-  }, [emoji]);
+const SIZE_MAP = {
+  sm: { px: 72, class: 'h-4' },
+  md: { px: 72, class: 'h-5' },
+  lg: { px: 128, class: 'h-6' },
+} as const;
+
+/**
+ * Renders any emoji using Google Noto Color Emoji
+ */
+export default function Emoji({ emoji, size = 'md', className = '' }: EmojiProps) {
+  const { px, class: sizeClass } = SIZE_MAP[size];
+  const url = getEmojiUrl(emoji, px as 32 | 72 | 128 | 512);
+
+  if (!url) {
+    return <span className={className}>{emoji}</span>;
+  }
 
   return (
-    <span
-      ref={spanRef}
-      className={`inline-flex items-center ${className}`}
-      style={{
-        // Twemoji images get this class, set size via CSS
-      }}
-    >
-      <style jsx>{`
-        span :global(img.emoji) {
-          height: 1.2em;
-          width: auto;
-          vertical-align: -0.2em;
-        }
-      `}</style>
-      {emoji}
-    </span>
+    <img
+      src={url}
+      alt={emoji}
+      className={`${sizeClass} w-auto inline-block ${className}`}
+      loading="lazy"
+    />
   );
 }
+
+/**
+ * Renders a country flag using Google Noto Color Emoji
+ * Takes a 2-letter ISO country code (e.g., "US", "FR", "AT")
+ */
+export function CountryFlag({ countryCode, size = 'md', className = '' }: CountryFlagProps) {
+  const { px, class: sizeClass } = SIZE_MAP[size];
+  const url = getCountryFlagUrl(countryCode, px as 32 | 72 | 128 | 512);
+
+  if (!url) {
+    return <span className={className}>{countryCode}</span>;
+  }
+
+  return (
+    <img
+      src={url}
+      alt={`${countryCode} flag`}
+      className={`${sizeClass} w-auto inline-block ${className}`}
+      loading="lazy"
+    />
+  );
+}
+
+// Re-export as Twemoji for backwards compatibility
+export { Emoji as Twemoji };

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CountryFlag } from '@/components/Twemoji';
 
 interface ListItem {
   id: number;
@@ -738,6 +739,9 @@ function ManagedListsContent() {
                                   className="w-4 h-4 rounded-full"
                                   style={{ backgroundColor: item.color }}
                                 />
+                              )}
+                              {activeList === 'countries' && item.code && (
+                                <CountryFlag countryCode={item.code} size="md" />
                               )}
                               <div>
                                 <div className="font-medium text-slate-900 flex items-center gap-2">
