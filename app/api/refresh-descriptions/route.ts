@@ -127,10 +127,10 @@ Return ONLY valid JSON:
       descriptions = JSON.parse(sanitized);
     }
 
-    // Convert [PARA] markers to actual newlines for paragraph breaks
+    // Convert [PARA] and [/PARA] markers to actual newlines for paragraph breaks
     for (const key of ['standard', 'scholarly', 'enthusiastic', 'immersive']) {
       if (descriptions[key]) {
-        descriptions[key] = descriptions[key].replace(/\s*\[PARA\]\s*/g, '\n\n');
+        descriptions[key] = descriptions[key].replace(/\s*\[\/?\s*PARA\s*\]\s*/gi, '\n\n');
       }
     }
 
