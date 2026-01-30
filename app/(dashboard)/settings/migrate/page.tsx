@@ -25,6 +25,13 @@ const MIGRATIONS: MigrationConfig[] = [
     description: 'Add enhanced artist identification fields: confidence score (0-100%), signature text, and verification checklist.',
     endpoint: '/api/migrate/artist-verification',
   },
+  {
+    id: 'seed-artists',
+    name: 'Seed Artists from Shopify',
+    description: 'Import all artist names from Shopify catalog into the artists table. Safe to run multiple times (skips duplicates).',
+    endpoint: '/api/migrate/seed-artists',
+    successLink: { href: '/settings/lists', label: 'View Artists' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';
