@@ -837,7 +837,6 @@ export default function PosterDetailPage() {
               src={poster.imageUrl}
               alt={poster.title || poster.fileName}
               className="w-full h-full object-contain aspect-[3/4] bg-slate-100 rounded-lg"
-              previewSize={600}
             />
             <div className="mt-4 text-sm text-slate-600">
               {poster.productType && (
@@ -885,8 +884,7 @@ export default function PosterDetailPage() {
                       <ImagePreview
                         src={img.url}
                         alt={img.description || `Reference ${idx + 1}`}
-                        className="w-full h-16 object-cover rounded border border-slate-200 cursor-zoom-in"
-                        previewSize={400}
+                        className="w-full h-16 object-cover rounded border border-slate-200"
                       />
                       {img.description && (
                         <p className="text-xs text-slate-500 mt-1 truncate" title={img.description}>
@@ -1438,7 +1436,6 @@ export default function PosterDetailPage() {
                                 src={img.url}
                                 alt={img.description || `Reference ${idx + 1}`}
                                 className="w-full h-20 object-cover rounded border border-slate-200"
-                                previewSize={400}
                               >
                                 <button
                                   onClick={() => deleteSupplementalImage(img.url)}
