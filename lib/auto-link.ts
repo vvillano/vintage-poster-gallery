@@ -1,6 +1,108 @@
 import { sql } from '@vercel/postgres';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Common country name to ISO code mapping
+const COUNTRY_CODES: Record<string, string> = {
+  'argentina': 'AR',
+  'australia': 'AU',
+  'austria': 'AT',
+  'azerbaijan': 'AZ',
+  'belgium': 'BE',
+  'brazil': 'BR',
+  'canada': 'CA',
+  'chile': 'CL',
+  'china': 'CN',
+  'cuba': 'CU',
+  'czech republic': 'CZ',
+  'czechia': 'CZ',
+  'denmark': 'DK',
+  'egypt': 'EG',
+  'finland': 'FI',
+  'france': 'FR',
+  'germany': 'DE',
+  'greece': 'GR',
+  'holland': 'NL',
+  'hungary': 'HU',
+  'india': 'IN',
+  'ireland': 'IE',
+  'israel': 'IL',
+  'italy': 'IT',
+  'japan': 'JP',
+  'mexico': 'MX',
+  'netherlands': 'NL',
+  'norway': 'NO',
+  'peru': 'PE',
+  'poland': 'PL',
+  'portugal': 'PT',
+  'romania': 'RO',
+  'russia': 'RU',
+  'scotland': 'GB',
+  'spain': 'ES',
+  'sweden': 'SE',
+  'switzerland': 'CH',
+  'turkey': 'TR',
+  'ukraine': 'UA',
+  'united kingdom': 'GB',
+  'uk': 'GB',
+  'britain': 'GB',
+  'great britain': 'GB',
+  'england': 'GB',
+  'wales': 'GB',
+  'united states': 'US',
+  'usa': 'US',
+  'america': 'US',
+  'u.s.': 'US',
+  'u.s.a.': 'US',
+  'vietnam': 'VN',
+  'yugoslavia': 'YU',
+};
+
+/**
+ * Find or create a country record by name
+ * Returns the country name (normalized) for consistency
+ */
+async function findOrCreateCountry(countryName: string): Promise<string | null> {
+  if (!countryName) return null;
+
+  const normalized = countryName.trim();
+  const lowerName = normalized.toLowerCase();
+
+  // Get the ISO code if we know it
+  const code = COUNTRY_CODES[lowerName];
+
+  try {
+    // Check if country already exists
+    const existing = await sql`
+      SELECT name FROM countries
+      WHERE LOWER(name) = ${lowerName}
+         OR LOWER(code) = ${lowerName}
+         OR code = ${code || ''}
+      LIMIT 1
+    `;
+
+    if (existing.rows.length > 0) {
+      return existing.rows[0].name;
+    }
+
+    // Country doesn't exist - create it
+    console.log(`Creating new country: ${normalized} (${code || 'no code'})`);
+
+    // Get the next display order
+    const orderResult = await sql`SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM countries`;
+    const nextOrder = orderResult.rows[0].next_order;
+
+    await sql`
+      INSERT INTO countries (name, code, display_order)
+      VALUES (${normalized}, ${code || null}, ${nextOrder})
+    `;
+
+    return normalized;
+  } catch (error) {
+    console.error('Error finding/creating country:', error);
+    return normalized; // Return the name even if DB operation fails
+  }
+}
+
 interface WikipediaData {
   title?: string;
   description?: string;
@@ -387,6 +489,11 @@ export async function findOrCreatePrinter(
           }
         }
 
+        // Auto-create country in managed list if found
+        if (country) {
+          country = await findOrCreateCountry(country) || country;
+        }
+
         // Update the existing record with the fetched data
         if (location || country || foundedYear || bio || wikipediaUrl) {
           await sql`
@@ -437,6 +544,11 @@ export async function findOrCreatePrinter(
         closedYear = closedYear || claudeData.closedYear;
         bio = bio || claudeData.bio;
       }
+    }
+
+    // Auto-create country in managed list if found
+    if (country) {
+      country = await findOrCreateCountry(country) || country;
     }
 
     // Insert new printer
@@ -524,6 +636,11 @@ export async function findOrCreatePublisher(
           }
         }
 
+        // Auto-create country in managed list if found
+        if (country) {
+          country = await findOrCreateCountry(country) || country;
+        }
+
         // Update the existing record with the fetched data
         if (publicationType || country || foundedYear || bio || wikipediaUrl) {
           await sql`
@@ -574,6 +691,11 @@ export async function findOrCreatePublisher(
         ceasedYear = ceasedYear || claudeData.ceasedYear;
         bio = bio || claudeData.bio;
       }
+    }
+
+    // Auto-create country in managed list if found
+    if (country) {
+      country = await findOrCreateCountry(country) || country;
     }
 
     // Insert new publisher
