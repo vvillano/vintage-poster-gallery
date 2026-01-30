@@ -38,6 +38,7 @@ export default function DashboardLayout({
     { name: 'Managed Lists', href: '/settings/lists', icon: '📋' },
     { name: 'Research Sites', href: '/settings/research-sites', icon: '🔍' },
     { name: 'Shopify', href: '/settings/shopify', icon: '🛒' },
+    { name: 'Migrations', href: '/settings/migrate', icon: '🔧' },
   ];
 
   const isSettingsActive = pathname.startsWith('/settings');
