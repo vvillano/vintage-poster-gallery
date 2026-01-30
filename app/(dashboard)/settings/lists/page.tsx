@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -150,7 +150,7 @@ const LIST_CONFIGS: ListConfig[] = [
   },
 ];
 
-export default function ManagedListsPage() {
+function ManagedListsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeList, setActiveList] = useState<string>('media-types');
@@ -738,5 +738,13 @@ export default function ManagedListsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ManagedListsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-slate-500">Loading...</div></div>}>
+      <ManagedListsContent />
+    </Suspense>
   );
 }
