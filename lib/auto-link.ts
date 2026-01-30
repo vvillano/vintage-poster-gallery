@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres';
+import Anthropic from '@anthropic-ai/sdk';
 
 interface WikipediaData {
   title?: string;
@@ -226,6 +227,107 @@ function extractArtistFields(data: WikipediaData, infobox: Record<string, string
   }
 }
 
+interface ClaudeResearchData {
+  location?: string;
+  country?: string;
+  foundedYear?: number;
+  closedYear?: number;
+  bio?: string;
+  publicationType?: string;
+  ceasedYear?: number;
+  nationality?: string;
+  birthYear?: number;
+  deathYear?: number;
+}
+
+/**
+ * Use Claude AI to research an entity when Wikipedia search fails
+ * Uses Haiku for fast, cheap research queries
+ */
+async function researchWithClaude(
+  name: string,
+  type: 'printer' | 'publisher' | 'artist'
+): Promise<ClaudeResearchData | null> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log('No Anthropic API key - skipping Claude research');
+    return null;
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    let prompt = '';
+    if (type === 'printer') {
+      prompt = `Research this historical printing company: "${name}"
+
+Provide information about this lithography/printing company. If the name includes a location (e.g., "Company, Cleveland, Ohio"), extract that location.
+
+Return ONLY valid JSON with these fields (use null for unknown):
+{
+  "location": "city or city, state",
+  "country": "country name",
+  "foundedYear": year as number or null,
+  "closedYear": year as number or null if still operating or unknown,
+  "bio": "1-2 sentence description of the company and what they printed"
+}
+
+If you don't have specific information about this company, still try to extract location from the name and provide a generic description based on the company type.`;
+    } else if (type === 'publisher') {
+      prompt = `Research this publication/publisher: "${name}"
+
+Provide information about this magazine, newspaper, or publishing company.
+
+Return ONLY valid JSON with these fields (use null for unknown):
+{
+  "publicationType": "Magazine" or "Newspaper" or "Journal" or "Book Publisher",
+  "country": "country name",
+  "foundedYear": year as number or null,
+  "ceasedYear": year as number or null if still publishing,
+  "bio": "1-2 sentence description of the publication"
+}`;
+    } else {
+      prompt = `Research this artist/illustrator: "${name}"
+
+Provide information about this artist, particularly if they were a poster artist, illustrator, or commercial artist.
+
+Return ONLY valid JSON with these fields (use null for unknown):
+{
+  "nationality": "nationality",
+  "birthYear": year as number or null,
+  "deathYear": year as number or null if still living or unknown,
+  "bio": "1-2 sentence description of the artist and their work"
+}`;
+    }
+
+    const response = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const textContent = response.content.find(block => block.type === 'text');
+    if (!textContent || textContent.type !== 'text') {
+      return null;
+    }
+
+    // Extract JSON from response
+    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.log('No JSON found in Claude response');
+      return null;
+    }
+
+    const data = JSON.parse(jsonMatch[0]) as ClaudeResearchData;
+    console.log(`Claude research for ${type} "${name}":`, data);
+    return data;
+  } catch (error) {
+    console.error('Claude research error:', error);
+    return null;
+  }
+}
+
 /**
  * Find or create a printer record, auto-fetching Wikipedia data if creating new
  * Returns the printer ID for linking
@@ -254,25 +356,46 @@ export async function findOrCreatePrinter(
       };
     }
 
-    // Not found - create new printer with Wikipedia data
+    // Not found - create new printer
     console.log(`Creating new printer: ${printerName}`);
 
-    // Search Wikipedia for data
+    // First try Wikipedia
     const wikiData = await searchWikipedia(printerName, 'printer');
+
+    let location = wikiData?.location;
+    let country = wikiData?.country;
+    let foundedYear = wikiData?.foundedYear;
+    let closedYear = wikiData?.closedYear;
+    let bio = wikiData?.description;
+    let wikipediaUrl = wikiData?.wikipediaUrl;
+    let imageUrl = wikiData?.imageUrl;
+
+    // If Wikipedia didn't find data, try Claude AI research
+    if (!wikiData || (!wikiData.location && !wikiData.country && !wikiData.foundedYear)) {
+      console.log(`Wikipedia search failed for "${printerName}", trying Claude research...`);
+      const claudeData = await researchWithClaude(printerName, 'printer');
+      if (claudeData) {
+        location = location || claudeData.location;
+        country = country || claudeData.country;
+        foundedYear = foundedYear || claudeData.foundedYear;
+        closedYear = closedYear || claudeData.closedYear;
+        bio = bio || claudeData.bio;
+      }
+    }
 
     // Insert new printer
     const insertResult = await sql`
       INSERT INTO printers (name, location, country, founded_year, closed_year, wikipedia_url, bio, image_url, verified)
       VALUES (
         ${printerName},
-        ${wikiData?.location || null},
-        ${wikiData?.country || null},
-        ${wikiData?.foundedYear || null},
-        ${wikiData?.closedYear || null},
-        ${wikiData?.wikipediaUrl || null},
-        ${wikiData?.description || null},
-        ${wikiData?.imageUrl || null},
-        ${wikiData?.wikipediaUrl ? true : false}
+        ${location || null},
+        ${country || null},
+        ${foundedYear || null},
+        ${closedYear || null},
+        ${wikipediaUrl || null},
+        ${bio || null},
+        ${imageUrl || null},
+        ${wikipediaUrl ? true : false}
       )
       RETURNING id
     `;
@@ -314,25 +437,46 @@ export async function findOrCreatePublisher(
       };
     }
 
-    // Not found - create new publisher with Wikipedia data
+    // Not found - create new publisher
     console.log(`Creating new publisher: ${publicationName}`);
 
-    // Search Wikipedia for data
+    // First try Wikipedia
     const wikiData = await searchWikipedia(publicationName, 'publisher');
+
+    let publicationType = wikiData?.publicationType;
+    let country = wikiData?.country;
+    let foundedYear = wikiData?.foundedYear;
+    let ceasedYear = wikiData?.ceasedYear;
+    let bio = wikiData?.description;
+    let wikipediaUrl = wikiData?.wikipediaUrl;
+    let imageUrl = wikiData?.imageUrl;
+
+    // If Wikipedia didn't find data, try Claude AI research
+    if (!wikiData || (!wikiData.publicationType && !wikiData.country && !wikiData.foundedYear)) {
+      console.log(`Wikipedia search failed for "${publicationName}", trying Claude research...`);
+      const claudeData = await researchWithClaude(publicationName, 'publisher');
+      if (claudeData) {
+        publicationType = publicationType || claudeData.publicationType;
+        country = country || claudeData.country;
+        foundedYear = foundedYear || claudeData.foundedYear;
+        ceasedYear = ceasedYear || claudeData.ceasedYear;
+        bio = bio || claudeData.bio;
+      }
+    }
 
     // Insert new publisher
     const insertResult = await sql`
       INSERT INTO publishers (name, publication_type, country, founded_year, ceased_year, wikipedia_url, bio, image_url, verified)
       VALUES (
         ${publicationName},
-        ${wikiData?.publicationType || null},
-        ${wikiData?.country || null},
-        ${wikiData?.foundedYear || null},
-        ${wikiData?.ceasedYear || null},
-        ${wikiData?.wikipediaUrl || null},
-        ${wikiData?.description || null},
-        ${wikiData?.imageUrl || null},
-        ${wikiData?.wikipediaUrl ? true : false}
+        ${publicationType || null},
+        ${country || null},
+        ${foundedYear || null},
+        ${ceasedYear || null},
+        ${wikipediaUrl || null},
+        ${bio || null},
+        ${imageUrl || null},
+        ${wikipediaUrl ? true : false}
       )
       RETURNING id
     `;
@@ -375,24 +519,43 @@ export async function findOrCreateArtist(
       };
     }
 
-    // Not found - create new artist with Wikipedia data
+    // Not found - create new artist
     console.log(`Creating new artist: ${artistName}`);
 
-    // Search Wikipedia for data
+    // First try Wikipedia
     const wikiData = await searchWikipedia(artistName, 'artist');
+
+    let nationality = wikiData?.nationality;
+    let birthYear = wikiData?.birthYear;
+    let deathYear = wikiData?.deathYear;
+    let bio = wikiData?.description;
+    let wikipediaUrl = wikiData?.wikipediaUrl;
+    let imageUrl = wikiData?.imageUrl;
+
+    // If Wikipedia didn't find data, try Claude AI research
+    if (!wikiData || (!wikiData.nationality && !wikiData.birthYear)) {
+      console.log(`Wikipedia search failed for "${artistName}", trying Claude research...`);
+      const claudeData = await researchWithClaude(artistName, 'artist');
+      if (claudeData) {
+        nationality = nationality || claudeData.nationality;
+        birthYear = birthYear || claudeData.birthYear;
+        deathYear = deathYear || claudeData.deathYear;
+        bio = bio || claudeData.bio;
+      }
+    }
 
     // Insert new artist
     const insertResult = await sql`
       INSERT INTO artists (name, nationality, birth_year, death_year, wikipedia_url, bio, image_url, verified)
       VALUES (
         ${artistName},
-        ${wikiData?.nationality || null},
-        ${wikiData?.birthYear || null},
-        ${wikiData?.deathYear || null},
-        ${wikiData?.wikipediaUrl || null},
-        ${wikiData?.description || null},
-        ${wikiData?.imageUrl || null},
-        ${wikiData?.wikipediaUrl ? true : false}
+        ${nationality || null},
+        ${birthYear || null},
+        ${deathYear || null},
+        ${wikipediaUrl || null},
+        ${bio || null},
+        ${imageUrl || null},
+        ${wikipediaUrl ? true : false}
       )
       RETURNING id
     `;
