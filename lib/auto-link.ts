@@ -165,12 +165,13 @@ interface WikipediaCandidate {
 
 /**
  * Calculate match score for a Wikipedia candidate based on profession keywords
+ * Returns { score, hasProfessionMatch } to enable requiring positive validation
  */
 function calculateMatchScore(
   candidate: WikipediaCandidate,
   searchName: string,
   type: 'printer' | 'publisher' | 'artist'
-): number {
+): { score: number; hasProfessionMatch: boolean } {
   let score = 0;
   const titleLower = candidate.title.toLowerCase();
   const nameLower = searchName.toLowerCase();
@@ -179,6 +180,9 @@ function calculateMatchScore(
   // Get relevant positive keywords based on type
   const positiveKeywords = type === 'artist' ? ARTIST_KEYWORDS
     : type === 'printer' ? PRINTER_KEYWORDS : PUBLISHER_KEYWORDS;
+
+  // Track if we found any profession-related keywords
+  let hasProfessionMatch = false;
 
   // 1. Exact name match (+100)
   if (titleLower === nameLower) {
@@ -190,23 +194,29 @@ function calculateMatchScore(
   // 2. Profession keywords in title (+30)
   if (positiveKeywords.some(kw => titleLower.includes(kw))) {
     score += 30;
+    hasProfessionMatch = true;
   }
 
   // 3. Profession keywords in description (+15 each, max 45)
   const descMatches = positiveKeywords.filter(kw => descLower.includes(kw)).length;
-  score += Math.min(descMatches * 15, 45);
+  if (descMatches > 0) {
+    score += Math.min(descMatches * 15, 45);
+    hasProfessionMatch = true;
+  }
 
   // 4. Organization keywords (+10) - helps match agencies, studios, etc.
   if (ORGANIZATION_KEYWORDS.some(kw => titleLower.includes(kw) || descLower.includes(kw))) {
     score += 10;
+    hasProfessionMatch = true; // Organizations count as valid matches
   }
 
   // 5. Negative keywords (-200, effectively disqualifies)
+  // Keep as additional safeguard even with positive validation
   if (NEGATIVE_KEYWORDS.some(kw => descLower.includes(kw))) {
     score -= 200;
   }
 
-  return score;
+  return { score, hasProfessionMatch };
 }
 
 /**
@@ -288,8 +298,10 @@ async function searchWikipedia(
     }));
 
     // Score all candidates and find the best match
+    // REQUIRE positive profession keywords - don't accept matches without them
     let bestCandidate: WikipediaCandidate | null = null;
     let bestScore = -Infinity;
+    let bestHasProfessionMatch = false;
 
     for (const candidate of candidates) {
       // Skip disambiguation pages
@@ -297,17 +309,21 @@ async function searchWikipedia(
         continue;
       }
 
-      candidate.score = calculateMatchScore(candidate, name, type);
+      const result = calculateMatchScore(candidate, name, type);
+      candidate.score = result.score;
 
-      if (candidate.score > bestScore) {
-        bestScore = candidate.score;
+      // Only consider candidates with profession keywords OR better score than current best
+      if (result.score > bestScore) {
+        bestScore = result.score;
         bestCandidate = candidate;
+        bestHasProfessionMatch = result.hasProfessionMatch;
       }
     }
 
-    // Minimum threshold - don't return if best match is disqualified by negative keywords
-    if (!bestCandidate || bestScore < 0) {
-      console.log(`No suitable Wikipedia match for "${name}" (best score: ${bestScore})`);
+    // REQUIRE: Must have positive profession match AND positive score
+    // This prevents matching astrophysicists, politicians, etc. even with name matches
+    if (!bestCandidate || bestScore < 0 || !bestHasProfessionMatch) {
+      console.log(`No suitable Wikipedia match for "${name}" (score: ${bestScore}, hasProfessionMatch: ${bestHasProfessionMatch})`);
       return null;
     }
 
@@ -604,10 +620,18 @@ export async function findOrCreatePrinter(
                           !existing.founded_year &&
                           !existing.bio;
 
-      if (isIncomplete) {
-        console.log(`Existing printer "${printerName}" has incomplete data, fetching Wikipedia...`);
+      // Check if the existing record has SUSPICIOUS data (wrong profession in bio)
+      const bioLower = (existing.bio || '').toLowerCase();
+      const hasSuspiciousProfession = NEGATIVE_KEYWORDS.some(kw => bioLower.includes(kw));
 
-        // Try to fetch Wikipedia data for the existing incomplete record
+      if (isIncomplete || hasSuspiciousProfession) {
+        if (hasSuspiciousProfession) {
+          console.log(`Existing printer "${printerName}" has suspicious profession in bio, re-validating...`);
+        } else {
+          console.log(`Existing printer "${printerName}" has incomplete data, fetching Wikipedia...`);
+        }
+
+        // Try to fetch Wikipedia data with the NEW stricter validation
         const wikiData = await searchWikipedia(printerName, 'printer');
 
         let location = wikiData?.location;
@@ -618,7 +642,7 @@ export async function findOrCreatePrinter(
         let wikipediaUrl = wikiData?.wikipediaUrl;
         let imageUrl = wikiData?.imageUrl;
 
-        // If Wikipedia didn't find data, try Claude AI research
+        // If Wikipedia didn't find a VALID match, try Claude AI research
         if (!wikiData || (!wikiData.location && !wikiData.country && !wikiData.foundedYear)) {
           console.log(`Wikipedia search failed for "${printerName}", trying Claude research...`);
           const claudeData = await researchWithClaude(printerName, 'printer');
@@ -636,8 +660,24 @@ export async function findOrCreatePrinter(
           country = await findOrCreateCountry(country) || country;
         }
 
-        // Update the existing record with the fetched data
-        if (location || country || foundedYear || bio || wikipediaUrl) {
+        // If suspicious record and no valid Wikipedia match found, CLEAR the bad data
+        if (hasSuspiciousProfession && !wikiData) {
+          console.log(`Clearing suspicious Wikipedia data for printer "${printerName}"`);
+          await sql`
+            UPDATE printers SET
+              wikipedia_url = NULL,
+              bio = ${bio || null},
+              location = ${location || null},
+              country = ${country || null},
+              founded_year = ${foundedYear || null},
+              closed_year = ${closedYear || null},
+              image_url = NULL,
+              verified = false,
+              updated_at = NOW()
+            WHERE id = ${existing.id}
+          `;
+        } else if (location || country || foundedYear || bio || wikipediaUrl) {
+          // Update the existing record with the fetched data
           await sql`
             UPDATE printers SET
               location = COALESCE(${location || null}, location),
@@ -898,10 +938,19 @@ export async function findOrCreateArtist(
                           !existing.birth_year &&
                           !existing.bio;
 
-      if (isIncomplete) {
-        console.log(`Existing artist "${artistName}" has incomplete data, fetching Wikipedia...`);
+      // Check if the existing record has SUSPICIOUS data (wrong profession in bio)
+      // This catches cases like an astrophysicist being linked to a publisher name
+      const bioLower = (existing.bio || '').toLowerCase();
+      const hasSuspiciousProfession = NEGATIVE_KEYWORDS.some(kw => bioLower.includes(kw));
 
-        // Try to fetch Wikipedia data for the existing incomplete record
+      if (isIncomplete || hasSuspiciousProfession) {
+        if (hasSuspiciousProfession) {
+          console.log(`Existing artist "${artistName}" has suspicious profession in bio, re-validating...`);
+        } else {
+          console.log(`Existing artist "${artistName}" has incomplete data, fetching Wikipedia...`);
+        }
+
+        // Try to fetch Wikipedia data with the NEW stricter validation
         const wikiData = await searchWikipedia(artistName, 'artist');
 
         let nationality = wikiData?.nationality;
@@ -911,7 +960,7 @@ export async function findOrCreateArtist(
         let wikipediaUrl = wikiData?.wikipediaUrl;
         let imageUrl = wikiData?.imageUrl;
 
-        // If Wikipedia didn't find data, try Claude AI research
+        // If Wikipedia didn't find a VALID match (profession validated), try Claude AI research
         if (!wikiData || (!wikiData.nationality && !wikiData.birthYear)) {
           console.log(`Wikipedia search failed for "${artistName}", trying Claude research...`);
           const claudeData = await researchWithClaude(artistName, 'artist');
@@ -923,8 +972,23 @@ export async function findOrCreateArtist(
           }
         }
 
-        // Update the existing record with the fetched data
-        if (nationality || birthYear || bio || wikipediaUrl) {
+        // If suspicious record and no valid Wikipedia match found, CLEAR the bad data
+        if (hasSuspiciousProfession && !wikiData) {
+          console.log(`Clearing suspicious Wikipedia data for "${artistName}"`);
+          await sql`
+            UPDATE artists SET
+              wikipedia_url = NULL,
+              bio = ${bio || null},
+              nationality = ${nationality || null},
+              birth_year = ${birthYear || null},
+              death_year = ${deathYear || null},
+              image_url = NULL,
+              verified = false,
+              updated_at = NOW()
+            WHERE id = ${existing.id}
+          `;
+        } else if (nationality || birthYear || bio || wikipediaUrl) {
+          // Update the existing record with the fetched data
           await sql`
             UPDATE artists SET
               nationality = COALESCE(${nationality || null}, nationality),
