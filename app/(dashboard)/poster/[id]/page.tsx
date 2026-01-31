@@ -1091,7 +1091,12 @@ export default function PosterDetailPage() {
                   </button>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(getCurrentDescription());
+                      // Normalize multiple newlines to double newlines for clean copy/paste
+                      const normalizedText = getCurrentDescription()
+                        .replace(/\n{3,}/g, '\n\n')  // Convert 3+ newlines to double
+                        .replace(/\[PARA\]/gi, '\n\n')  // Convert [PARA] markers
+                        .trim();
+                      navigator.clipboard.writeText(normalizedText);
                       alert('Description copied to clipboard!');
                     }}
                     className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
