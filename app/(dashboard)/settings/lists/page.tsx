@@ -50,7 +50,7 @@ interface ListConfig {
 const LIST_CONFIGS: ListConfig[] = [
   {
     key: 'media-types',
-    label: 'Media Types',
+    label: 'Printing Technique/Medium',
     description: 'Printing techniques and media (lithograph, screen print, etc.)',
     fields: [
       { key: 'name', label: 'Name', type: 'text', required: true },

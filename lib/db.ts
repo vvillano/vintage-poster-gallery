@@ -412,6 +412,29 @@ export async function updatePosterTags(
 }
 
 /**
+ * Update the selected printing techniques for a poster
+ */
+export async function updatePosterPrintingTechniques(
+  id: number,
+  techniqueIds: number[]
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      printing_technique_ids = ${JSON.stringify(techniqueIds)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Get comparable sales for a poster
  */
 export async function getComparableSales(posterId: number): Promise<ComparableSale[]> {
@@ -543,6 +566,7 @@ function dbRowToPoster(row: any): Poster {
     historicalContext: row.historical_context,
     significance: row.significance,
     printingTechnique: row.printing_technique,
+    printingTechniqueIds: row.printing_technique_ids,
     printer: row.printer,
     printerId: row.printer_id,
     printerConfidence: row.printer_confidence,

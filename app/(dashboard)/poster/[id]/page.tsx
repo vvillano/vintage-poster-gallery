@@ -207,6 +207,14 @@ export default function PosterDetailPage() {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [refreshingTags, setRefreshingTags] = useState(false);
 
+  // Printing technique management state
+  const [availableTechniques, setAvailableTechniques] = useState<{id: number, name: string}[]>([]);
+  const [selectedTechniqueIds, setSelectedTechniqueIds] = useState<number[]>([]);
+  const [savingTechniques, setSavingTechniques] = useState(false);
+  const [techniqueSearch, setTechniqueSearch] = useState('');
+  const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
+  const [refreshingTechniques, setRefreshingTechniques] = useState(false);
+
   // Comparable sales state
   const [showAddSale, setShowAddSale] = useState(false);
   const [addingSale, setAddingSale] = useState(false);
@@ -273,12 +281,31 @@ export default function PosterDetailPage() {
       .catch(err => console.error('Failed to fetch research sites:', err));
   }, []);
 
+  // Fetch available printing techniques (media types)
+  useEffect(() => {
+    fetch('/api/managed-lists/media-types')
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          setAvailableTechniques(data.items.map((t: { id: number, name: string }) => ({ id: t.id, name: t.name })));
+        }
+      })
+      .catch(err => console.error('Failed to fetch media types:', err));
+  }, []);
+
   // Initialize selected tags when poster loads
   useEffect(() => {
     if (poster?.itemTags) {
       setSelectedTags(poster.itemTags);
     }
   }, [poster?.itemTags]);
+
+  // Initialize selected printing techniques when poster loads
+  useEffect(() => {
+    if (poster?.printingTechniqueIds) {
+      setSelectedTechniqueIds(poster.printingTechniqueIds);
+    }
+  }, [poster?.printingTechniqueIds]);
 
   // Initialize research query when poster loads
   useEffect(() => {
@@ -799,6 +826,76 @@ export default function PosterDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to refresh tags');
     } finally {
       setRefreshingTags(false);
+    }
+  }
+
+  // Save printing techniques to database
+  async function saveTechniques(newIds: number[]) {
+    if (!poster) return;
+
+    try {
+      setSavingTechniques(true);
+      const res = await fetch(`/api/posters/${posterId}/techniques`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ techniqueIds: newIds }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save printing techniques');
+      }
+
+      setSelectedTechniqueIds(newIds);
+    } catch (err) {
+      console.error('Failed to save printing techniques:', err);
+      // Revert on error
+      setSelectedTechniqueIds(poster.printingTechniqueIds || []);
+    } finally {
+      setSavingTechniques(false);
+    }
+  }
+
+  // Toggle a technique selection
+  function toggleTechnique(id: number) {
+    const newIds = selectedTechniqueIds.includes(id)
+      ? selectedTechniqueIds.filter(t => t !== id)
+      : [...selectedTechniqueIds, id];
+    saveTechniques(newIds);
+  }
+
+  // Add a technique from the dropdown
+  function addTechnique(id: number) {
+    if (!selectedTechniqueIds.includes(id)) {
+      const newIds = [...selectedTechniqueIds, id];
+      saveTechniques(newIds);
+    }
+    setTechniqueSearch('');
+    setShowTechniqueDropdown(false);
+  }
+
+  // Refresh technique suggestions using Sonnet
+  async function refreshTechniqueSuggestions() {
+    if (!poster) return;
+
+    try {
+      setRefreshingTechniques(true);
+      setError('');
+
+      const res = await fetch(`/api/posters/${posterId}/refresh-techniques`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to refresh techniques');
+      }
+
+      // Refresh poster data to get new suggested techniques
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh techniques');
+    } finally {
+      setRefreshingTechniques(false);
     }
   }
 
@@ -1388,58 +1485,6 @@ export default function PosterDetailPage() {
                             Learn more →
                           </a>
                         </div>
-
-                        {/* Linked Publisher Card */}
-                        {linkedPublisher && (
-                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h4 className="font-medium text-amber-900">{linkedPublisher.name}</h4>
-                                {linkedPublisher.verified && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium mt-1">
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                    Verified
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {(linkedPublisher.publicationType || linkedPublisher.country || linkedPublisher.foundedYear) && (
-                              <p className="text-xs text-amber-700 mt-1">
-                                {linkedPublisher.publicationType}
-                                {linkedPublisher.publicationType && linkedPublisher.country && ' · '}
-                                {linkedPublisher.country}
-                                {(linkedPublisher.publicationType || linkedPublisher.country) && linkedPublisher.foundedYear && ' · '}
-                                {linkedPublisher.foundedYear && (
-                                  <>Founded {linkedPublisher.foundedYear}{linkedPublisher.ceasedYear ? `–${linkedPublisher.ceasedYear}` : ''}</>
-                                )}
-                              </p>
-                            )}
-                            {linkedPublisher.bio && (
-                              <p className="text-xs text-amber-800 mt-2 line-clamp-3">{linkedPublisher.bio}</p>
-                            )}
-                            <div className="flex items-center gap-3 mt-2">
-                              {linkedPublisher.wikipediaUrl && (
-                                <a
-                                  href={linkedPublisher.wikipediaUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                                >
-                                  Wikipedia →
-                                </a>
-                              )}
-                              <button
-                                onClick={unlinkPublisher}
-                                disabled={unlinkingPublisher}
-                                className="text-xs text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
-                              >
-                                {unlinkingPublisher ? 'Unlinking...' : 'Unlink'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                     {poster.rawAiResponse.historicalContext.advertiser && (
@@ -2208,27 +2253,148 @@ export default function PosterDetailPage() {
               </div>
 
               {/* Printing Information */}
-              {(poster.printingTechnique || poster.printer) && (
+              {(poster.analysisCompleted || poster.printingTechnique || poster.printer) && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-xl font-bold text-slate-900 mb-4">
                     Printing Information
                   </h3>
-                  {/* Technique */}
-                  {poster.printingTechnique && (
+
+                  {/* Printing Technique/Medium Tags */}
+                  {poster.analysisCompleted && (
                     <div className="mb-4">
-                      <label className="text-sm font-medium text-slate-700">Technique</label>
-                      <div className="flex items-center gap-2">
-                        <p className="text-slate-700">
-                          {poster.printingTechnique}
-                        </p>
-                        <a
-                          href={getPrintingWikiUrl(poster.printingTechnique)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                        >
-                          Learn more →
-                        </a>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Printing Technique/Medium
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={refreshTechniqueSuggestions}
+                            disabled={refreshingTechniques}
+                            className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 disabled:opacity-50 transition"
+                            title="Refresh AI technique suggestions"
+                          >
+                            {refreshingTechniques ? 'Refreshing...' : 'Refresh'}
+                          </button>
+                          {savingTechniques && (
+                            <span className="text-xs text-slate-500">Saving...</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AI Original Analysis (display only) */}
+                      {poster.printingTechnique && (
+                        <div className="flex items-center gap-2 mb-3 p-2 bg-slate-50 rounded border border-slate-200">
+                          <span className="text-xs text-slate-500">AI detected:</span>
+                          <span className="text-sm text-slate-700">{poster.printingTechnique}</span>
+                          <a
+                            href={getPrintingWikiUrl(poster.printingTechnique)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            Learn more
+                          </a>
+                        </div>
+                      )}
+
+                      {/* AI Suggested Techniques */}
+                      {poster.rawAiResponse?.suggestedPrintingTechniques?.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
+                          <div className="flex flex-wrap gap-2">
+                            {poster.rawAiResponse.suggestedPrintingTechniques.map((name: string) => {
+                              const technique = availableTechniques.find(t => t.name === name);
+                              if (!technique) return null;
+                              const isSelected = selectedTechniqueIds.includes(technique.id);
+                              return (
+                                <button
+                                  key={technique.id}
+                                  onClick={() => toggleTechnique(technique.id)}
+                                  className={`px-3 py-1 rounded-full text-sm transition ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white'
+                                      : 'bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200'
+                                  }`}
+                                >
+                                  {name}
+                                  {isSelected && <span className="ml-1">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Selected Techniques */}
+                      {selectedTechniqueIds.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-slate-600 mb-2">
+                            Selected ({selectedTechniqueIds.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedTechniqueIds.map((id) => {
+                              const technique = availableTechniques.find(t => t.id === id);
+                              if (!technique) return null;
+                              return (
+                                <span
+                                  key={id}
+                                  className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded-full text-sm"
+                                >
+                                  {technique.name}
+                                  <button
+                                    onClick={() => toggleTechnique(id)}
+                                    className="ml-1 hover:bg-indigo-700 rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                                    title="Remove technique"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add Technique Dropdown */}
+                      <div className="relative">
+                        <p className="text-xs font-medium text-slate-600 mb-2">Add Technique</p>
+                        <input
+                          type="text"
+                          value={techniqueSearch}
+                          onChange={(e) => {
+                            setTechniqueSearch(e.target.value);
+                            setShowTechniqueDropdown(true);
+                          }}
+                          onFocus={() => setShowTechniqueDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowTechniqueDropdown(false), 200)}
+                          placeholder="Search techniques..."
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                        />
+                        {showTechniqueDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            {availableTechniques
+                              .filter(t =>
+                                !selectedTechniqueIds.includes(t.id) &&
+                                t.name.toLowerCase().includes(techniqueSearch.toLowerCase())
+                              )
+                              .slice(0, 10)
+                              .map((technique) => (
+                                <button
+                                  key={technique.id}
+                                  onMouseDown={() => addTechnique(technique.id)}
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 transition"
+                                >
+                                  {technique.name}
+                                </button>
+                              ))}
+                            {availableTechniques.filter(t =>
+                              !selectedTechniqueIds.includes(t.id) &&
+                              t.name.toLowerCase().includes(techniqueSearch.toLowerCase())
+                            ).length === 0 && (
+                              <p className="px-3 py-2 text-sm text-slate-500">No matching techniques</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

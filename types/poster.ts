@@ -288,6 +288,7 @@ export interface Poster {
   historicalContext?: string | null;
   significance?: string | null;
   printingTechnique?: string | null;
+  printingTechniqueIds?: number[] | null;  // FK array to media_types table
   printer?: string | null;  // Printer/publisher if known
   printerId?: number | null;  // FK to printers table
   printerConfidence?: string | null;  // confirmed, likely, uncertain, unknown
@@ -476,6 +477,7 @@ export interface PosterAnalysis {
   sourceCitations: SourceCitation[];  // Citations for key claims
   similarProducts: SimilarProduct[];  // Similar products found on other sites
   suggestedTags?: string[];  // AI-suggested tags from master list
+  suggestedPrintingTechniques?: string[];  // AI-suggested techniques from media_types list
 }
 
 // Request/Response types for API routes
@@ -533,6 +535,7 @@ export interface UpdatePosterInput {
   historicalContext?: string;
   significance?: string;
   printingTechnique?: string;
+  printingTechniqueIds?: number[] | null;
   printer?: string;
   printerId?: number | null;
   printerConfidence?: string;
