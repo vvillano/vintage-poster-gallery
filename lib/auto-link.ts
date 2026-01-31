@@ -62,6 +62,38 @@ const COUNTRY_CODES: Record<string, string> = {
   'yugoslavia': 'YU',
 };
 
+// Positive keywords for profession matching in Wikipedia searches
+const ARTIST_KEYWORDS = [
+  'artist', 'illustrator', 'painter', 'designer', 'graphic designer',
+  'cartoonist', 'lithographer', 'engraver', 'poster artist', 'commercial artist',
+  'printmaker', 'art director', 'caricaturist', 'draftsman', 'draughtsman',
+  'watercolorist', 'etcher', 'woodcut', 'silkscreen'
+];
+
+const PRINTER_KEYWORDS = [
+  'print', 'lithograph', 'typography', 'printing company', 'printing house',
+  'lithography', 'press', 'engraving'
+];
+
+const PUBLISHER_KEYWORDS = [
+  'magazine', 'newspaper', 'publication', 'journal', 'periodical',
+  'publishing', 'media company', 'publisher'
+];
+
+const ORGANIZATION_KEYWORDS = [
+  'agency', 'studio', 'design firm', 'advertising', 'firm', 'company',
+  'inc', 'incorporated', 'llc', 'corporation', 'corp', 'co.'
+];
+
+// Negative keywords - professions that indicate wrong match
+const NEGATIVE_KEYWORDS = [
+  'astrophysicist', 'physicist', 'mathematician', 'astronomer', 'scientist',
+  'chemist', 'biologist', 'geologist', 'politician', 'senator', 'congressman',
+  'lawyer', 'attorney', 'judge', 'actor', 'actress', 'musician', 'singer',
+  'composer', 'athlete', 'footballer', 'baseball', 'basketball', 'general',
+  'admiral', 'colonel', 'professor', 'economist', 'physician', 'surgeon'
+];
+
 /**
  * Find or create a country record by name
  * Returns the country name (normalized) for consistency
@@ -124,6 +156,101 @@ interface WikipediaData {
   wikipediaUrl?: string;
 }
 
+interface WikipediaCandidate {
+  title: string;
+  url: string;
+  description?: string;
+  score: number;
+}
+
+/**
+ * Calculate match score for a Wikipedia candidate based on profession keywords
+ */
+function calculateMatchScore(
+  candidate: WikipediaCandidate,
+  searchName: string,
+  type: 'printer' | 'publisher' | 'artist'
+): number {
+  let score = 0;
+  const titleLower = candidate.title.toLowerCase();
+  const nameLower = searchName.toLowerCase();
+  const descLower = (candidate.description || '').toLowerCase();
+
+  // Get relevant positive keywords based on type
+  const positiveKeywords = type === 'artist' ? ARTIST_KEYWORDS
+    : type === 'printer' ? PRINTER_KEYWORDS : PUBLISHER_KEYWORDS;
+
+  // 1. Exact name match (+100)
+  if (titleLower === nameLower) {
+    score += 100;
+  } else if (titleLower.includes(nameLower) || nameLower.includes(titleLower)) {
+    score += 50;
+  }
+
+  // 2. Profession keywords in title (+30)
+  if (positiveKeywords.some(kw => titleLower.includes(kw))) {
+    score += 30;
+  }
+
+  // 3. Profession keywords in description (+15 each, max 45)
+  const descMatches = positiveKeywords.filter(kw => descLower.includes(kw)).length;
+  score += Math.min(descMatches * 15, 45);
+
+  // 4. Organization keywords (+10) - helps match agencies, studios, etc.
+  if (ORGANIZATION_KEYWORDS.some(kw => titleLower.includes(kw) || descLower.includes(kw))) {
+    score += 10;
+  }
+
+  // 5. Negative keywords (-200, effectively disqualifies)
+  if (NEGATIVE_KEYWORDS.some(kw => descLower.includes(kw))) {
+    score -= 200;
+  }
+
+  return score;
+}
+
+/**
+ * Fetch page summaries for multiple Wikipedia titles using batch API
+ */
+async function fetchWikipediaSummaries(
+  titles: string[]
+): Promise<Map<string, string>> {
+  const summaries = new Map<string, string>();
+  if (titles.length === 0) return summaries;
+
+  try {
+    // Use Wikipedia API to fetch extracts for multiple pages at once
+    const titlesParam = titles.slice(0, 5).join('|');
+    const batchUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titlesParam)}&prop=extracts|description&exintro=true&explaintext=true&format=json&origin=*`;
+
+    const response = await fetch(batchUrl, {
+      headers: {
+        'User-Agent': 'VintagePosterGallery/1.0 (https://vintage-poster-gallery.vercel.app)',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const pages = data.query?.pages || {};
+
+      for (const pageId in pages) {
+        const page = pages[pageId];
+        if (page.title && (page.extract || page.description)) {
+          const description = [
+            page.description || '',
+            page.extract || ''
+          ].filter(Boolean).join(' ');
+          summaries.set(page.title, description);
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Failed to batch fetch Wikipedia summaries:', error);
+  }
+
+  return summaries;
+}
+
 /**
  * Search Wikipedia for a page matching the given name
  * Returns the Wikipedia URL and extracted data if found
@@ -149,33 +276,43 @@ async function searchWikipedia(
 
     if (titles.length === 0) return null;
 
-    // Try to find the best match
-    // For printers, look for printing/lithograph/typography related pages
-    // For publishers, look for magazine/newspaper/publishing related pages
-    let bestMatch = 0;
-    const nameLower = name.toLowerCase();
+    // Fetch summaries for all candidates to enable description-based scoring
+    const summaries = await fetchWikipediaSummaries(titles);
 
-    for (let i = 0; i < titles.length; i++) {
-      const titleLower = titles[i].toLowerCase();
-      // Exact match is best
-      if (titleLower === nameLower) {
-        bestMatch = i;
-        break;
+    // Build candidates with descriptions
+    const candidates: WikipediaCandidate[] = titles.map((title, index) => ({
+      title,
+      url: urls[index],
+      description: summaries.get(title),
+      score: 0,
+    }));
+
+    // Score all candidates and find the best match
+    let bestCandidate: WikipediaCandidate | null = null;
+    let bestScore = -Infinity;
+
+    for (const candidate of candidates) {
+      // Skip disambiguation pages
+      if (candidate.title.toLowerCase().includes('(disambiguation)')) {
+        continue;
       }
-      // Partial match with relevant keywords
-      if (type === 'printer' && (titleLower.includes('print') || titleLower.includes('lithograph'))) {
-        bestMatch = i;
-      }
-      if (type === 'publisher' && (titleLower.includes('magazine') || titleLower.includes('newspaper') || titleLower.includes('publication'))) {
-        bestMatch = i;
+
+      candidate.score = calculateMatchScore(candidate, name, type);
+
+      if (candidate.score > bestScore) {
+        bestScore = candidate.score;
+        bestCandidate = candidate;
       }
     }
 
-    const wikipediaUrl = urls[bestMatch];
-    if (!wikipediaUrl) return null;
+    // Minimum threshold - don't return if best match is disqualified by negative keywords
+    if (!bestCandidate || bestScore < 0) {
+      console.log(`No suitable Wikipedia match for "${name}" (best score: ${bestScore})`);
+      return null;
+    }
 
-    // Now fetch the page data
-    const pageTitle = titles[bestMatch];
+    const wikipediaUrl = bestCandidate.url;
+    const pageTitle = bestCandidate.title;
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
     const summaryResponse = await fetch(summaryUrl, {
       headers: {
