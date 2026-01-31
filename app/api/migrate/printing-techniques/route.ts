@@ -3,11 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 
-/**
- * POST /api/migrate/printing-techniques
- * Add printing_technique_ids column to posters table
- */
-export async function POST() {
+async function runMigration() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -43,4 +39,20 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+/**
+ * GET /api/migrate/printing-techniques
+ * Run migration via browser visit
+ */
+export async function GET() {
+  return runMigration();
+}
+
+/**
+ * POST /api/migrate/printing-techniques
+ * Run migration via API call
+ */
+export async function POST() {
+  return runMigration();
 }
