@@ -100,7 +100,7 @@ export async function GET(
 
     // Build query based on table type
     let result;
-    if (type === 'artists' || type === 'printers' || type === 'publishers') {
+    if (type === 'available-tags' || type === 'artists' || type === 'printers' || type === 'publishers') {
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY name ASC`
       );
