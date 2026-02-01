@@ -27,7 +27,7 @@ export interface ComparableSale {
   createdAt: string;    // ISO timestamp when record was added
 }
 
-// Research site for price research (stored in database)
+// Research site for price research (legacy interface - kept for compatibility)
 export interface ResearchSite {
   id: number;
   name: string;
@@ -37,6 +37,23 @@ export interface ResearchSite {
   password?: string | null;
   displayOrder: number;
   createdAt: Date;
+}
+
+// Unified Platform - consolidates acquisition platforms and research sites
+export interface Platform {
+  id: number;
+  name: string;                        // Platform name (eBay, Invaluable, WorthPoint, etc.)
+  url?: string | null;                 // Main platform URL
+  searchUrlTemplate?: string | null;   // Search URL with {search} placeholder
+  isAcquisitionPlatform: boolean;      // Used for buying (syncs to Shopify)
+  isResearchSite: boolean;             // Used for price research (shows in research buttons)
+  requiresSubscription: boolean;       // Requires paid subscription
+  username?: string | null;            // Login credentials
+  password?: string | null;
+  displayOrder: number;                // Order for research buttons
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Research link sources for price research (legacy - will be replaced by database)
@@ -229,6 +246,7 @@ export interface Country {
 // =====================
 
 // Research data for platforms (augments Shopify's source/platform values)
+// Legacy interface - use Platform instead (consolidated platforms table)
 export interface PlatformResearchData {
   id: number;
   platformName: string;         // Links to Shopify's source_platform value

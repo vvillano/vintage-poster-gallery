@@ -12,18 +12,11 @@ export default function SettingsPage() {
       color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
     },
     {
-      title: 'Research Sites',
-      description: 'Manage price research sites for comparable sales. Configure search URLs and store login credentials.',
-      href: '/settings/research-sites',
+      title: 'Platforms',
+      description: 'Manage acquisition platforms and research sites. Configure search URLs, credentials, and Shopify sync.',
+      href: '/settings/platforms',
       icon: '🔍',
       color: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
-    },
-    {
-      title: 'Platform Credentials',
-      description: 'Store credentials and URLs for acquisition platforms (eBay, Invaluable, etc.). Links to Shopify sources.',
-      href: '/settings/platforms',
-      icon: '🔐',
-      color: 'bg-orange-50 border-orange-200 hover:bg-orange-100',
     },
     {
       title: 'Seller Directory',

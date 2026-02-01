@@ -276,13 +276,24 @@ export default function PosterDetailPage() {
       .catch(err => console.error('Failed to fetch tags:', err));
   }, []);
 
-  // Fetch research sites
+  // Fetch research sites (from unified platforms table)
   useEffect(() => {
-    fetch('/api/research-sites')
+    fetch('/api/platforms?research=true')
       .then(res => res.json())
       .then(data => {
-        if (data.sites) {
-          setResearchSites(data.sites);
+        if (data.items) {
+          // Map to ResearchSite interface for compatibility
+          const sites = data.items.map((p: { id: number; name: string; searchUrlTemplate: string | null; requiresSubscription: boolean; username: string | null; password: string | null; displayOrder: number; createdAt: string }) => ({
+            id: p.id,
+            name: p.name,
+            urlTemplate: p.searchUrlTemplate || '',
+            requiresSubscription: p.requiresSubscription,
+            username: p.username,
+            password: p.password,
+            displayOrder: p.displayOrder,
+            createdAt: new Date(p.createdAt),
+          }));
+          setResearchSites(sites);
         }
       })
       .catch(err => console.error('Failed to fetch research sites:', err));
@@ -2960,7 +2971,7 @@ export default function PosterDetailPage() {
                   {researchSites.length === 0 && (
                     <p className="text-sm text-slate-500">
                       No research sites configured.{' '}
-                      <a href="/settings/research-sites" className="text-violet-600 hover:underline">
+                      <a href="/settings/platforms" className="text-violet-600 hover:underline">
                         Add sites in Settings
                       </a>
                     </p>
