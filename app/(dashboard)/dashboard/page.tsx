@@ -6,6 +6,64 @@ import { Poster } from '@/types/poster';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 
+// Migration banner component
+function MigrationBanner() {
+  const [pendingMigrations, setPendingMigrations] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    // Check for pending migrations
+    fetch('/api/migrate/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status) {
+          const pending = Object.entries(data.status)
+            .filter(([, info]) => !(info as { completed: boolean }).completed)
+            .map(([name]) => name);
+          setPendingMigrations(pending);
+        }
+      })
+      .catch(() => {
+        // Ignore errors - migrations might not be set up yet
+      });
+  }, []);
+
+  if (dismissed || pendingMigrations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">🔧</span>
+          <div>
+            <h3 className="font-semibold text-amber-800">Database Migrations Available</h3>
+            <p className="text-sm text-amber-700 mt-1">
+              {pendingMigrations.length} migration{pendingMigrations.length > 1 ? 's' : ''} pending: {pendingMigrations.map(m => m.replace(/-/g, ' ')).join(', ')}
+            </p>
+            <Link
+              href="/settings/migrate"
+              className="inline-block mt-2 text-sm font-medium text-amber-800 hover:text-amber-900 underline"
+            >
+              Run Migrations →
+            </Link>
+          </div>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-amber-600 hover:text-amber-800"
+          title="Dismiss"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [posters, setPosters] = useState<Poster[]>([]);
@@ -82,6 +140,9 @@ export default function DashboardPage() {
 
   return (
     <div>
+      {/* Migration notification banner */}
+      <MigrationBanner />
+
       <div className="mb-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
