@@ -85,9 +85,10 @@ export async function GET(request: NextRequest) {
     // Optionally include platform identities for each seller
     if (includeIdentities && items.length > 0) {
       const sellerIds = items.map(s => s.id);
+      const sellerIdsArray = `{${sellerIds.join(',')}}`;
       const identitiesResult = await sql`
         SELECT * FROM platform_identities
-        WHERE seller_id = ANY(${sellerIds}::int[])
+        WHERE seller_id = ANY(${sellerIdsArray}::int[])
         ORDER BY platform_name ASC
       `;
 
