@@ -202,7 +202,7 @@ export default function PlatformResearchDataPage() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -244,6 +244,7 @@ export default function PlatformResearchDataPage() {
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   placeholder="Login username/email"
+                  autoComplete="new-password"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
               </div>
@@ -256,6 +257,7 @@ export default function PlatformResearchDataPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Login password"
+                  autoComplete="new-password"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
               </div>

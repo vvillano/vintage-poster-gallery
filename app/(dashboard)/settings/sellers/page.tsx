@@ -415,7 +415,7 @@ export default function SellerDirectoryPage() {
             </div>
 
             {showSellerForm && (
-              <form onSubmit={handleSubmitSeller} className="space-y-4">
+              <form onSubmit={handleSubmitSeller} className="space-y-4" autoComplete="off">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -496,6 +496,7 @@ export default function SellerDirectoryPage() {
                       value={sellerFormData.username}
                       onChange={(e) => setSellerFormData({ ...sellerFormData, username: e.target.value })}
                       placeholder="For their website login"
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                     />
                   </div>
@@ -508,6 +509,7 @@ export default function SellerDirectoryPage() {
                       value={sellerFormData.password}
                       onChange={(e) => setSellerFormData({ ...sellerFormData, password: e.target.value })}
                       placeholder="For their website login"
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                     />
                   </div>
