@@ -5,6 +5,12 @@ import { sql } from '@vercel/postgres';
 
 // Valid list types and their table configurations
 const LIST_CONFIGS = {
+  'available-tags': {
+    table: 'tags',
+    columns: ['id', 'name', 'created_at'],
+    insertColumns: ['name'],
+    updateColumns: ['name'],
+  },
   'media-types': {
     table: 'media_types',
     columns: ['id', 'name', 'display_order', 'created_at'],
@@ -151,6 +157,13 @@ export async function POST(
     let result;
 
     switch (type) {
+      case 'available-tags':
+        result = await sql`
+          INSERT INTO tags (name)
+          VALUES (${body.name})
+          RETURNING *
+        `;
+        break;
       case 'media-types':
         result = await sql`
           INSERT INTO media_types (name, display_order)
@@ -337,6 +350,14 @@ export async function PUT(
     let result;
 
     switch (type) {
+      case 'available-tags':
+        result = await sql`
+          UPDATE tags
+          SET name = ${body.name}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
       case 'media-types':
         result = await sql`
           UPDATE media_types

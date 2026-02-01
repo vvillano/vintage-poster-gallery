@@ -5,15 +5,8 @@ import Link from 'next/link';
 export default function SettingsPage() {
   const settingsCards = [
     {
-      title: 'Tags',
-      description: 'Manage item categorization tags. Tags help organize items and are suggested by AI during analysis.',
-      href: '/settings/tags',
-      icon: '🏷️',
-      color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',
-    },
-    {
       title: 'Managed Lists',
-      description: 'Configure dropdown options: Media types, Artists, Internal tags, Sources, Locations, and Countries.',
+      description: 'Configure Available Tags, Media types, Artists, Internal tags, Sources, Locations, and Countries.',
       href: '/settings/lists',
       icon: '📋',
       color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',

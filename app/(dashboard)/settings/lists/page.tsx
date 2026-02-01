@@ -49,6 +49,14 @@ interface ListConfig {
 
 const LIST_CONFIGS: ListConfig[] = [
   {
+    key: 'available-tags',
+    label: 'Available Tags',
+    description: 'Product tags for categorization. AI suggests tags during analysis.',
+    fields: [
+      { key: 'name', label: 'Tag Name', type: 'text', required: true },
+    ],
+  },
+  {
     key: 'media-types',
     label: 'Printing Technique/Medium',
     description: 'Printing techniques and media (lithograph, screen print, etc.)',
@@ -175,7 +183,7 @@ const LIST_CONFIGS: ListConfig[] = [
 function ManagedListsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [activeList, setActiveList] = useState<string>('media-types');
+  const [activeList, setActiveList] = useState<string>('available-tags');
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
