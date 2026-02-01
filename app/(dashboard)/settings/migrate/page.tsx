@@ -58,6 +58,13 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/publication-books',
     successLink: { href: '/settings/lists', label: 'Manage Books' },
   },
+  {
+    id: 'platform-consolidation',
+    name: 'Platform Consolidation',
+    description: 'Consolidate Platform Credentials and Research Sites into a unified platforms table. Merges data from both old tables and adds acquisition/research flags.',
+    endpoint: '/api/migrate/platform-consolidation',
+    successLink: { href: '/settings/platforms', label: 'Manage Platforms' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';

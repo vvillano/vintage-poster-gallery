@@ -158,6 +158,33 @@ export async function GET() {
       status['publication-books'] = { completed: false };
     }
 
+    // Check Platform Consolidation migration - look for unified platforms table
+    try {
+      const platformsResult = await sql`
+        SELECT COUNT(*) as total,
+               COUNT(CASE WHEN is_acquisition_platform = true THEN 1 END) as acquisition,
+               COUNT(CASE WHEN is_research_site = true THEN 1 END) as research
+        FROM platforms
+      `;
+      const total = parseInt(platformsResult.rows[0].total || '0');
+      const acquisition = parseInt(platformsResult.rows[0].acquisition || '0');
+      const research = parseInt(platformsResult.rows[0].research || '0');
+
+      if (total > 0) {
+        status['platform-consolidation'] = {
+          completed: true,
+          details: `${total} platforms (${acquisition} acquisition, ${research} research)`,
+        };
+      } else {
+        status['platform-consolidation'] = {
+          completed: true,
+          details: 'Table created (empty)',
+        };
+      }
+    } catch {
+      status['platform-consolidation'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);
