@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(winget:*)"
+      "Bash(winget:*)",
+      "Bash(grep:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

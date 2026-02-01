@@ -26,6 +26,20 @@ export default function SettingsPage() {
       color: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
     },
     {
+      title: 'Platform Credentials',
+      description: 'Store credentials and URLs for acquisition platforms (eBay, Invaluable, etc.). Links to Shopify sources.',
+      href: '/settings/platforms',
+      icon: '🔐',
+      color: 'bg-orange-50 border-orange-200 hover:bg-orange-100',
+    },
+    {
+      title: 'Seller Directory',
+      description: 'Manage private sellers and link platform usernames to real identities. Track contact info and credentials.',
+      href: '/settings/sellers',
+      icon: '👥',
+      color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
+    },
+    {
       title: 'Shopify Integration',
       description: 'Connect to Shopify to import products, sync descriptions, tags, and metadata between systems.',
       href: '/settings/shopify',

@@ -224,6 +224,67 @@ export interface Country {
   createdAt: Date;
 }
 
+// =====================
+// Research Enhancement Types
+// =====================
+
+// Research data for platforms (augments Shopify's source/platform values)
+export interface PlatformResearchData {
+  id: number;
+  platformName: string;         // Links to Shopify's source_platform value
+  url?: string | null;
+  username?: string | null;     // Login credentials for research
+  password?: string | null;
+  isResearchSite: boolean;      // Also usable for price research
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Private Seller - actual person/business in seller directory
+export type SellerType = 'individual' | 'dealer' | 'auction_house' | 'gallery' | 'bookstore' | 'other';
+
+export interface PrivateSeller {
+  id: number;
+  name: string;                 // Actual business/person name
+  sellerType: SellerType;
+  email?: string | null;
+  phone?: string | null;
+  url?: string | null;
+  username?: string | null;     // Login credentials for their site
+  password?: string | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  // Linked platform identities (for display)
+  platformIdentities?: PlatformIdentity[];
+}
+
+// Platform Identity - username on a specific platform, optionally linked to a seller
+export interface PlatformIdentity {
+  id: number;
+  platformName: string;         // eBay, Invaluable, etc.
+  platformUsername: string;     // vintageposterking, jsmith-posters
+  sellerId?: number | null;     // FK to private_sellers (null if unknown)
+  seller?: PrivateSeller | null;// Joined seller data for display
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Research image type classification
+export type ResearchImageType = 'signature' | 'title_page' | 'printer_mark' | 'detail' | 'other';
+
+// Research images (stored locally, not synced to Shopify)
+export interface ResearchImage {
+  url: string;
+  blobId: string;
+  fileName: string;
+  imageType: ResearchImageType;
+  description?: string;
+  uploadDate: Date;
+}
+
 // Metafield data from Shopify
 export interface ShopifyMetafieldData {
   namespace: string;
@@ -332,6 +393,10 @@ export interface Poster {
   shopifyStatus?: 'draft' | 'active' | 'archived' | null;
   shopifySyncedAt?: Date | null;
   shopifyData?: ShopifyData | null;
+
+  // Research-specific fields
+  shopifyTitle?: string | null;           // Original Shopify title for revert option
+  researchImages?: ResearchImage[] | null; // Local research images (signatures, title pages, etc.)
 }
 
 // Product type classifications from Product Classification Guide - 2025

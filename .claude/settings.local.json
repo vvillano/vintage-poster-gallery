@@ -13,7 +13,20 @@
       "Bash(git commit:*)",
       "WebFetch(domain:www.authenticvintageposters.com)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node -e \"console.log\\(require\\(''bcryptjs''\\).hashSync\\(''969&AVP'', 10\\)\\)\")",
+      "Bash(node -e \"const bcrypt = require\\(''bcryptjs''\\); const hash = ''$2b$10$wdpYD2oIadlRk/WG59GCjubvgbMlzfMW9eRw9GHBCpB/3bTq/dw4e''; console.log\\(''Testing password:'', bcrypt.compareSync\\(''969&AVP'', hash\\)\\);\")",
+      "WebFetch(domain:www.google.com)",
+      "Bash(character in string literal\" error.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(node run-migration.mjs:*)",
+      "Bash(wc:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\vinvi\\vintage-poster-gallery\\app\\api\\research-sites",
+      "c:\\Users\\vinvi\\vintage-poster-gallery\\app\\api\\posters\\[id]"
     ]
   }
 }

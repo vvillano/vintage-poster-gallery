@@ -90,10 +90,12 @@ export async function POST(request: NextRequest) {
 
         // Update item in database (including mapped metafield values)
         // Note: title and product_type are overwritten from Shopify (authoritative source)
+        // shopify_title stores original Shopify title for revert capability
         await sql`
           UPDATE posters
           SET
             title = ${product.title},
+            shopify_title = ${product.title},
             product_type = ${product.productType || null},
             sku = ${firstVariant?.sku || null},
             shopify_status = ${product.status},

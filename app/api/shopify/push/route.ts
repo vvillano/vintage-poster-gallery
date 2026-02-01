@@ -15,8 +15,19 @@ import {
  * Push data to Shopify
  * Body: {
  *   posterId: number,
- *   fields: ['description', 'tags', 'metafields']
+ *   fields: ['description', 'tags', 'metafields', 'title', 'research_metafields']
  * }
+ *
+ * Field descriptions:
+ * - description: Push product description (bodyHtml)
+ * - tags: Push item tags
+ * - metafields: Push custom metafields (artist, date, technique, history, talking_points)
+ * - title: Push the poster title to Shopify product title
+ * - research_metafields: Push research findings (jadepuma namespace):
+ *   - concise_description: Short description
+ *   - book_title_source: Book source for antique prints
+ *   - publisher: Publisher name from verified entity
+ *   - printer: Printer name from verified entity
  */
 export async function POST(request: NextRequest) {
   try {
@@ -154,6 +165,97 @@ export async function POST(request: NextRequest) {
         }
       }
       updates.push('metafields');
+    }
+
+    // Push title
+    if (fields.includes('title')) {
+      try {
+        if (item.title) {
+          await updateShopifyProduct(item.shopify_product_id, {
+            title: item.title,
+          });
+          updates.push('title');
+        } else {
+          errors.push('No title available to push');
+        }
+      } catch (error) {
+        errors.push(`title: ${error instanceof Error ? error.message : 'Failed'}`);
+      }
+    }
+
+    // Push research metafields (jadepuma namespace)
+    if (fields.includes('research_metafields')) {
+      // Get linked entity names for publisher and printer
+      let publisherName = null;
+      let printerName = null;
+      let bookTitle = null;
+
+      if (item.publisher_id) {
+        try {
+          const pubResult = await sql`SELECT name FROM publishers WHERE id = ${item.publisher_id}`;
+          if (pubResult.rows.length > 0) {
+            publisherName = pubResult.rows[0].name;
+          }
+        } catch (err) {
+          console.error('Error fetching publisher name:', err);
+        }
+      }
+
+      if (item.printer_id) {
+        try {
+          const printerResult = await sql`SELECT name FROM printers WHERE id = ${item.printer_id}`;
+          if (printerResult.rows.length > 0) {
+            printerName = printerResult.rows[0].name;
+          }
+        } catch (err) {
+          console.error('Error fetching printer name:', err);
+        }
+      }
+
+      if (item.book_id) {
+        try {
+          const bookResult = await sql`SELECT title, author, publication_year FROM books WHERE id = ${item.book_id}`;
+          if (bookResult.rows.length > 0) {
+            const book = bookResult.rows[0];
+            bookTitle = book.title;
+            if (book.author) bookTitle += ` by ${book.author}`;
+            if (book.publication_year) bookTitle += ` (${book.publication_year})`;
+          }
+        } catch (err) {
+          console.error('Error fetching book info:', err);
+        }
+      }
+
+      // Get concise description from productDescriptions
+      const conciseDescription = item.raw_ai_response?.productDescriptions?.concise || null;
+
+      const researchMetafields = [
+        { key: 'concise_description', value: conciseDescription, type: 'multi_line_text_field' as const },
+        { key: 'book_title_source', value: bookTitle, type: 'single_line_text_field' as const },
+        { key: 'publisher', value: publisherName, type: 'single_line_text_field' as const },
+        { key: 'printer', value: printerName || item.printer, type: 'single_line_text_field' as const },
+      ];
+
+      let pushedCount = 0;
+      for (const mf of researchMetafields) {
+        if (mf.value) {
+          try {
+            await setProductMetafield(item.shopify_product_id, {
+              namespace: 'jadepuma',
+              key: mf.key,
+              value: mf.value,
+              type: mf.type,
+            });
+            pushedCount++;
+          } catch (error) {
+            console.error(`Error setting jadepuma.${mf.key}:`, error);
+          }
+        }
+      }
+
+      if (pushedCount > 0) {
+        updates.push('research_metafields');
+      }
     }
 
     // Refresh Shopify data after push

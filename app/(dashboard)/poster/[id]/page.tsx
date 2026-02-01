@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook } from '@/types/poster';
+import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -199,6 +199,13 @@ export default function PosterDetailPage() {
   const [supplementalDescription, setSupplementalDescription] = useState('');
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
   const [compressingSupplemental, setCompressingSupplemental] = useState(false);
+  // Research images state
+  const [showResearchImages, setShowResearchImages] = useState(false);
+  const [uploadingResearchImage, setUploadingResearchImage] = useState(false);
+  const [compressingResearchImage, setCompressingResearchImage] = useState(false);
+  const [researchImageDescription, setResearchImageDescription] = useState('');
+  const [researchImageType, setResearchImageType] = useState<ResearchImageType>('signature');
+  const [deletingResearchImage, setDeletingResearchImage] = useState<string | null>(null);
   // Tag management state
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -759,6 +766,91 @@ export default function PosterDetailPage() {
     }
   }
 
+  // Research image functions
+  async function uploadResearchImage(file: File, imageType: ResearchImageType, description?: string) {
+    if (!poster) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      setError('Please select a JPG or PNG image file.');
+      return;
+    }
+
+    try {
+      setUploadingResearchImage(true);
+      setError('');
+
+      let processedFile = file;
+
+      // Compress if over 5MB
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setCompressingResearchImage(true);
+        try {
+          processedFile = await compressImage(file);
+        } catch (err) {
+          setError('Failed to compress image. Please try a smaller file.');
+          setCompressingResearchImage(false);
+          setUploadingResearchImage(false);
+          return;
+        }
+        setCompressingResearchImage(false);
+      }
+
+      const formData = new FormData();
+      formData.append('file', processedFile);
+      formData.append('imageType', imageType);
+      if (description) {
+        formData.append('description', description);
+      }
+
+      const res = await fetch(`/api/posters/${posterId}/research-images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to upload research image');
+      }
+
+      // Refresh poster data
+      await fetchPoster();
+      setResearchImageDescription('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload research image');
+    } finally {
+      setUploadingResearchImage(false);
+      setCompressingResearchImage(false);
+    }
+  }
+
+  async function deleteResearchImage(imageUrl: string) {
+    if (!poster) return;
+
+    try {
+      setDeletingResearchImage(imageUrl);
+      setError('');
+
+      const res = await fetch(
+        `/api/posters/${posterId}/research-images?imageUrl=${encodeURIComponent(imageUrl)}`,
+        { method: 'DELETE' }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete research image');
+      }
+
+      // Refresh poster data
+      await fetchPoster();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete research image');
+    } finally {
+      setDeletingResearchImage(null);
+    }
+  }
+
   // Save tags to database
   async function saveTags(newTags: string[]) {
     if (!poster) return;
@@ -1163,6 +1255,145 @@ export default function PosterDetailPage() {
                 </p>
               </div>
             )}
+
+            {/* Research Images Section */}
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-slate-700">
+                  Research Images ({poster.researchImages?.length || 0}/5)
+                </h4>
+                <button
+                  onClick={() => setShowResearchImages(!showResearchImages)}
+                  className="text-xs bg-teal-100 hover:bg-teal-200 text-teal-700 px-2 py-1 rounded transition"
+                >
+                  {showResearchImages ? 'Hide' : 'Manage'}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mb-2">
+                Store signatures, title pages, printer marks - preserved separately from product images.
+              </p>
+
+              {/* Existing research images display */}
+              {poster.researchImages && poster.researchImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {poster.researchImages.map((img, idx) => (
+                    <div key={img.url} className="group relative">
+                      <ImagePreview
+                        src={img.url}
+                        alt={img.description || `Research ${idx + 1}`}
+                        className="w-full h-20 object-cover rounded border border-slate-200"
+                      >
+                        {showResearchImages && (
+                          <button
+                            onClick={() => deleteResearchImage(img.url)}
+                            disabled={deletingResearchImage === img.url}
+                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                            title="Remove image"
+                          >
+                            {deletingResearchImage === img.url ? '...' : '×'}
+                          </button>
+                        )}
+                      </ImagePreview>
+                      <div className="text-xs mt-1">
+                        <span className="px-1.5 py-0.5 bg-teal-100 text-teal-700 rounded text-[10px]">
+                          {img.imageType.replace('_', ' ')}
+                        </span>
+                        {img.description && (
+                          <p className="text-slate-500 mt-0.5 truncate" title={img.description}>
+                            {img.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload form - shown when managing */}
+              {showResearchImages && (!poster.researchImages || poster.researchImages.length < 5) && (
+                <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
+                      <select
+                        value={researchImageType}
+                        onChange={(e) => setResearchImageType(e.target.value as ResearchImageType)}
+                        className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                      >
+                        <option value="signature">Signature</option>
+                        <option value="title_page">Title Page</option>
+                        <option value="printer_mark">Printer Mark</option>
+                        <option value="detail">Detail</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 mb-1 block">Description</label>
+                      <input
+                        type="text"
+                        value={researchImageDescription}
+                        onChange={(e) => setResearchImageDescription(e.target.value)}
+                        placeholder="Optional description"
+                        className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <label className={`flex-1 px-3 py-2 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
+                      uploadingResearchImage || compressingResearchImage
+                        ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
+                        : 'border-teal-300 hover:border-teal-400 hover:bg-teal-100 text-teal-700'
+                    }`}>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png"
+                        disabled={uploadingResearchImage || compressingResearchImage}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            uploadResearchImage(file, researchImageType, researchImageDescription || undefined);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      {compressingResearchImage
+                        ? 'Compressing...'
+                        : uploadingResearchImage
+                        ? 'Uploading...'
+                        : 'Browse...'}
+                    </label>
+                    <button
+                      type="button"
+                      disabled={uploadingResearchImage || compressingResearchImage}
+                      onClick={async () => {
+                        try {
+                          const clipboardItems = await navigator.clipboard.read();
+                          for (const item of clipboardItems) {
+                            const imageType = item.types.find(t => t.startsWith('image/'));
+                            if (imageType) {
+                              const blob = await item.getType(imageType);
+                              const file = new File([blob], `pasted-${Date.now()}.png`, { type: imageType });
+                              uploadResearchImage(file, researchImageType, researchImageDescription || undefined);
+                              break;
+                            }
+                          }
+                        } catch (err) {
+                          setError('Could not read clipboard.');
+                        }
+                      }}
+                      className={`px-3 py-2 text-sm border-2 border-dashed rounded transition ${
+                        uploadingResearchImage || compressingResearchImage
+                          ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
+                          : 'border-teal-300 hover:border-teal-400 hover:bg-teal-100 text-teal-700 cursor-pointer'
+                      }`}
+                    >
+                      Paste
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Product Description */}

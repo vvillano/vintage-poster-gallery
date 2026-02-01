@@ -4,6 +4,7 @@ import type {
   CreatePosterInput,
   UpdatePosterInput,
   SupplementalImage,
+  ResearchImage,
   ComparableSale,
   ShopifyData,
 } from '@/types/poster';
@@ -535,6 +536,69 @@ export async function deleteComparableSale(
 }
 
 /**
+ * Update research images for a poster
+ */
+export async function updateResearchImages(
+  id: number,
+  images: ResearchImage[]
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      research_images = ${JSON.stringify(images)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
+ * Add a research image to an existing poster
+ */
+export async function addResearchImage(
+  id: number,
+  image: ResearchImage
+): Promise<Poster> {
+  // Get current poster
+  const poster = await getPosterById(id);
+  if (!poster) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  // Add new image to array
+  const currentImages = poster.researchImages || [];
+  const updatedImages = [...currentImages, image];
+
+  return updateResearchImages(id, updatedImages);
+}
+
+/**
+ * Remove a research image from a poster
+ */
+export async function removeResearchImage(
+  id: number,
+  imageUrl: string
+): Promise<Poster> {
+  // Get current poster
+  const poster = await getPosterById(id);
+  if (!poster) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  // Remove image from array
+  const currentImages = poster.researchImages || [];
+  const updatedImages = currentImages.filter(img => img.url !== imageUrl);
+
+  return updateResearchImages(id, updatedImages);
+}
+
+/**
  * Convert database row to Poster type
  */
 function dbRowToPoster(row: any): Poster {
@@ -598,5 +662,8 @@ function dbRowToPoster(row: any): Poster {
     shopifyStatus: row.shopify_status,
     shopifySyncedAt: row.shopify_synced_at ? new Date(row.shopify_synced_at) : null,
     shopifyData: row.shopify_data,
+    // Research-specific fields
+    shopifyTitle: row.shopify_title,
+    researchImages: row.research_images,
   };
 }
