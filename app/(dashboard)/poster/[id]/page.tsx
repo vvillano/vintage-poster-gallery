@@ -214,6 +214,11 @@ export default function PosterDetailPage() {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [refreshingTags, setRefreshingTags] = useState(false);
 
+  // Color management state
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [savingColors, setSavingColors] = useState(false);
+
   // Printing technique management state
   const [availableTechniques, setAvailableTechniques] = useState<{id: number, name: string}[]>([]);
   const [selectedTechniqueIds, setSelectedTechniqueIds] = useState<number[]>([]);
@@ -276,6 +281,18 @@ export default function PosterDetailPage() {
       .catch(err => console.error('Failed to fetch tags:', err));
   }, []);
 
+  // Fetch available colors
+  useEffect(() => {
+    fetch('/api/managed-lists/colors')
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          setAvailableColors(data.items.map((c: { name: string }) => c.name));
+        }
+      })
+      .catch(err => console.error('Failed to fetch colors:', err));
+  }, []);
+
   // Fetch research sites (from unified platforms table)
   useEffect(() => {
     fetch('/api/platforms?research=true')
@@ -317,6 +334,13 @@ export default function PosterDetailPage() {
       setSelectedTags(poster.itemTags);
     }
   }, [poster?.itemTags]);
+
+  // Initialize selected colors when poster loads
+  useEffect(() => {
+    if (poster?.colors) {
+      setSelectedColors(poster.colors);
+    }
+  }, [poster?.colors]);
 
   // Initialize selected printing techniques when poster loads
   useEffect(() => {
@@ -904,6 +928,40 @@ export default function PosterDetailPage() {
     }
     setTagSearch('');
     setShowTagDropdown(false);
+  }
+
+  // Save colors to database
+  async function saveColors(newColors: string[]) {
+    if (!poster) return;
+
+    try {
+      setSavingColors(true);
+      const res = await fetch(`/api/posters/${posterId}/colors`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ colors: newColors }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save colors');
+      }
+
+      setSelectedColors(newColors);
+    } catch (err) {
+      console.error('Failed to save colors:', err);
+      // Revert on error
+      setSelectedColors(poster.colors || []);
+    } finally {
+      setSavingColors(false);
+    }
+  }
+
+  // Toggle a color selection
+  function toggleColor(color: string) {
+    const newColors = selectedColors.includes(color)
+      ? selectedColors.filter(c => c !== color)
+      : [...selectedColors, color];
+    saveColors(newColors);
   }
 
   // Refresh tag suggestions using Sonnet (cheaper than full re-analysis)
@@ -1648,6 +1706,91 @@ export default function PosterDetailPage() {
                     aria-label="Close dropdown"
                   />
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Colors */}
+          {poster.analysisCompleted && availableColors.length > 0 && (
+            <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-lg font-bold text-slate-900">
+                  Colors
+                </h4>
+                {savingColors && (
+                  <span className="text-xs text-pink-600">Saving...</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mb-3">Dominant colors identified in the image</p>
+
+              {/* AI Suggested Colors */}
+              {poster.rawAiResponse?.suggestedColors && poster.rawAiResponse.suggestedColors.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
+                  <div className="flex flex-wrap gap-2">
+                    {poster.rawAiResponse.suggestedColors.map((color: string) => (
+                      <button
+                        key={color}
+                        onClick={() => toggleColor(color)}
+                        className={`px-3 py-1 rounded-full text-sm transition ${
+                          selectedColors.includes(color)
+                            ? 'bg-pink-600 text-white'
+                            : 'bg-pink-100 text-pink-800 border border-pink-300 hover:bg-pink-200'
+                        }`}
+                      >
+                        {color}
+                        {selectedColors.includes(color) && <span className="ml-1">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Colors */}
+              {selectedColors.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 mb-2">Selected ({selectedColors.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedColors.map((color) => (
+                      <span
+                        key={color}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-pink-600 text-white rounded-full text-sm"
+                      >
+                        {color}
+                        <button
+                          onClick={() => toggleColor(color)}
+                          className="ml-1 hover:text-pink-200"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Color from Available List */}
+              <div>
+                <p className="text-xs font-medium text-slate-600 mb-2">Add Color</p>
+                <div className="flex flex-wrap gap-2">
+                  {availableColors
+                    .filter(color => !selectedColors.includes(color))
+                    .slice(0, 12)
+                    .map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => toggleColor(color)}
+                        className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-pink-100 hover:text-pink-700 transition"
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  {availableColors.filter(color => !selectedColors.includes(color)).length > 12 && (
+                    <span className="px-3 py-1 text-xs text-slate-500">
+                      +{availableColors.filter(color => !selectedColors.includes(color)).length - 12} more
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

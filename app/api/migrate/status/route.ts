@@ -185,6 +185,33 @@ export async function GET() {
       status['platform-consolidation'] = { completed: false };
     }
 
+    // Check Product Value Sync migration - look for colors table and colors column on posters
+    try {
+      const colorsResult = await sql`SELECT COUNT(*) as count FROM colors`;
+      await sql`SELECT colors FROM posters LIMIT 1`;
+
+      const colorsCount = parseInt(colorsResult.rows[0].count || '0');
+
+      // Count posters with colors set
+      let postersWithColors = 0;
+      try {
+        const postersResult = await sql`
+          SELECT COUNT(*) as count FROM posters
+          WHERE colors IS NOT NULL AND array_length(colors, 1) > 0
+        `;
+        postersWithColors = parseInt(postersResult.rows[0].count || '0');
+      } catch {
+        // Column might not support array_length yet
+      }
+
+      status['product-value-sync'] = {
+        completed: true,
+        details: `${colorsCount} colors${postersWithColors > 0 ? `, ${postersWithColors} posters with colors` : ''}`,
+      };
+    } catch {
+      status['product-value-sync'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

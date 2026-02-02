@@ -413,6 +413,34 @@ export async function updatePosterTags(
 }
 
 /**
+ * Update the selected colors for a poster
+ */
+export async function updatePosterColors(
+  id: number,
+  colors: string[]
+): Promise<Poster> {
+  // Convert to PostgreSQL array literal
+  const colorsLiteral = colors.length > 0
+    ? `{${colors.map(c => `"${c.replace(/"/g, '\\"')}"`).join(',')}}`
+    : null;
+
+  const result = await sql`
+    UPDATE posters
+    SET
+      colors = ${colorsLiteral}::TEXT[],
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Update the selected printing techniques for a poster
  */
 export async function updatePosterPrintingTechniques(
@@ -612,6 +640,7 @@ function dbRowToPoster(row: any): Poster {
     uploadedBy: row.uploaded_by,
     supplementalImages: row.supplemental_images,
     itemTags: row.item_tags,
+    colors: row.colors,
     comparableSales: row.comparable_sales,
     initialInformation: row.initial_information,
     productType: row.product_type,

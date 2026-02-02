@@ -432,6 +432,7 @@ export interface MappedMetafields {
   conditionDetails?: string;
   userNotes?: string;
   printingTechnique?: string;
+  colors?: string[];  // Array of color names
 }
 
 /**
@@ -490,6 +491,13 @@ export function mapMetafieldsToPosterFields(
   // Map medium to printingTechnique
   const medium = mfMap.get('jadepuma.medium');
   if (medium) result.printingTechnique = medium;
+
+  // Map color to colors array
+  // Shopify stores as comma-separated string, we convert to array
+  const color = mfMap.get('jadepuma.color');
+  if (color) {
+    result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+  }
 
   return result;
 }

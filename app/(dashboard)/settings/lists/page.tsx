@@ -10,6 +10,7 @@ interface ListItem {
   name: string;
   displayOrder?: number;
   color?: string;
+  hexCode?: string;  // For colors managed list
   code?: string;
   description?: string;
   urlTemplate?: string;
@@ -54,6 +55,16 @@ const LIST_CONFIGS: ListConfig[] = [
     description: 'Product tags for categorization. AI suggests tags during analysis.',
     fields: [
       { key: 'name', label: 'Tag Name', type: 'text', required: true },
+    ],
+  },
+  {
+    key: 'colors',
+    label: 'Colors',
+    description: 'Available colors for poster identification. AI suggests colors from this list during analysis.',
+    fields: [
+      { key: 'name', label: 'Color Name', type: 'text', required: true },
+      { key: 'hexCode', label: 'Hex Code', type: 'text', placeholder: '#FF0000' },
+      { key: 'displayOrder', label: 'Display Order', type: 'number' },
     ],
   },
   {
@@ -807,6 +818,12 @@ function ManagedListsContent() {
                                   style={{ backgroundColor: item.color }}
                                 />
                               )}
+                              {activeList === 'colors' && item.hexCode && (
+                                <div
+                                  className="w-4 h-4 rounded-full border border-slate-300"
+                                  style={{ backgroundColor: item.hexCode }}
+                                />
+                              )}
                               {activeList === 'countries' && item.code && (
                                 <CountryFlag countryCode={item.code} size="md" />
                               )}
@@ -829,6 +846,9 @@ function ManagedListsContent() {
                                 )}
                                 {item.code && (
                                   <div className="text-xs text-slate-500">Code: {item.code}</div>
+                                )}
+                                {activeList === 'colors' && item.hexCode && (
+                                  <div className="text-xs text-slate-500">{item.hexCode}</div>
                                 )}
                                 {item.nationality && (
                                   <div className="text-xs text-slate-500">

@@ -65,6 +65,13 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/platform-consolidation',
     successLink: { href: '/settings/platforms', label: 'Manage Platforms' },
   },
+  {
+    id: 'product-value-sync',
+    name: 'Product Value Sync (Colors)',
+    description: 'Add colors managed list and colors field to posters. Enables AI-suggested color identification synced with Shopify.',
+    endpoint: '/api/migrate/product-value-sync',
+    successLink: { href: '/settings/lists', label: 'Manage Colors' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';

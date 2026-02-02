@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage } from '@/types/poster';
 import { getTagNames } from '@/lib/tags';
+import { getColorNames } from '@/lib/colors';
 
 /**
  * Existing data from Shopify metafields to provide as context for analysis
@@ -144,14 +145,15 @@ For each claim found:
   return contextSection;
 }
 
-// Construct analysis prompt with optional initial information, research context, product type, and tag list
+// Construct analysis prompt with optional initial information, research context, product type, tag list, and color list
 function buildAnalysisPrompt(
   initialInfo?: string,
   researchContext?: string,
   productType?: string,
   hasSupplementalImages?: boolean,
   tagList?: string[],
-  shopifyContext?: ShopifyAnalysisContext
+  shopifyContext?: ShopifyAnalysisContext,
+  colorList?: string[]
 ): string {
   const imageNote = hasSupplementalImages
     ? `\n\nIMPORTANT: Multiple images have been provided. The FIRST image is the primary item being analyzed. Additional images are supplemental reference photos that may show:
@@ -345,6 +347,14 @@ Only use tags from this exact list - do not create new tags.
 
 AVAILABLE TAGS:
 ${tagList.join(', ')}
+` : ''}${colorList && colorList.length > 0 ? `
+COLOR SUGGESTIONS:
+Analyze the dominant colors visible in this image and select 2-5 colors from the following list.
+Focus on the PRIMARY colors that define the artwork's visual impact - not background or minor accent colors.
+Only use colors from this exact list - do not suggest colors not in the list.
+
+AVAILABLE COLORS:
+${colorList.join(', ')}
 ` : ''}
 JSON:
 {
@@ -393,7 +403,8 @@ JSON:
   "notableFigures": [{"name": "Full Name", "role": "Scientist/Politician/etc", "context": "Why they appear in this piece", "wikiSearch": "search term for Wikipedia"}],
   "sourceCitations": [{"claim": "", "source": "", "url": "", "reliability": "high|medium|low"}],
   "similarProducts": [{"title": "", "site": "", "url": "", "price": "", "condition": ""}]${tagList && tagList.length > 0 ? `,
-  "suggestedTags": ["tag1", "tag2", "..."]` : ''}
+  "suggestedTags": ["tag1", "tag2", "..."]` : ''}${colorList && colorList.length > 0 ? `,
+  "suggestedColors": ["color1", "color2", "..."]` : ''}
 }`;
 
   return basePrompt;
@@ -433,8 +444,17 @@ export async function analyzePoster(
       console.warn('[analyzePoster] Could not fetch tags, skipping tag suggestions:', tagError);
     }
 
+    // Fetch current color list for suggestions
+    let colorList: string[] = [];
+    try {
+      colorList = await getColorNames();
+      console.log('[analyzePoster] Fetched', colorList.length, 'colors for suggestions');
+    } catch (colorError) {
+      console.warn('[analyzePoster] Could not fetch colors, skipping color suggestions:', colorError);
+    }
+
     const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext);
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext, colorList);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
     console.log('[analyzePoster] Product type:', productType);
@@ -602,9 +622,13 @@ export async function analyzePoster(
     if (!analysis.suggestedTags) {
       analysis.suggestedTags = [];
     }
+    if (!analysis.suggestedColors) {
+      analysis.suggestedColors = [];
+    }
 
     console.log('[analyzePoster] Analysis parsed successfully');
     console.log('[analyzePoster] Suggested tags:', analysis.suggestedTags);
+    console.log('[analyzePoster] Suggested colors:', analysis.suggestedColors);
     return analysis;
   } catch (error) {
     console.error('[analyzePoster] Error analyzing poster with Claude:', error);

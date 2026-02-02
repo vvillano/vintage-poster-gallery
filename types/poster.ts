@@ -342,6 +342,9 @@ export interface Poster {
   // Item tags for categorization
   itemTags?: string[] | null;
 
+  // Colors identified in the image
+  colors?: string[] | null;
+
   // Comparable sales for market research
   comparableSales?: ComparableSale[] | null;
 
@@ -561,6 +564,7 @@ export interface PosterAnalysis {
   similarProducts: SimilarProduct[];  // Similar products found on other sites
   suggestedTags?: string[];  // AI-suggested tags from master list
   suggestedPrintingTechniques?: string[];  // AI-suggested techniques from media_types list
+  suggestedColors?: string[];  // AI-suggested colors from colors managed list
 }
 
 // Request/Response types for API routes

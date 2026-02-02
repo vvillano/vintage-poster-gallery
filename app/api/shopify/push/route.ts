@@ -229,11 +229,17 @@ export async function POST(request: NextRequest) {
       // Get concise description from productDescriptions
       const conciseDescription = item.raw_ai_response?.productDescriptions?.concise || null;
 
+      // Get colors as comma-separated string for Shopify
+      const colorsValue = item.colors && item.colors.length > 0
+        ? item.colors.join(', ')
+        : null;
+
       const researchMetafields = [
         { key: 'concise_description', value: conciseDescription, type: 'multi_line_text_field' as const },
         { key: 'book_title_source', value: bookTitle, type: 'single_line_text_field' as const },
         { key: 'publisher', value: publisherName, type: 'single_line_text_field' as const },
         { key: 'printer', value: printerName || item.printer, type: 'single_line_text_field' as const },
+        { key: 'color', value: colorsValue, type: 'single_line_text_field' as const },
       ];
 
       let pushedCount = 0;

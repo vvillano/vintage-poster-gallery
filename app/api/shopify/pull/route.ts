@@ -91,6 +91,11 @@ export async function POST(request: NextRequest) {
         // Update item in database (including mapped metafield values)
         // Note: title and product_type are overwritten from Shopify (authoritative source)
         // shopify_title stores original Shopify title for revert capability
+        // Convert colors array to PostgreSQL array literal
+        const colorsLiteral = mappedFields.colors && mappedFields.colors.length > 0
+          ? `{${mappedFields.colors.map(c => `"${c.replace(/"/g, '\\"')}"`).join(',')}}`
+          : null;
+
         await sql`
           UPDATE posters
           SET
@@ -108,6 +113,7 @@ export async function POST(request: NextRequest) {
             condition_details = COALESCE(${mappedFields.conditionDetails || null}, condition_details),
             user_notes = COALESCE(${mappedFields.userNotes || null}, user_notes),
             printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
+            colors = COALESCE(${colorsLiteral}::TEXT[], colors),
             last_modified = NOW()
           WHERE id = ${row.id}
         `;

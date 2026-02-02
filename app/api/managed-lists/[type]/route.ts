@@ -65,6 +65,12 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'code', 'display_order'],
     updateColumns: ['name', 'code', 'display_order'],
   },
+  'colors': {
+    table: 'colors',
+    columns: ['id', 'name', 'hex_code', 'display_order', 'created_at'],
+    insertColumns: ['name', 'hex_code', 'display_order'],
+    updateColumns: ['name', 'hex_code', 'display_order'],
+  },
 } as const;
 
 type ListType = keyof typeof LIST_CONFIGS;
@@ -293,6 +299,13 @@ export async function POST(
           RETURNING *
         `;
         break;
+      case 'colors':
+        result = await sql`
+          INSERT INTO colors (name, hex_code, display_order)
+          VALUES (${body.name}, ${body.hexCode || null}, ${body.displayOrder || 0})
+          RETURNING *
+        `;
+        break;
     }
 
     const item = transformRow(result.rows[0], type);
@@ -492,6 +505,14 @@ export async function PUT(
         result = await sql`
           UPDATE countries
           SET name = ${body.name}, code = ${body.code || null}, display_order = ${body.displayOrder || 0}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      case 'colors':
+        result = await sql`
+          UPDATE colors
+          SET name = ${body.name}, hex_code = ${body.hexCode || null}, display_order = ${body.displayOrder || 0}
           WHERE id = ${idNum}
           RETURNING *
         `;
