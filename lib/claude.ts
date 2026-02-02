@@ -83,19 +83,27 @@ EXAMPLES: "marked a turning point in modern design", "turns political graphics i
 /**
  * Build a context section from Shopify metafield data
  * This data should be used to verify and enhance the analysis
+ * @param context - Existing catalog data
+ * @param skepticalMode - If true, exclude auction descriptions to prevent confirmation bias
  */
-function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
+function buildShopifyContextSection(context: ShopifyAnalysisContext, skepticalMode: boolean = false): string {
   const parts: string[] = [];
 
-  if (context.artist) {
-    parts.push(`- Artist: "${context.artist}"`);
+  // In skeptical mode, we exclude previous AI-derived attributions entirely
+  // Only include factual context that doesn't bias analysis
+  if (!skepticalMode) {
+    if (context.artist) {
+      parts.push(`- Artist: "${context.artist}"`);
+    }
+    if (context.estimatedDate) {
+      parts.push(`- Date: "${context.estimatedDate}"`);
+    }
+    if (context.printingTechnique) {
+      parts.push(`- Medium/Technique: "${context.printingTechnique}"`);
+    }
   }
-  if (context.estimatedDate) {
-    parts.push(`- Date: "${context.estimatedDate}"`);
-  }
-  if (context.printingTechnique) {
-    parts.push(`- Medium/Technique: "${context.printingTechnique}"`);
-  }
+
+  // Always include factual/physical context (not AI-derived)
   if (context.dimensions) {
     parts.push(`- Dimensions: "${context.dimensions}"`);
   }
@@ -106,8 +114,8 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
     parts.push(`- Condition Details: "${context.conditionDetails}"`);
   }
 
-  // Include auction description as valuable intelligence (lower threshold)
-  const hasAuctionDescription = context.auctionDescription && context.auctionDescription.length > 30;
+  // In skeptical mode, EXCLUDE auction descriptions to prevent confirmation bias
+  const hasAuctionDescription = !skepticalMode && context.auctionDescription && context.auctionDescription.length > 30;
   if (hasAuctionDescription) {
     parts.push(`- Auction/Catalog Description: "${context.auctionDescription}"`);
   }
@@ -116,8 +124,20 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext): string {
     return '';
   }
 
-  // Enhanced context section that treats descriptions as valuable intelligence
-  let contextSection = `
+  // Different framing based on mode
+  let contextSection: string;
+
+  if (skepticalMode) {
+    contextSection = `
+
+FACTUAL CONTEXT (Physical attributes only - no previous attributions):
+${parts.join('\n')}
+
+NOTE: Previous artist/date/technique attributions have been EXCLUDED to allow fresh analysis.
+Make your own independent determination based solely on visual evidence.
+`;
+  } else {
+    contextSection = `
 
 EXISTING CATALOG DATA & PROVENANCE:
 The following information comes from auction catalogs, dealer notes, or prior research. Treat this as VALUABLE INTELLIGENCE - not gospel, but informed context worth considering and building upon.
@@ -125,9 +145,9 @@ The following information comes from auction catalogs, dealer notes, or prior re
 ${parts.join('\n')}
 `;
 
-  // Add specific instructions for handling auction descriptions
-  if (hasAuctionDescription) {
-    contextSection += `
+    // Add specific instructions for handling auction descriptions (only in normal mode)
+    if (hasAuctionDescription) {
+      contextSection += `
 IMPORTANT - Look for specific claims in the auction/catalog description:
 - Attribution claims ("attributed to...", "by...", "signed...", "manner of...")
 - Publication sources ("from Harper's Weekly", "New Yorker cover", "Fortune magazine")
@@ -140,10 +160,123 @@ For each claim found:
 2. If visual evidence contradicts it → note the discrepancy in validationNotes
 3. If cannot verify but plausible → accept as likely and note "per catalog description"
 `;
+    }
   }
 
   return contextSection;
 }
+
+// Comprehensive format reference for dimension estimation
+const FORMAT_REFERENCE = `
+STANDARD FORMATS BY PRODUCT TYPE (use for dimension estimation):
+
+═══ MOVIE POSTERS ═══
+
+US FORMATS (1909-present):
+- One Sheet: 27" x 41" (most common, 1909-1985) → 27" x 40" (1985-present)
+- Insert: 14" x 36" (tall/narrow, lobby display)
+- Half Sheet: 22" x 28" (horizontal, 1920s-1980s)
+- Window Card: 14" x 22" (blank top for theater info)
+- Lobby Card: 11" x 14" (scene stills, sets of 8)
+- Three Sheet: 41" x 81" (two pieces joined)
+- Six Sheet: 81" x 81" (billboard size)
+
+FRENCH FORMATS:
+- Petite: 15.75" x 23.5" (40 x 60 cm)
+- Moyenne: 23.5" x 31.5" (60 x 80 cm)
+- Grande: 47" x 63" (120 x 160 cm) - NOTE: This is NOT 30x40!
+- Double Grande: 63" x 94" (160 x 240 cm)
+
+ITALIAN FORMATS:
+- Locandina: 13" x 27" (33 x 70 cm) - door panel
+- 2-Foglio: 39" x 55" (100 x 140 cm)
+- 4-Foglio: 55" x 78" (140 x 200 cm)
+- Fotobusta: 13" x 18" (Italian lobby card)
+
+BRITISH FORMATS:
+- Quad: 30" x 40" (76 x 102 cm) - HORIZONTAL ONLY (this is the only 30x40 format!)
+- Double Crown: 20" x 30" (51 x 76 cm)
+- One Sheet (UK): 27" x 40"
+
+GERMAN FORMATS:
+- A1: 23.4" x 33.1" (594 x 841 mm)
+- A0: 33.1" x 46.8" (841 x 1189 mm)
+
+JAPANESE FORMATS:
+- B2: 20" x 29" (515 x 728 mm)
+- B1: 29" x 41" (728 x 1030 mm)
+
+AUSTRALIAN FORMATS:
+- Daybill: 13" x 30" (1960s-present) or 15" x 40" (earlier)
+
+═══ MAGAZINE COVERS & ILLUSTRATIONS ═══
+
+THE NEW YORKER (1925-present):
+- Cover/Page: 8.5" x 11" (standard magazine)
+- Original artwork: typically 11" x 15" to 14" x 20"
+
+LA VIE PARISIENNE (1863-1970):
+- Standard: approximately 9" x 12"
+- Cover plates often trimmed or mounted
+
+SATURDAY EVENING POST (1897-1969):
+- Cover: 10.75" x 13.75" (varied by era)
+
+HARPER'S WEEKLY (1857-1916):
+- Full page: 10.5" x 15.5"
+
+FORTUNE MAGAZINE (1930-present):
+- Cover: 11" x 14"
+
+VOGUE/VANITY FAIR:
+- Cover: approximately 10" x 13"
+
+═══ ANTIQUE PRINTS & ENGRAVINGS ═══
+
+AUDUBON PRINTS:
+- Double Elephant Folio: 26.5" x 39.5" (Havell edition, 1827-1838)
+- Royal Octavo: 6.5" x 10.25" (later editions, 1840-1844)
+- Imperial Folio: 21" x 27" (Bien edition, 1860)
+
+BOTANICAL/NATURAL HISTORY:
+- Quarto: 9" x 12" typical
+- Folio: 12" x 19" typical
+- Small quarto: 7" x 10"
+- Large quarto: 10" x 13"
+- Imperial folio: 15" x 22"
+
+═══ MAPS ═══
+- Small atlas: 10" x 14"
+- Standard atlas: 15" x 20" to 18" x 24"
+- Large folio: 24" x 30"
+- Wall map: 30" x 40" or larger
+
+═══ PRODUCT LABELS ═══
+
+FRUIT CRATE LABELS:
+- Standard crate end: 10" x 11"
+- Lug box: 7" x 11"
+- Half crate: 6" x 9"
+
+CIGAR BOX LABELS:
+- Inner lid: typically 6" x 9"
+- Outer: varies
+
+═══ ADVERTISING POSTERS ═══
+
+FRENCH COMMERCIAL (Belle Époque/Art Nouveau):
+- Standard: 31" x 47" (80 x 120 cm)
+- Grande: 47" x 63" (120 x 160 cm)
+- Smaller: 24" x 32" (60 x 80 cm)
+
+TRAVEL POSTERS:
+- Standard: 24" x 36" or 25" x 39"
+- European: often 24" x 39" or 27" x 39"
+
+═══ WINDOW CARDS ═══
+- Standard US: 14" x 22"
+- Jumbo Window Card: 22" x 28"
+`;
 
 // Construct analysis prompt with optional initial information, research context, product type, tag list, and color list
 function buildAnalysisPrompt(
@@ -153,7 +286,8 @@ function buildAnalysisPrompt(
   hasSupplementalImages?: boolean,
   tagList?: string[],
   shopifyContext?: ShopifyAnalysisContext,
-  colorList?: string[]
+  colorList?: string[],
+  skepticalMode?: boolean
 ): string {
   const imageNote = hasSupplementalImages
     ? `\n\nIMPORTANT: Multiple images have been provided. The FIRST image is the primary item being analyzed. Additional images are supplemental reference photos that may show:
@@ -163,7 +297,27 @@ function buildAnalysisPrompt(
 Use ALL provided images to inform your analysis, cross-referencing details visible in different photos.`
     : '';
 
-  const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.${imageNote}
+  const skepticalModeNote = skepticalMode
+    ? `\n\n⚠️ SKEPTICAL RE-ANALYSIS MODE ACTIVE ⚠️
+You are being asked to RE-ANALYZE this item because previous analysis may be incorrect.
+CRITICAL INSTRUCTIONS:
+1. DO NOT simply confirm previous attributions - approach with completely fresh eyes
+2. Actively look for ALTERNATIVE possibilities for any previous artist/date claims
+3. Previous confidence scores are IRRELEVANT - make your own independent assessment
+4. If you cannot INDEPENDENTLY verify an attribution from visual evidence, say so clearly
+5. Look for evidence that might CONTRADICT previous analysis
+6. It is BETTER to say "uncertain" or "unknown" than to repeat a potentially wrong attribution
+7. READ SIGNATURES LETTER BY LETTER - do not assume you know what they say
+8. Question whether the artist was actually an illustrator/poster artist (profession verification)`
+    : '';
+
+  const basePrompt = `Analyze this ${productType || 'vintage item'} as JSON.${imageNote}${skepticalModeNote}
+
+DIMENSION ESTIMATION - Cross-reference with standard formats:
+${FORMAT_REFERENCE}
+When estimating dimensions, match to the closest standard format for this product type.
+If dimensions conflict with a claimed format name, note the discrepancy.
+Example: "30 x 40 French Grande" is WRONG - French Grande is 47x63. A 30x40 poster is likely a British Quad (horizontal).
 
 CRITICAL - ARTIST IDENTIFICATION (Two-Step Process):
 
@@ -281,7 +435,7 @@ PRINTING TECHNIQUE - Be precise:
 - Photolithograph, screenprint, etc.
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
-${shopifyContext ? buildShopifyContextSection(shopifyContext) : ''}
+${shopifyContext ? buildShopifyContextSection(shopifyContext, skepticalMode) : ''}
 PRODUCT DESCRIPTIONS: Write 5 versions (each 150-200 words):
 
 IMPORTANT - ARTIST ATTRIBUTION IN DESCRIPTIONS:
@@ -424,7 +578,8 @@ export async function analyzePoster(
   initialInformation?: string,
   productType?: string,
   supplementalImages?: SupplementalImage[],
-  shopifyContext?: ShopifyAnalysisContext
+  shopifyContext?: ShopifyAnalysisContext,
+  skepticalMode?: boolean
 ): Promise<PosterAnalysis> {
   try {
     console.log('[analyzePoster] Starting analysis for image:', imageUrl);
@@ -454,8 +609,9 @@ export async function analyzePoster(
     }
 
     const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext, colorList);
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext, colorList, skepticalMode);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
+    console.log('[analyzePoster] Skeptical mode:', skepticalMode ? 'ENABLED' : 'disabled');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
     console.log('[analyzePoster] Product type:', productType);
     console.log('[analyzePoster] Image URL:', imageUrl);

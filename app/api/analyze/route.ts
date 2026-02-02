@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { posterId, additionalContext, forceReanalyze } = body;
+    const { posterId, additionalContext, forceReanalyze, skepticalMode } = body;
 
     if (!posterId) {
       return NextResponse.json(
@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Starting analysis for poster ${posterId}, image URL: ${poster.imageUrl}`);
+    if (skepticalMode) {
+      console.log('SKEPTICAL MODE ENABLED - Previous attributions will be challenged');
+    }
 
     // Combine initial information with any additional context
     let combinedInfo = poster.initialInformation || '';
@@ -80,12 +83,14 @@ export async function POST(request: NextRequest) {
     } : undefined;
 
     // Analyze with Claude (including any supplemental images and Shopify context)
+    // skepticalMode removes previous attributions from context to allow fresh analysis
     const analysis = await analyzePoster(
       poster.imageUrl,
       combinedInfo || undefined,
       poster.productType || undefined,
       poster.supplementalImages || undefined,
-      shopifyContext
+      shopifyContext,
+      skepticalMode
     );
 
     console.log('Analysis completed successfully');
