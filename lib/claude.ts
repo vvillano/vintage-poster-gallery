@@ -379,15 +379,24 @@ ATTRIBUTION BASIS AFFECTS CONFIDENCE:
 - visible_signature with all checks passing: Can be "confirmed" (90-100%)
 - printed_credit with all checks passing: Can be "confirmed" (90-100%)
 - stylistic_analysis alone: Maximum "likely" (70-89%) - style is subjective
-- external_knowledge WITH citable source: Maximum "likely" (70-89%)
+- external_knowledge WITH HIGH reliability source (Wikipedia, museum records, major auction house catalogs): "likely" (80-89%)
+- external_knowledge WITH MEDIUM reliability source (collector resources, fan sites): "likely" (70-79%)
 - external_knowledge WITHOUT citable source: Maximum "uncertain" (40-69%)
 - none: Must be "unknown" (0-39%)
+
+IMPORTANT: "visible_signature" MUST ONLY be used when you can actually SEE handwritten text on the poster.
+- If there's no signature but you know who the artist is from other sources, use "external_knowledge" NOT "visible_signature"
+- Do NOT claim to see a signature just because external sources tell you who the artist is
 
 IMPORTANT: If professionVerified is false (the person wasn't an illustrator), confidence should be "uncertain" or lower, even with a clear signature. Example: "P. Verger" might be signed, but if Pierre Verger was a photographer, there may be a DIFFERENT P. Verger who was the actual illustrator.
 
 CRITICAL: Do NOT inflate confidence based on knowledge you cannot cite. If you "know" who created a piece but cannot point to a specific verifiable source (auction catalog, museum record, art history book), the attribution is UNCERTAIN.
 
-Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'P. Verger'", "printed credit below image")
+Set artistSource: describe EXACTLY where you found the name:
+- For visible_signature: "signature [location] reads '[exact text]'" (e.g., "signature lower left corner reads 'P. Verger'")
+- For printed_credit: "printed credit [location]" (e.g., "printed credit below image")
+- For external_knowledge: "per [source name]" or "[specific source] identifies this as [artist] work" (e.g., "Wikipedia identifies Paul Wenzel as Disney promotional artist for this film")
+- NEVER say "signature visible" if attributionBasis is external_knowledge - that would be a contradiction
 
 VERIFICATION NOTES - Write appropriate to confidence level:
 - If confidence >= 90%: Can include brief factual artist biography
