@@ -103,9 +103,10 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext, skepticalMo
     }
   }
 
-  // Always include factual/physical context (not AI-derived)
+  // Include dimensions if provided (note: may be AI-derived from previous analysis)
+  // Caller should exclude this on re-analysis to allow fresh estimation
   if (context.dimensions) {
-    parts.push(`- Dimensions: "${context.dimensions}"`);
+    parts.push(`- Dimensions: "${context.dimensions}" (verify against standard formats)`);
   }
   if (context.condition) {
     parts.push(`- Condition: "${context.condition}"`);

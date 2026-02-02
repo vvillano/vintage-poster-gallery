@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Build Shopify context from existing metafield data
     // This provides Claude with existing catalog information to verify and build upon
-    // When forceReanalyze is true, exclude analysis-derived fields (artist, date, technique)
+    // When forceReanalyze is true, exclude analysis-derived fields (artist, date, technique, dimensions)
     // to allow fresh analysis without confirmation bias
     const shopifyContext: ShopifyAnalysisContext | undefined = poster.shopifyProductId ? {
       // Only include analysis-derived fields if NOT force re-analyzing
@@ -73,8 +73,9 @@ export async function POST(request: NextRequest) {
       artist: forceReanalyze ? undefined : poster.artist,
       estimatedDate: forceReanalyze ? undefined : poster.estimatedDate,
       printingTechnique: forceReanalyze ? undefined : poster.printingTechnique,
-      // Always include factual/user-provided context (not AI-derived)
-      dimensions: poster.dimensionsEstimate,
+      // dimensionsEstimate is AI-derived, so exclude on re-analysis to allow fresh estimation
+      dimensions: forceReanalyze ? undefined : poster.dimensionsEstimate,
+      // Condition is typically user/Shopify provided (not AI), so always include
       condition: poster.condition,
       conditionDetails: poster.conditionDetails,
       title: poster.title,
