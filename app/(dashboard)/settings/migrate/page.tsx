@@ -72,6 +72,12 @@ const MIGRATIONS: MigrationConfig[] = [
     endpoint: '/api/migrate/product-value-sync',
     successLink: { href: '/settings/lists', label: 'Manage Colors' },
   },
+  {
+    id: 'attribution-basis',
+    name: 'Attribution Basis Field',
+    description: 'Add attribution_basis field to track HOW artist was identified: visible_signature, printed_credit, stylistic_analysis, external_knowledge, or none. Prevents false confidence from knowledge-based attributions.',
+    endpoint: '/api/migrate/attribution-basis',
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';
