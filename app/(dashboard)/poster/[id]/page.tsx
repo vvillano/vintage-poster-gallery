@@ -215,9 +215,28 @@ export default function PosterDetailPage() {
   const [refreshingTags, setRefreshingTags] = useState(false);
 
   // Color management state
-  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [availableColors, setAvailableColors] = useState<{name: string, hexCode: string | null}[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [savingColors, setSavingColors] = useState(false);
+
+  // Helper to get hex code for a color name
+  const getColorHex = (colorName: string): string | null => {
+    const color = availableColors.find(c => c.name === colorName);
+    return color?.hexCode || null;
+  };
+
+  // Helper to determine if text should be white or black based on background color
+  const getContrastTextColor = (hexColor: string | null): string => {
+    if (!hexColor) return 'text-slate-700';
+    // Remove # if present
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? 'text-black' : 'text-white';
+  };
 
   // Printing technique management state
   const [availableTechniques, setAvailableTechniques] = useState<{id: number, name: string}[]>([]);
@@ -281,13 +300,16 @@ export default function PosterDetailPage() {
       .catch(err => console.error('Failed to fetch tags:', err));
   }, []);
 
-  // Fetch available colors
+  // Fetch available colors (with hex codes)
   useEffect(() => {
     fetch('/api/managed-lists/colors')
       .then(res => res.json())
       .then(data => {
         if (data.items) {
-          setAvailableColors(data.items.map((c: { name: string }) => c.name));
+          setAvailableColors(data.items.map((c: { name: string, hexCode: string | null }) => ({
+            name: c.name,
+            hexCode: c.hexCode
+          })));
         }
       })
       .catch(err => console.error('Failed to fetch colors:', err));
@@ -1711,7 +1733,7 @@ export default function PosterDetailPage() {
           )}
 
           {/* Colors */}
-          {poster.analysisCompleted && availableColors.length > 0 && (
+          {(poster.analysisCompleted || selectedColors.length > 0) && availableColors.length > 0 && (
             <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-lg p-4 mt-4">
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-lg font-bold text-slate-900">
@@ -1728,20 +1750,23 @@ export default function PosterDetailPage() {
                 <div className="mb-4">
                   <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
                   <div className="flex flex-wrap gap-2">
-                    {poster.rawAiResponse.suggestedColors.map((color: string) => (
-                      <button
-                        key={color}
-                        onClick={() => toggleColor(color)}
-                        className={`px-3 py-1 rounded-full text-sm transition ${
-                          selectedColors.includes(color)
-                            ? 'bg-pink-600 text-white'
-                            : 'bg-pink-100 text-pink-800 border border-pink-300 hover:bg-pink-200'
-                        }`}
-                      >
-                        {color}
-                        {selectedColors.includes(color) && <span className="ml-1">✓</span>}
-                      </button>
-                    ))}
+                    {poster.rawAiResponse.suggestedColors.map((color: string) => {
+                      const hex = getColorHex(color);
+                      const isSelected = selectedColors.includes(color);
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => toggleColor(color)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition border-2 ${
+                            isSelected ? 'border-pink-500 ring-2 ring-pink-300' : 'border-transparent hover:border-pink-300'
+                          } ${getContrastTextColor(hex)}`}
+                          style={{ backgroundColor: hex || '#f1f5f9' }}
+                        >
+                          {color}
+                          {isSelected && <span className="ml-1">✓</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1751,20 +1776,24 @@ export default function PosterDetailPage() {
                 <div className="mb-4">
                   <p className="text-xs font-medium text-slate-600 mb-2">Selected ({selectedColors.length})</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedColors.map((color) => (
-                      <span
-                        key={color}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-pink-600 text-white rounded-full text-sm"
-                      >
-                        {color}
-                        <button
-                          onClick={() => toggleColor(color)}
-                          className="ml-1 hover:text-pink-200"
+                    {selectedColors.map((color) => {
+                      const hex = getColorHex(color);
+                      return (
+                        <span
+                          key={color}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border border-slate-300 ${getContrastTextColor(hex)}`}
+                          style={{ backgroundColor: hex || '#f1f5f9' }}
                         >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                          {color}
+                          <button
+                            onClick={() => toggleColor(color)}
+                            className="ml-1 hover:opacity-70"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1774,20 +1803,21 @@ export default function PosterDetailPage() {
                 <p className="text-xs font-medium text-slate-600 mb-2">Add Color</p>
                 <div className="flex flex-wrap gap-2">
                   {availableColors
-                    .filter(color => !selectedColors.includes(color))
-                    .slice(0, 12)
+                    .filter(c => !selectedColors.includes(c.name))
+                    .slice(0, 13)
                     .map((color) => (
                       <button
-                        key={color}
-                        onClick={() => toggleColor(color)}
-                        className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-pink-100 hover:text-pink-700 transition"
+                        key={color.name}
+                        onClick={() => toggleColor(color.name)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition border border-slate-300 hover:border-pink-400 hover:ring-2 hover:ring-pink-200 ${getContrastTextColor(color.hexCode)}`}
+                        style={{ backgroundColor: color.hexCode || '#f1f5f9' }}
                       >
-                        {color}
+                        {color.name}
                       </button>
                     ))}
-                  {availableColors.filter(color => !selectedColors.includes(color)).length > 12 && (
+                  {availableColors.filter(c => !selectedColors.includes(c.name)).length > 13 && (
                     <span className="px-3 py-1 text-xs text-slate-500">
-                      +{availableColors.filter(color => !selectedColors.includes(color)).length - 12} more
+                      +{availableColors.filter(c => !selectedColors.includes(c.name)).length - 13} more
                     </span>
                   )}
                 </div>
