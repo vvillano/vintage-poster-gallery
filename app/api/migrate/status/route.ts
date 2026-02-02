@@ -212,6 +212,25 @@ export async function GET() {
       status['product-value-sync'] = { completed: false };
     }
 
+    // Check Attribution Basis migration - look for attribution_basis column on posters
+    try {
+      await sql`SELECT attribution_basis FROM posters LIMIT 1`;
+
+      // Count posters with attribution_basis set
+      const basisResult = await sql`
+        SELECT COUNT(*) as count FROM posters
+        WHERE attribution_basis IS NOT NULL
+      `;
+      const postersWithBasis = parseInt(basisResult.rows[0].count || '0');
+
+      status['attribution-basis'] = {
+        completed: true,
+        details: postersWithBasis > 0 ? `${postersWithBasis} posters with attribution basis` : 'Column added',
+      };
+    } catch {
+      status['attribution-basis'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);
