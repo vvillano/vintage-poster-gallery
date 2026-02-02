@@ -321,7 +321,7 @@ Example: "30 x 40 French Grande" is WRONG - French Grande is 47x63. A 30x40 post
 
 CRITICAL - ARTIST IDENTIFICATION (Two-Step Process):
 
-STEP 1: SIGNATURE READING (What is literally visible?)
+STEP 1: SIGNATURE READING (What is LITERALLY VISIBLE on the poster?)
 1. SYSTEMATICALLY examine ALL FOUR CORNERS of the image for signatures:
    - Lower LEFT corner (very common location for signatures)
    - Lower RIGHT corner (also very common)
@@ -333,8 +333,34 @@ STEP 1: SIGNATURE READING (What is literally visible?)
 3. Look for printed artist credits near the title or in small text
 4. Set signatureReadable: true if there's a clear signature, false if none or illegible
 
+CRITICAL - If NO signature is visible:
+- Set signatureReadable: false
+- Set signatureText: "" (empty string)
+- Do NOT fabricate or infer a signature based on what you "think" the artist is
+- Do NOT claim to see a name that is not actually written on the poster
+- You may still attempt attribution via other means (STEP 2), but attribution WITHOUT visible signature must be flagged appropriately in attributionBasis
+
 STEP 2: ARTIST ATTRIBUTION (Who do we think this is?)
-After recording the exact signature, attempt to identify the full artist:
+After recording the exact signature (or noting none was found), determine attribution:
+
+ATTRIBUTION BASIS - Select ONE and record in attributionBasis field:
+- "visible_signature": Clear signature visible on the piece (must have signatureReadable: true)
+- "printed_credit": Artist name printed in text (not handwritten)
+- "stylistic_analysis": Attribution based purely on recognizable artistic style
+- "external_knowledge": Attribution based on art historical knowledge (REQUIRES citation - see below)
+- "none": Cannot determine artist from any source
+
+FOR EXTERNAL KNOWLEDGE ATTRIBUTIONS (CRITICAL):
+If you are attributing to an artist based on your training knowledge (auction records, art history books, museum catalogs), you MUST:
+1. Set attributionBasis: "external_knowledge"
+2. Explain in artistSource WHAT source this knowledge comes from (e.g., "Disney promotional art catalogs identify this as Wenzel's work")
+3. Add a sourceCitation entry with the claim and source
+4. If you CANNOT cite a specific verifiable source, you MUST either:
+   - Set artistConfidence to "uncertain" or lower, OR
+   - State "unverifiable knowledge-based attribution" in verificationNotes
+5. NEVER claim to see a signature that doesn't exist just because you "know" who the artist is
+
+VERIFICATION STEPS:
 1. Research the signature/name to find possible matching artists
 2. VERIFY THE PROFESSION: Was this person actually an illustrator, poster artist, or commercial artist?
    - If "Pierre Verger" was a photographer/ethnographer, NOT an illustrator, set professionVerified: false
@@ -344,12 +370,22 @@ After recording the exact signature, attempt to identify the full artist:
 5. CHECK FOR DUPLICATES: Are there multiple artists with similar names? (e.g., multiple "P. Verger"s)
 
 CONFIDENCE SCORING (0-100%):
-- 90-100% (confirmed): Clear signature + profession verified + era matches + style matches
-- 70-89% (likely): Strong evidence but one verification check failed or uncertain
-- 40-69% (uncertain): Signature readable but verification checks failed or conflicting
+- 90-100% (confirmed): Clear visible signature OR printed credit + profession verified + era matches + style matches
+- 70-89% (likely): Strong visible evidence but one verification check failed or uncertain
+- 40-69% (uncertain): Weak visual evidence, OR external_knowledge attribution with unverifiable source
 - 0-39% (unknown): Cannot determine or major verification failures
 
+ATTRIBUTION BASIS AFFECTS CONFIDENCE:
+- visible_signature with all checks passing: Can be "confirmed" (90-100%)
+- printed_credit with all checks passing: Can be "confirmed" (90-100%)
+- stylistic_analysis alone: Maximum "likely" (70-89%) - style is subjective
+- external_knowledge WITH citable source: Maximum "likely" (70-89%)
+- external_knowledge WITHOUT citable source: Maximum "uncertain" (40-69%)
+- none: Must be "unknown" (0-39%)
+
 IMPORTANT: If professionVerified is false (the person wasn't an illustrator), confidence should be "uncertain" or lower, even with a clear signature. Example: "P. Verger" might be signed, but if Pierre Verger was a photographer, there may be a DIFFERENT P. Verger who was the actual illustrator.
+
+CRITICAL: Do NOT inflate confidence based on knowledge you cannot cite. If you "know" who created a piece but cannot point to a specific verifiable source (auction catalog, museum record, art history book), the attribution is UNCERTAIN.
 
 Set artistSource: describe EXACTLY where you found the name (e.g., "signature lower left corner reads 'P. Verger'", "printed credit below image")
 
@@ -517,6 +553,7 @@ JSON:
     "artistConfidence": "confirmed|likely|uncertain|unknown",
     "artistConfidenceScore": 0,
     "artistSource": "",
+    "attributionBasis": "visible_signature|printed_credit|stylistic_analysis|external_knowledge|none",
     "artistVerification": {
       "signatureReadable": true,
       "signatureText": "",
@@ -809,6 +846,7 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     artistConfidence: analysis.identification.artistConfidence,
     artistConfidenceScore: analysis.identification.artistConfidenceScore,
     artistSource: analysis.identification.artistSource,
+    attributionBasis: analysis.identification.attributionBasis,
     artistSignatureText: analysis.identification.artistVerification?.signatureText,
     artistVerification: analysis.identification.artistVerification,
     title: analysis.identification.title,

@@ -359,6 +359,7 @@ export interface Poster {
   artistConfidence?: string | null;  // confirmed, likely, uncertain, unknown
   artistConfidenceScore?: number | null;  // 0-100 percentage
   artistSource?: string | null;  // Where the artist name was found
+  attributionBasis?: AttributionBasis | null;  // How the artist was identified
   artistSignatureText?: string | null;  // Exact signature text (e.g., "P. Verger")
   artistVerification?: ArtistVerification | null;  // Verification checklist
   artistId?: number | null;  // FK to artists table for confirmed attributions
@@ -491,6 +492,16 @@ export interface LinkedArtist {
   verified: boolean;
 }
 
+// Attribution basis - how the artist was identified
+export const ATTRIBUTION_BASIS = [
+  'visible_signature',    // Clear signature visible on the piece
+  'printed_credit',       // Artist name printed in text (not handwritten)
+  'stylistic_analysis',   // Attribution based purely on recognizable artistic style
+  'external_knowledge',   // Attribution based on art historical knowledge (requires citation)
+  'none',                 // Cannot determine artist from any source
+] as const;
+export type AttributionBasis = typeof ATTRIBUTION_BASIS[number];
+
 // Artist verification checklist for rigorous identification
 export interface ArtistVerification {
   signatureReadable: boolean;      // Is there a clear signature?
@@ -509,6 +520,7 @@ export interface PosterAnalysis {
     artistConfidence: 'confirmed' | 'likely' | 'uncertain' | 'unknown';  // Categorical confidence
     artistConfidenceScore: number;  // 0-100 percentage for granular confidence
     artistSource: string;           // Where the artist name was found
+    attributionBasis: AttributionBasis;  // How the artist was identified
     artistVerification: ArtistVerification;  // Detailed verification checklist
     title: string;
     estimatedDate: string;
@@ -611,6 +623,7 @@ export interface UpdatePosterInput {
   artistConfidence?: string;
   artistConfidenceScore?: number;
   artistSource?: string;
+  attributionBasis?: AttributionBasis | null;
   artistSignatureText?: string;
   artistVerification?: ArtistVerification;
   artistId?: number | null;  // FK to artists table for confirmed attributions
