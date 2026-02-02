@@ -1734,13 +1734,13 @@ export default function PosterDetailPage() {
 
           {/* Colors */}
           {(poster.analysisCompleted || selectedColors.length > 0) && availableColors.length > 0 && (
-            <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-lg p-4 mt-4">
+            <div className="bg-white border border-slate-200 rounded-lg p-4 mt-4 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-lg font-bold text-slate-900">
                   Colors
                 </h4>
                 {savingColors && (
-                  <span className="text-xs text-pink-600">Saving...</span>
+                  <span className="text-xs text-slate-500">Saving...</span>
                 )}
               </div>
               <p className="text-xs text-slate-500 mb-3">Dominant colors identified in the image</p>
@@ -1758,7 +1758,7 @@ export default function PosterDetailPage() {
                           key={color}
                           onClick={() => toggleColor(color)}
                           className={`px-3 py-1 rounded-full text-sm font-medium transition border-2 ${
-                            isSelected ? 'border-pink-500 ring-2 ring-pink-300' : 'border-transparent hover:border-pink-300'
+                            isSelected ? 'border-blue-500 ring-2 ring-blue-300' : 'border-transparent hover:border-slate-400'
                           } ${getContrastTextColor(hex)}`}
                           style={{ backgroundColor: hex || '#f1f5f9' }}
                         >
@@ -1809,7 +1809,7 @@ export default function PosterDetailPage() {
                       <button
                         key={color.name}
                         onClick={() => toggleColor(color.name)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition border border-slate-300 hover:border-pink-400 hover:ring-2 hover:ring-pink-200 ${getContrastTextColor(color.hexCode)}`}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition border border-slate-300 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 ${getContrastTextColor(color.hexCode)}`}
                         style={{ backgroundColor: color.hexCode || '#f1f5f9' }}
                       >
                         {color.name}

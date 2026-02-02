@@ -493,10 +493,24 @@ export function mapMetafieldsToPosterFields(
   if (medium) result.printingTechnique = medium;
 
   // Map color to colors array
-  // Shopify stores as comma-separated string, we convert to array
+  // Shopify may store as comma-separated string OR JSON array string
   const color = mfMap.get('jadepuma.color');
   if (color) {
-    result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+    // Try to parse as JSON array first (e.g., '["Red", "Brown"]')
+    if (color.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(color);
+        if (Array.isArray(parsed)) {
+          result.colors = parsed.map(c => String(c).trim()).filter(c => c.length > 0);
+        }
+      } catch {
+        // Not valid JSON, fall through to comma-separated parsing
+        result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      }
+    } else {
+      // Simple comma-separated format (e.g., 'Red, Brown')
+      result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+    }
   }
 
   return result;
