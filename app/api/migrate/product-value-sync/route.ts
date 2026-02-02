@@ -47,7 +47,7 @@ export async function POST() {
       results.push('Indexes on colors may already exist');
     }
 
-    // 3. Seed colors table with common poster colors
+    // 3. Seed colors table with curated poster colors (13 colors optimized for search/filtering)
     try {
       await sql`
         INSERT INTO colors (name, hex_code, display_order) VALUES
@@ -58,26 +58,15 @@ export async function POST() {
           ('Green', '#008000', 5),
           ('Yellow', '#FFFF00', 6),
           ('Orange', '#FFA500', 7),
-          ('Purple', '#800080', 8),
-          ('Pink', '#FFC0CB', 9),
-          ('Brown', '#8B4513', 10),
-          ('Gray', '#808080', 11),
-          ('Gold', '#FFD700', 12),
-          ('Silver', '#C0C0C0', 13),
-          ('Beige', '#F5F5DC', 14),
-          ('Cream', '#FFFDD0', 15),
-          ('Navy', '#000080', 16),
-          ('Teal', '#008080', 17),
-          ('Maroon', '#800000', 18),
-          ('Olive', '#808000', 19),
-          ('Coral', '#FF7F50', 20),
-          ('Turquoise', '#40E0D0', 21),
-          ('Burgundy', '#800020', 22),
-          ('Tan', '#D2B48C', 23),
-          ('Sepia', '#704214', 24)
+          ('Brown', '#8B4513', 8),
+          ('Gold', '#FFD700', 9),
+          ('Purple', '#800080', 10),
+          ('Pink', '#FFC0CB', 11),
+          ('Tan', '#D2B48C', 12),
+          ('Gray', '#808080', 13)
         ON CONFLICT (name) DO NOTHING
       `;
-      results.push('Seeded colors table with common poster colors');
+      results.push('Seeded colors table with 13 curated poster colors');
     } catch (err) {
       results.push(`Note: Some colors may already exist - ${err instanceof Error ? err.message : 'unknown'}`);
     }
