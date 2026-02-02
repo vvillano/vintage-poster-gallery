@@ -47,7 +47,7 @@ export async function POST() {
       results.push('Indexes on colors may already exist');
     }
 
-    // 3. Seed colors table with curated poster colors (13 colors optimized for search/filtering)
+    // 3. Seed colors table with 19 curated colors for vintage art filtering
     try {
       await sql`
         INSERT INTO colors (name, hex_code, display_order) VALUES
@@ -63,10 +63,16 @@ export async function POST() {
           ('Purple', '#800080', 10),
           ('Pink', '#FFC0CB', 11),
           ('Tan', '#D2B48C', 12),
-          ('Gray', '#808080', 13)
+          ('Gray', '#808080', 13),
+          ('Navy', '#000080', 14),
+          ('Burgundy', '#800020', 15),
+          ('Cream', '#FFFDD0', 16),
+          ('Teal', '#008080', 17),
+          ('Olive', '#808000', 18),
+          ('Silver', '#C0C0C0', 19)
         ON CONFLICT (name) DO NOTHING
       `;
-      results.push('Seeded colors table with 13 curated poster colors');
+      results.push('Seeded colors table with 19 curated vintage art colors');
     } catch (err) {
       results.push(`Note: Some colors may already exist - ${err instanceof Error ? err.message : 'unknown'}`);
     }
