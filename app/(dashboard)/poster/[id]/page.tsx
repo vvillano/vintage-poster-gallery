@@ -192,6 +192,7 @@ export default function PosterDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [additionalContext, setAdditionalContext] = useState('');
+  const [skepticalMode, setSkepticalMode] = useState(false);
   const [showReanalyze, setShowReanalyze] = useState(false);
   const [selectedTone, setSelectedTone] = useState<DescriptionTone>('standard');
   const [refreshingDescriptions, setRefreshingDescriptions] = useState(false);
@@ -635,7 +636,7 @@ export default function PosterDetailPage() {
     }
   }
 
-  async function triggerAnalysis(forceReanalyze = false, context?: string) {
+  async function triggerAnalysis(forceReanalyze = false, context?: string, skepticalMode = false) {
     try {
       setAnalyzing(true);
       setError('');
@@ -647,6 +648,7 @@ export default function PosterDetailPage() {
           posterId: parseInt(posterId),
           forceReanalyze,
           additionalContext: context,
+          skepticalMode,
         }),
       });
 
@@ -2217,19 +2219,38 @@ export default function PosterDetailPage() {
                       </div>
                     )}
 
+                    {/* Skeptical Mode Option */}
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={skepticalMode}
+                          onChange={(e) => setSkepticalMode(e.target.checked)}
+                          className="mt-1 h-4 w-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                        />
+                        <div>
+                          <span className="font-medium text-slate-800">Skeptical Mode</span>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            Challenge previous attributions. Excludes auction descriptions and prior analysis to allow fresh evaluation.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
                     <div className="flex gap-3">
                       <button
-                        onClick={() => triggerAnalysis(true, additionalContext)}
+                        onClick={() => triggerAnalysis(true, additionalContext, skepticalMode)}
                         disabled={analyzing || uploadingSupplemental || compressingSupplemental}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`flex-1 ${skepticalMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-amber-600 hover:bg-amber-700'} text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
-                        {analyzing ? 'Re-analyzing...' : `Re-analyze${(poster.supplementalImages?.length || additionalContext.trim()) ? ' with New Context' : ''}`}
+                        {analyzing ? 'Re-analyzing...' : skepticalMode ? 'Re-analyze (Skeptical)' : `Re-analyze${(poster.supplementalImages?.length || additionalContext.trim()) ? ' with New Context' : ''}`}
                       </button>
                       <button
                         onClick={() => {
                           setShowReanalyze(false);
                           setAdditionalContext('');
                           setSupplementalDescription('');
+                          setSkepticalMode(false);
                           setError('');
                         }}
                         disabled={analyzing}
