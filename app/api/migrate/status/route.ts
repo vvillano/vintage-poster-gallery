@@ -231,6 +231,31 @@ export async function GET() {
       status['attribution-basis'] = { completed: false };
     }
 
+    // Check Dealers migration - look for dealers table
+    try {
+      const dealersResult = await sql`
+        SELECT COUNT(*) as total,
+               COUNT(CASE WHEN reliability_tier <= 2 THEN 1 END) as top_tier
+        FROM dealers
+      `;
+      const total = parseInt(dealersResult.rows[0].total || '0');
+      const topTier = parseInt(dealersResult.rows[0].top_tier || '0');
+
+      if (total > 0) {
+        status['dealers'] = {
+          completed: true,
+          details: `${total} dealers${topTier > 0 ? ` (${topTier} Tier 1-2)` : ''}`,
+        };
+      } else {
+        status['dealers'] = {
+          completed: true,
+          details: 'Table created (empty)',
+        };
+      }
+    } catch {
+      status['dealers'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

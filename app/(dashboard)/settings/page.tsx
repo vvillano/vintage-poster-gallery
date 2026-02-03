@@ -26,6 +26,13 @@ export default function SettingsPage() {
       color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
     },
     {
+      title: 'Dealer Database',
+      description: 'Manage auction houses, galleries, and dealers worldwide. Track reliability tiers, specializations, and research capabilities.',
+      href: '/settings/dealers',
+      icon: '🏛️',
+      color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',
+    },
+    {
       title: 'Shopify Integration',
       description: 'Connect to Shopify to import products, sync descriptions, tags, and metadata between systems.',
       href: '/settings/shopify',

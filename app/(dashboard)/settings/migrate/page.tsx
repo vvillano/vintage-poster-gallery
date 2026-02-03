@@ -78,6 +78,13 @@ const MIGRATIONS: MigrationConfig[] = [
     description: 'Add attribution_basis field to track HOW artist was identified: visible_signature, printed_credit, stylistic_analysis, external_knowledge, or none. Prevents false confidence from knowledge-based attributions.',
     endpoint: '/api/migrate/attribution-basis',
   },
+  {
+    id: 'dealers',
+    name: 'Dealer Database',
+    description: 'Create dealers table for tracking auction houses, galleries, and specialized dealers. Includes reliability tiers, attribution/pricing weights, specializations, and seller linking.',
+    endpoint: '/api/migrate/dealers',
+    successLink: { href: '/settings/dealers', label: 'Manage Dealers' },
+  },
 ];
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';
