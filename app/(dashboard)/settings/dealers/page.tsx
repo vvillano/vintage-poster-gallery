@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type {
   Dealer,
@@ -16,6 +16,7 @@ import {
   getDefaultsForDealerType,
 } from '@/types/dealer';
 import type { PrivateSeller } from '@/types/poster';
+import DealerDiscoveryModal from '@/components/DealerDiscoveryModal';
 
 const DEALER_TYPES: { value: DealerType; label: string }[] = [
   { value: 'auction_house', label: 'Auction House' },
@@ -70,6 +71,9 @@ export default function DealerDatabasePage() {
   const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+
+  // Discovery modal state
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -346,6 +350,61 @@ export default function DealerDatabasePage() {
     }
   }
 
+  // Handler for adding discovered dealers
+  const handleAddDiscoveredDealers = useCallback(async (dealers: any[]) => {
+    setError('');
+    setSuccess('');
+
+    let added = 0;
+    let failed = 0;
+
+    for (const dealer of dealers) {
+      try {
+        const body = {
+          name: dealer.name,
+          type: dealer.type || 'poster_dealer',
+          website: dealer.website || null,
+          country: dealer.country || null,
+          city: dealer.city || null,
+          region: dealer.region || null,
+          reliabilityTier: 3, // Default tier for discovered dealers
+          attributionWeight: 0.7,
+          pricingWeight: 0.7,
+          canResearch: true,
+          canPrice: true,
+          canProcure: false,
+          canBeSource: true,
+          searchUrlTemplate: dealer.searchUrlTemplate || null,
+          specializations: dealer.specializations || [],
+          isActive: true,
+        };
+
+        const res = await fetch('/api/dealers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          added++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    if (added > 0) {
+      setSuccess(`Added ${added} new dealer${added !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`);
+      fetchDealers();
+      fetchSeedInfo();
+      setTimeout(() => setSuccess(''), 5000);
+    } else if (failed > 0) {
+      setError(`Failed to add dealers`);
+    }
+  }, []);
+
   // Apply filters
   useEffect(() => {
     setLoading(true);
@@ -469,6 +528,15 @@ export default function DealerDatabasePage() {
               ))}
             </select>
           </div>
+          <button
+            onClick={() => setShowDiscoveryModal(true)}
+            className="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Discover
+          </button>
           {seedInfo && !seedInfo.needsSeeding && (
             <button
               onClick={handleSeedDealers}
@@ -906,9 +974,17 @@ export default function DealerDatabasePage() {
           <li>- <strong>Tier 4-5</strong>: Marketplaces and aggregators - useful for pricing and discovery</li>
           <li>- <strong>Tier 6</strong>: General sites - lower reliability, use with caution</li>
           <li>- Link a dealer to a Seller when you have a buying relationship with them</li>
-          <li>- Search URL templates enable quick dealer searches from poster pages (Phase 2)</li>
+          <li>- Search URL templates enable quick dealer searches from poster pages</li>
+          <li>- Use <strong>Discover</strong> to find new dealers internationally using AI-assisted search</li>
         </ul>
       </div>
+
+      {/* Discovery Modal */}
+      <DealerDiscoveryModal
+        isOpen={showDiscoveryModal}
+        onClose={() => setShowDiscoveryModal(false)}
+        onAddDealers={handleAddDiscoveredDealers}
+      />
     </div>
   );
 }
