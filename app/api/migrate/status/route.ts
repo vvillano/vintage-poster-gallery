@@ -231,6 +231,17 @@ export async function GET() {
       status['attribution-basis'] = { completed: false };
     }
 
+    // Check Shopify Refresh migration - look for shopify_reference_images column
+    try {
+      await sql`SELECT shopify_reference_images, item_notes FROM posters LIMIT 1`;
+      status['shopify-refresh'] = {
+        completed: true,
+        details: 'Columns added',
+      };
+    } catch {
+      status['shopify-refresh'] = { completed: false };
+    }
+
     // Check Dealers migration - look for dealers table
     try {
       const dealersResult = await sql`

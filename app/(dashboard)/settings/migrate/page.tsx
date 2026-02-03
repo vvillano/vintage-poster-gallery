@@ -19,6 +19,12 @@ interface MigrationStatusInfo {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'shopify-refresh',
+    name: 'Shopify Refresh Fields',
+    description: 'Add shopify_reference_images and item_notes columns. Enables pulling reference images from Shopify and storing research-relevant notes separately from internal notes.',
+    endpoint: '/api/migrate/shopify-refresh',
+  },
+  {
     id: 'dealers',
     name: 'Dealer Database',
     description: 'Create dealers table for tracking auction houses, galleries, and specialized dealers. Includes reliability tiers, attribution/pricing weights, specializations, and seller linking.',
