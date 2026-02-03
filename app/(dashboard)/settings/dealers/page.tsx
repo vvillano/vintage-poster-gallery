@@ -219,7 +219,7 @@ export default function DealerDatabasePage() {
       searchUrlTemplate: dealer.searchUrlTemplate || '',
       searchSoldUrlTemplate: dealer.searchSoldUrlTemplate || '',
       specializations: dealer.specializations,
-      linkedSellerId: dealer.linkedSellerId,
+      linkedSellerId: dealer.linkedSellerId ?? null,
       notes: dealer.notes || '',
       isActive: dealer.isActive,
     });
