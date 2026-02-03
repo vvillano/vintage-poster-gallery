@@ -79,17 +79,22 @@ export async function POST(request: NextRequest) {
       condition: poster.condition,
       conditionDetails: poster.conditionDetails,
       title: poster.title,
-      // userNotes may contain auction descriptions - valuable context
-      auctionDescription: poster.userNotes,
+      // itemNotes contains research-relevant notes (provenance, auction catalog info)
+      // This replaces auctionDescription which was used for all internal notes
+      itemNotes: poster.itemNotes,
+      // userNotes (internal business notes) are intentionally NOT passed to AI
     } : undefined;
 
-    // Analyze with Claude (including any supplemental images and Shopify context)
+    // Analyze with Claude (including reference images from both sources)
+    // - supplementalImages: uploaded in Research App
+    // - shopifyReferenceImages: imported from Shopify jadepuma.reference_images metafield
     // skepticalMode removes previous attributions from context to allow fresh analysis
     const analysis = await analyzePoster(
       poster.imageUrl,
       combinedInfo || undefined,
       poster.productType || undefined,
       poster.supplementalImages || undefined,
+      poster.shopifyReferenceImages || undefined,
       shopifyContext,
       skepticalMode
     );

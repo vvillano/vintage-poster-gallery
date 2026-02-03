@@ -12,18 +12,88 @@ interface ShopifyPanelProps {
 
 export default function ShopifyPanel({ poster, onUpdate, syncing = false }: ShopifyPanelProps) {
   const [expanded, setExpanded] = useState(true);
-  const [pulling, setPulling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [pushingField, setPushingField] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Refresh options state
+  const [showRefreshOptions, setShowRefreshOptions] = useState(false);
+  const [refreshOptions, setRefreshOptions] = useState({
+    refreshPrimaryImage: true,
+    refreshReferenceImages: true,
+    triggerReanalysis: false,
+    analysisMode: 'normal' as 'normal' | 'skeptical',
+  });
+
   const isLinked = !!poster.shopifyProductId;
   const shopifyData = poster.shopifyData as ShopifyData | null;
 
-  async function handlePull() {
+  async function handleRefresh() {
     try {
-      setPulling(true);
+      setRefreshing(true);
+      setError('');
+      setSuccess('');
+
+      const res = await fetch('/api/shopify/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          posterId: poster.id,
+          options: refreshOptions,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to refresh from Shopify');
+      }
+
+      // Build success message based on what was updated
+      let message = 'Refreshed from Shopify.';
+      if (data.updated?.primaryImage) message += ' Image updated.';
+      if (data.updated?.referenceImages?.added > 0) {
+        message += ` ${data.updated.referenceImages.added} reference image(s) added.`;
+      }
+      if (data.analysisTriggered) {
+        message += ` Re-analysis queued (${data.analysisMode} mode).`;
+        // If analysis was triggered, call the analyze endpoint
+        try {
+          const analyzeRes = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              posterId: poster.id,
+              forceReanalyze: true,
+              skepticalMode: data.analysisMode === 'skeptical',
+            }),
+          });
+          if (analyzeRes.ok) {
+            message = message.replace('queued', 'completed');
+          }
+        } catch (analyzeErr) {
+          console.error('Re-analysis failed:', analyzeErr);
+        }
+      }
+
+      setSuccess(message);
+      setShowRefreshOptions(false);
+      onUpdate();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // Legacy pull function (simple refresh)
+  async function handleQuickRefresh() {
+    try {
+      setRefreshing(true);
       setError('');
       setSuccess('');
 
@@ -46,7 +116,7 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pull');
     } finally {
-      setPulling(false);
+      setRefreshing(false);
     }
   }
 
@@ -247,12 +317,12 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handlePull();
+              handleQuickRefresh();
             }}
-            disabled={pulling}
+            disabled={refreshing}
             className="text-xs px-3 py-1.5 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50 flex items-center gap-1"
           >
-            {pulling ? (
+            {refreshing ? (
               <>
                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -265,7 +335,7 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Refresh from Shopify
+                Quick Refresh
               </>
             )}
           </button>
@@ -294,6 +364,90 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
               {success}
             </div>
           )}
+
+          {/* Full Refresh Options */}
+          <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
+            <button
+              onClick={() => setShowRefreshOptions(!showRefreshOptions)}
+              className="w-full flex items-center justify-between text-sm font-medium text-blue-800"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Full Refresh (with images)
+              </span>
+              <svg className={`w-4 h-4 transition-transform ${showRefreshOptions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showRefreshOptions && (
+              <div className="mt-3 pt-3 border-t border-blue-200 space-y-3">
+                <div className="space-y-2 text-xs">
+                  <label className="flex items-center gap-2 text-blue-800">
+                    <input
+                      type="checkbox"
+                      checked={refreshOptions.refreshPrimaryImage}
+                      onChange={(e) => setRefreshOptions(prev => ({ ...prev, refreshPrimaryImage: e.target.checked }))}
+                      className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Re-download primary image
+                  </label>
+                  <label className="flex items-center gap-2 text-blue-800">
+                    <input
+                      type="checkbox"
+                      checked={refreshOptions.refreshReferenceImages}
+                      onChange={(e) => setRefreshOptions(prev => ({ ...prev, refreshReferenceImages: e.target.checked }))}
+                      className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Sync reference images from Shopify
+                  </label>
+                  <label className="flex items-center gap-2 text-blue-800">
+                    <input
+                      type="checkbox"
+                      checked={refreshOptions.triggerReanalysis}
+                      onChange={(e) => setRefreshOptions(prev => ({ ...prev, triggerReanalysis: e.target.checked }))}
+                      className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Trigger AI re-analysis after refresh
+                  </label>
+                  {refreshOptions.triggerReanalysis && (
+                    <div className="ml-5 mt-1">
+                      <select
+                        value={refreshOptions.analysisMode}
+                        onChange={(e) => setRefreshOptions(prev => ({
+                          ...prev,
+                          analysisMode: e.target.value as 'normal' | 'skeptical'
+                        }))}
+                        className="px-2 py-1 text-xs border border-blue-300 rounded bg-white text-blue-800 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="normal">Normal (verify source data)</option>
+                        <option value="skeptical">Skeptical (fresh eyes)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="w-full py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {refreshing ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Refreshing...
+                    </>
+                  ) : (
+                    'Refresh from Shopify'
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4 text-sm">

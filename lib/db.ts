@@ -4,6 +4,7 @@ import type {
   CreatePosterInput,
   UpdatePosterInput,
   SupplementalImage,
+  ShopifyReferenceImage,
   ResearchImage,
   ComparableSale,
   ShopifyData,
@@ -628,6 +629,55 @@ export async function removeResearchImage(
 }
 
 /**
+ * Update Shopify reference images for a poster
+ * These are separate from supplementalImages (uploaded in Research App)
+ */
+export async function updateShopifyReferenceImages(
+  id: number,
+  images: ShopifyReferenceImage[]
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      shopify_reference_images = ${JSON.stringify(images)},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
+ * Update item notes for a poster
+ * Item notes are research-relevant notes (provenance, auction catalog info)
+ * separate from userNotes which are internal business notes
+ */
+export async function updateItemNotes(
+  id: number,
+  itemNotes: string | null
+): Promise<Poster> {
+  const result = await sql`
+    UPDATE posters
+    SET
+      item_notes = ${itemNotes},
+      last_modified = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  if (result.rows.length === 0) {
+    throw new Error(`Poster with ID ${id} not found`);
+  }
+
+  return dbRowToPoster(result.rows[0]);
+}
+
+/**
  * Convert database row to Poster type
  */
 function dbRowToPoster(row: any): Poster {
@@ -640,6 +690,7 @@ function dbRowToPoster(row: any): Poster {
     uploadDate: new Date(row.upload_date),
     uploadedBy: row.uploaded_by,
     supplementalImages: row.supplemental_images,
+    shopifyReferenceImages: row.shopify_reference_images,
     itemTags: row.item_tags,
     colors: row.colors,
     comparableSales: row.comparable_sales,
@@ -686,6 +737,7 @@ function dbRowToPoster(row: any): Poster {
     analysisDate: row.analysis_date ? new Date(row.analysis_date) : null,
     rawAiResponse: row.raw_ai_response,
     userNotes: row.user_notes,
+    itemNotes: row.item_notes,
     lastModified: new Date(row.last_modified),
     // Shopify integration fields
     shopifyProductId: row.shopify_product_id,

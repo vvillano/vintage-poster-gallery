@@ -430,9 +430,11 @@ export interface MappedMetafields {
   dimensionsEstimate?: string;
   condition?: string;
   conditionDetails?: string;
-  userNotes?: string;
+  userNotes?: string;           // Business/internal notes (jadepuma.internal_notes) - NOT passed to AI
+  itemNotes?: string;           // Research-relevant notes (jadepuma.item_notes) - passed to AI
   printingTechnique?: string;
-  colors?: string[];  // Array of color names
+  colors?: string[];            // Array of color names
+  referenceImageUrls?: string[]; // Reference image URLs from Shopify (jadepuma.reference_images)
 }
 
 /**
@@ -510,6 +512,40 @@ export function mapMetafieldsToPosterFields(
     } else {
       // Simple comma-separated format (e.g., 'Red, Brown')
       result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+    }
+  }
+
+  // Map item_notes (research-relevant notes) - passed to AI analysis
+  // This is separate from internal_notes which is for business/transaction notes
+  const itemNotes = mfMap.get('jadepuma.item_notes');
+  if (itemNotes) result.itemNotes = itemNotes;
+
+  // Map reference_images (URLs for context images)
+  // May be stored as JSON array or comma-separated string
+  const referenceImages = mfMap.get('jadepuma.reference_images');
+  if (referenceImages) {
+    // Try to parse as JSON array first (e.g., '["url1", "url2"]')
+    if (referenceImages.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(referenceImages);
+        if (Array.isArray(parsed)) {
+          result.referenceImageUrls = parsed
+            .map(url => String(url).trim())
+            .filter(url => url.length > 0 && (url.startsWith('http://') || url.startsWith('https://')));
+        }
+      } catch {
+        // Not valid JSON, fall through to comma-separated parsing
+        result.referenceImageUrls = referenceImages
+          .split(',')
+          .map(url => url.trim())
+          .filter(url => url.length > 0 && (url.startsWith('http://') || url.startsWith('https://')));
+      }
+    } else {
+      // Simple comma-separated format
+      result.referenceImageUrls = referenceImages
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url.length > 0 && (url.startsWith('http://') || url.startsWith('https://')));
     }
   }
 
@@ -730,4 +766,64 @@ function mapGraphQLProductToShopifyProduct(product: any): ShopifyProduct {
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
+}
+
+// =====================
+// Image Download Functions
+// =====================
+
+import { put } from '@vercel/blob';
+
+/**
+ * Download an image from a URL and upload to Vercel Blob
+ * Used for re-hosting Shopify reference images
+ * @param imageUrl - The URL to download from
+ * @param prefix - Prefix for the filename (default: 'shopify-ref')
+ * @returns Object with url, blobId, fileName or null if failed
+ */
+export async function downloadAndHostImage(
+  imageUrl: string,
+  prefix: string = 'shopify-ref'
+): Promise<{ url: string; blobId: string; fileName: string } | null> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.warn(`Failed to download image from ${imageUrl}: ${response.status}`);
+      return null;
+    }
+
+    const blob = await response.blob();
+
+    // Extract extension from URL or content-type
+    let extension = 'jpg';
+    try {
+      const urlPath = new URL(imageUrl).pathname;
+      const urlExt = urlPath.split('.').pop()?.toLowerCase();
+      if (urlExt && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(urlExt)) {
+        extension = urlExt === 'jpeg' ? 'jpg' : urlExt;
+      }
+    } catch {
+      // If URL parsing fails, try content-type
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('png')) extension = 'png';
+      else if (contentType?.includes('gif')) extension = 'gif';
+      else if (contentType?.includes('webp')) extension = 'webp';
+    }
+
+    const fileName = `${prefix}-${Date.now()}.${extension}`;
+
+    const result = await put(fileName, blob, {
+      access: 'public',
+      contentType: blob.type || `image/${extension}`,
+    });
+
+    return {
+      url: result.url,
+      blobId: result.url,
+      fileName,
+    };
+  } catch (error) {
+    console.error(`Failed to download and host image from ${imageUrl}:`, error);
+    return null;
+  }
 }

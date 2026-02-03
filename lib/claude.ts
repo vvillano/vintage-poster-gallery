@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage } from '@/types/poster';
+import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage, ShopifyReferenceImage } from '@/types/poster';
 import { getTagNames } from '@/lib/tags';
 import { getColorNames } from '@/lib/colors';
 
@@ -15,8 +15,12 @@ export interface ShopifyAnalysisContext {
   conditionDetails?: string | null;
   printingTechnique?: string | null;
   title?: string | null;
-  // Auction description from internal notes (may be mixed with other notes)
-  auctionDescription?: string | null;
+  // Research-relevant notes (from jadepuma.item_notes) - provenance, auction catalog info
+  // These are passed to AI analysis for verification
+  itemNotes?: string | null;
+  // Internal business notes (from jadepuma.internal_notes) - NOT passed to AI
+  // Kept for backwards compatibility but should not be used for analysis
+  auctionDescription?: string | null;  // @deprecated - use itemNotes instead
 }
 
 // Initialize Anthropic client
@@ -115,11 +119,15 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext, skepticalMo
     parts.push(`- Condition Details: "${context.conditionDetails}"`);
   }
 
-  // In skeptical mode, EXCLUDE auction descriptions to prevent confirmation bias
-  const hasAuctionDescription = !skepticalMode && context.auctionDescription && context.auctionDescription.length > 30;
-  if (hasAuctionDescription) {
-    parts.push(`- Auction/Catalog Description: "${context.auctionDescription}"`);
+  // In skeptical mode, EXCLUDE all research notes to prevent confirmation bias
+  // In normal mode, use itemNotes (research-relevant) but NOT auctionDescription (business notes)
+  const hasItemNotes = !skepticalMode && context.itemNotes && context.itemNotes.length > 30;
+  if (hasItemNotes) {
+    parts.push(`- Research Notes: "${context.itemNotes}"`);
   }
+
+  // NOTE: auctionDescription (internal business notes) is intentionally NOT included
+  // It may contain seller/transaction info that shouldn't influence AI analysis
 
   if (parts.length === 0) {
     return '';
@@ -146,10 +154,10 @@ The following information comes from auction catalogs, dealer notes, or prior re
 ${parts.join('\n')}
 `;
 
-    // Add specific instructions for handling auction descriptions (only in normal mode)
-    if (hasAuctionDescription) {
+    // Add specific instructions for handling research notes (only in normal mode)
+    if (hasItemNotes) {
       contextSection += `
-IMPORTANT - Look for specific claims in the auction/catalog description:
+IMPORTANT - Verify claims in the research notes against visual evidence:
 - Attribution claims ("attributed to...", "by...", "signed...", "manner of...")
 - Publication sources ("from Harper's Weekly", "New Yorker cover", "Fortune magazine")
 - Date claims ("circa 1890", "published March 1925", "early 20th century")
@@ -159,7 +167,7 @@ IMPORTANT - Look for specific claims in the auction/catalog description:
 For each claim found:
 1. If visual evidence supports it → confirm with high confidence
 2. If visual evidence contradicts it → note the discrepancy in validationNotes
-3. If cannot verify but plausible → accept as likely and note "per catalog description"
+3. If cannot verify but plausible → accept as likely and note "per research notes"
 `;
     }
   }
@@ -616,8 +624,10 @@ JSON:
  * @param imageUrl - Public URL to the poster image (from Vercel Blob)
  * @param initialInformation - Optional user-provided information to validate
  * @param productType - The type of product being analyzed
- * @param supplementalImages - Optional array of additional images for context
+ * @param supplementalImages - Optional array of additional images from Research App
+ * @param shopifyReferenceImages - Optional array of reference images from Shopify
  * @param shopifyContext - Optional existing data from Shopify to verify/use
+ * @param skepticalMode - If true, exclude previous attributions for fresh analysis
  * @returns Structured poster analysis
  */
 export async function analyzePoster(
@@ -625,12 +635,14 @@ export async function analyzePoster(
   initialInformation?: string,
   productType?: string,
   supplementalImages?: SupplementalImage[],
+  shopifyReferenceImages?: ShopifyReferenceImage[],
   shopifyContext?: ShopifyAnalysisContext,
   skepticalMode?: boolean
 ): Promise<PosterAnalysis> {
   try {
     console.log('[analyzePoster] Starting analysis for image:', imageUrl);
-    console.log('[analyzePoster] Supplemental images:', supplementalImages?.length || 0);
+    console.log('[analyzePoster] Supplemental images (Research App):', supplementalImages?.length || 0);
+    console.log('[analyzePoster] Reference images (Shopify):', shopifyReferenceImages?.length || 0);
 
     // Verify API key is configured
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -655,8 +667,39 @@ export async function analyzePoster(
       console.warn('[analyzePoster] Could not fetch colors, skipping color suggestions:', colorError);
     }
 
-    const hasSupplementalImages = supplementalImages && supplementalImages.length > 0;
-    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasSupplementalImages, tagList, shopifyContext, colorList, skepticalMode);
+    // Merge reference images from both sources (Shopify and Research App), max 5 total
+    const allReferenceImages: Array<{ url: string; description?: string; source: string }> = [];
+
+    // Add Shopify reference images first (they come from the product listing)
+    if (shopifyReferenceImages && shopifyReferenceImages.length > 0) {
+      for (const img of shopifyReferenceImages) {
+        if (allReferenceImages.length < 5) {
+          allReferenceImages.push({
+            url: img.url,
+            description: 'Reference image from Shopify',
+            source: 'shopify',
+          });
+        }
+      }
+    }
+
+    // Add Research App supplemental images (max 5 total combined)
+    if (supplementalImages && supplementalImages.length > 0) {
+      for (const img of supplementalImages) {
+        if (allReferenceImages.length < 5) {
+          allReferenceImages.push({
+            url: img.url,
+            description: img.description,
+            source: 'research_app',
+          });
+        }
+      }
+    }
+
+    const hasReferenceImages = allReferenceImages.length > 0;
+    console.log('[analyzePoster] Total reference images for analysis:', allReferenceImages.length);
+
+    const prompt = buildAnalysisPrompt(initialInformation, undefined, productType, hasReferenceImages, tagList, shopifyContext, colorList, skepticalMode);
     console.log('[analyzePoster] Prompt length:', prompt.length, 'characters');
     console.log('[analyzePoster] Skeptical mode:', skepticalMode ? 'ENABLED' : 'disabled');
     console.log('[analyzePoster] Initial information:', initialInformation ? initialInformation.substring(0, 100) : 'none');
@@ -664,7 +707,7 @@ export async function analyzePoster(
     console.log('[analyzePoster] Image URL:', imageUrl);
     console.log('[analyzePoster] Calling Claude API...');
 
-    // Build content array with primary image first, then supplemental images
+    // Build content array with primary image first, then reference images
     const contentArray: Array<{ type: 'image'; source: { type: 'url'; url: string } } | { type: 'text'; text: string }> = [
       {
         type: 'image',
@@ -675,24 +718,22 @@ export async function analyzePoster(
       },
     ];
 
-    // Add supplemental images with optional descriptions
-    if (supplementalImages && supplementalImages.length > 0) {
-      for (const img of supplementalImages) {
-        // Add description text before each supplemental image if provided
-        if (img.description) {
-          contentArray.push({
-            type: 'text',
-            text: `[Supplemental image: ${img.description}]`,
-          });
-        }
+    // Add merged reference images with descriptions
+    for (const img of allReferenceImages) {
+      // Add description text before each image if provided
+      if (img.description) {
         contentArray.push({
-          type: 'image',
-          source: {
-            type: 'url',
-            url: img.url,
-          },
+          type: 'text',
+          text: `[Reference image: ${img.description}]`,
         });
       }
+      contentArray.push({
+        type: 'image',
+        source: {
+          type: 'url',
+          url: img.url,
+        },
+      });
     }
 
     // Add the analysis prompt at the end

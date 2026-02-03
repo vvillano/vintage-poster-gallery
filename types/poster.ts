@@ -1,10 +1,19 @@
-// Supplemental image for additional analysis context
+// Supplemental image for additional analysis context (uploaded in Research App)
 export interface SupplementalImage {
   url: string;
   blobId: string;
   fileName: string;
   description?: string;  // Optional description of what this image shows
   uploadDate: Date;
+}
+
+// Reference image from Shopify (imported from jadepuma.reference_images metafield)
+export interface ShopifyReferenceImage {
+  url: string;           // Image URL (Vercel Blob after re-hosting)
+  blobId?: string;       // Vercel Blob ID if re-hosted
+  fileName: string;      // Derived filename
+  source: 'shopify';     // Always 'shopify' for these images
+  importDate: Date;      // When imported from Shopify
 }
 
 // Tag for item categorization
@@ -336,8 +345,11 @@ export interface Poster {
   uploadDate: Date;
   uploadedBy: string;
 
-  // Supplemental images for additional analysis context
+  // Supplemental images for additional analysis context (uploaded in Research App)
   supplementalImages?: SupplementalImage[] | null;
+
+  // Reference images from Shopify (imported from jadepuma.reference_images metafield)
+  shopifyReferenceImages?: ShopifyReferenceImage[] | null;
 
   // Item tags for categorization
   itemTags?: string[] | null;
@@ -406,7 +418,8 @@ export interface Poster {
   analysisCompleted: boolean;
   analysisDate?: Date | null;
   rawAiResponse?: any | null;
-  userNotes?: string | null;
+  userNotes?: string | null;  // Business/internal notes (from jadepuma.internal_notes) - NOT passed to AI
+  itemNotes?: string | null;  // Research-relevant notes (from jadepuma.item_notes) - passed to AI
   lastModified: Date;
 
   // Shopify Integration
