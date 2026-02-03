@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
 import ShopifyPanel from '@/components/ShopifyPanel';
+import IdentificationResearchPanel from '@/components/IdentificationResearchPanel';
 import Twemoji from '@/components/Twemoji';
 
 // Map printing techniques to their Wikipedia article URLs
@@ -3055,6 +3056,9 @@ export default function PosterDetailPage() {
 
               {/* Shopify Integration */}
               <ShopifyPanel poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
+
+              {/* Dealer Research for Identification */}
+              <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
 
               {/* Price Research & Sales */}
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">

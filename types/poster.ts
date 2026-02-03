@@ -511,6 +511,7 @@ export const ATTRIBUTION_BASIS = [
   'printed_credit',       // Artist name printed in text (not handwritten)
   'stylistic_analysis',   // Attribution based purely on recognizable artistic style
   'external_knowledge',   // Attribution based on art historical knowledge (requires citation)
+  'external_research',    // Attribution based on dealer/auction house research (with source citation)
   'none',                 // Cannot determine artist from any source
 ] as const;
 export type AttributionBasis = typeof ATTRIBUTION_BASIS[number];
