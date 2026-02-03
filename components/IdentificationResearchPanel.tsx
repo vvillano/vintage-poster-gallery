@@ -45,7 +45,6 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   const [searchUrls, setSearchUrls] = useState<SearchUrlResult[]>([]);
   const [query, setQuery] = useState('');
   const [editedQuery, setEditedQuery] = useState('');
-  const [isEditingQuery, setIsEditingQuery] = useState(false);
   const [loadingUrls, setLoadingUrls] = useState(false);
 
   // Query variations
@@ -356,54 +355,30 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
             </div>
           )}
 
-          {/* Search Query - Editable */}
+          {/* Search Query - Always Editable */}
           <div className="bg-slate-50 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm text-slate-600">Search Query:</div>
-              {!isEditingQuery && (
+              {editedQuery !== query && (
                 <button
-                  onClick={() => setIsEditingQuery(true)}
-                  className="text-xs text-violet-600 hover:text-violet-700"
+                  onClick={() => setEditedQuery(query)}
+                  className="text-xs text-slate-500 hover:text-slate-700"
                 >
-                  Edit
+                  Reset
                 </button>
               )}
             </div>
 
-            {isEditingQuery ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={editedQuery}
-                  onChange={(e) => setEditedQuery(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsEditingQuery(false)}
-                    className="px-3 py-1 bg-violet-600 text-white rounded text-xs hover:bg-violet-700"
-                  >
-                    Done
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditedQuery(query);
-                      setIsEditingQuery(false);
-                    }}
-                    className="px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs hover:bg-slate-300"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="font-mono text-sm bg-white px-3 py-2 rounded border border-slate-200">
-                {editedQuery || query || 'Loading...'}
-              </div>
-            )}
+            <input
+              type="text"
+              value={editedQuery || query || ''}
+              onChange={(e) => setEditedQuery(e.target.value)}
+              placeholder="Loading..."
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none bg-white"
+            />
 
             {/* Query Variations */}
-            {queryVariations.length > 1 && !isEditingQuery && (
+            {queryVariations.length > 1 && (
               <div className="mt-3">
                 <div className="text-xs text-slate-500 mb-2">Quick variations:</div>
                 <div className="flex flex-wrap gap-2">
