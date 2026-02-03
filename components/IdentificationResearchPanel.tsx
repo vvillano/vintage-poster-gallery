@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import type { Poster } from '@/types/poster';
-import type { Dealer } from '@/types/dealer';
 import { DEALER_TYPE_LABELS, RELIABILITY_TIERS } from '@/types/dealer';
 
 interface SearchUrlResult {
@@ -14,6 +13,24 @@ interface SearchUrlResult {
   website: string | null;
 }
 
+interface QueryVariation {
+  query: string;
+  label: string;
+  description: string;
+  priority: number;
+}
+
+interface AggregatedSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  domain: string;
+  dealerId?: number;
+  dealerName?: string;
+  reliabilityTier?: number;
+  isKnownDealer: boolean;
+}
+
 interface IdentificationResearchPanelProps {
   poster: Poster;
   onUpdate: () => void;
@@ -21,27 +38,29 @@ interface IdentificationResearchPanelProps {
 
 export default function IdentificationResearchPanel({ poster, onUpdate }: IdentificationResearchPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   // Search URLs state
   const [searchUrls, setSearchUrls] = useState<SearchUrlResult[]>([]);
   const [query, setQuery] = useState('');
+  const [editedQuery, setEditedQuery] = useState('');
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
   const [loadingUrls, setLoadingUrls] = useState(false);
 
-  // Filter state
-  const [maxTier, setMaxTier] = useState<number>(6);
-  const [selectedTiers, setSelectedTiers] = useState<Set<number>>(new Set([1, 2, 3]));
+  // Query variations
+  const [queryVariations, setQueryVariations] = useState<QueryVariation[]>([]);
+  const [selectedVariation, setSelectedVariation] = useState<number>(0);
 
-  // Manual findings entry
-  const [showAddFinding, setShowAddFinding] = useState(false);
-  const [manualFinding, setManualFinding] = useState({
-    dealerName: '',
-    artist: '',
-    url: '',
-    notes: '',
-  });
+  // Aggregated search state
+  const [searchConfigured, setSearchConfigured] = useState<boolean | null>(null);
+  const [searchingAll, setSearchingAll] = useState(false);
+  const [aggregatedResults, setAggregatedResults] = useState<AggregatedSearchResult[]>([]);
+  const [unknownDomains, setUnknownDomains] = useState<string[]>([]);
+  const [creditsUsed, setCreditsUsed] = useState(0);
+
+  // Filter state
+  const [selectedTiers, setSelectedTiers] = useState<Set<number>>(new Set([1, 2, 3]));
 
   // Apply attribution state
   const [applyingAttribution, setApplyingAttribution] = useState(false);
@@ -49,28 +68,161 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   const [proposedConfidence, setProposedConfidence] = useState(75);
   const [proposedSources, setProposedSources] = useState<string[]>([]);
 
-  // Load search URLs when expanded
+  // Load search URLs and check API config when expanded
   useEffect(() => {
     if (expanded && searchUrls.length === 0) {
       loadSearchUrls();
+      checkSearchConfig();
     }
   }, [expanded]);
+
+  // Generate query variations when query changes
+  useEffect(() => {
+    if (query) {
+      generateVariations();
+    }
+  }, [query, poster.artist, poster.estimatedDate]);
+
+  async function checkSearchConfig() {
+    try {
+      const res = await fetch('/api/research/search');
+      const data = await res.json();
+      setSearchConfigured(data.configured ?? false);
+    } catch {
+      setSearchConfigured(false);
+    }
+  }
+
+  function generateVariations() {
+    const variations: QueryVariation[] = [];
+
+    // Extract main title (remove common suffixes)
+    let mainTitle = poster.title || '';
+    mainTitle = mainTitle
+      .replace(/\s*[-–]\s*(original\s*)?poster\s*$/i, '')
+      .replace(/\s*linen\s*backed\s*$/i, '')
+      .replace(/\s*poster\s*$/i, '')
+      .trim();
+
+    if (!mainTitle) {
+      mainTitle = poster.title || 'poster';
+    }
+
+    // Extract year
+    const yearMatch = poster.estimatedDate?.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+    const year = yearMatch ? yearMatch[1] : null;
+
+    // Clean artist name
+    const artist = poster.artist && poster.artist !== 'Unknown'
+      ? poster.artist.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
+      : null;
+
+    // 1. Broad: Title only
+    variations.push({
+      query: `"${mainTitle}" poster`,
+      label: 'Broad',
+      description: 'Title only - most matches',
+      priority: 1,
+    });
+
+    // 2. With artist (if known)
+    if (artist) {
+      variations.push({
+        query: `"${mainTitle}" ${artist} poster`,
+        label: 'With Artist',
+        description: `Include: ${artist}`,
+        priority: 2,
+      });
+    }
+
+    // 3. With date (if known)
+    if (year) {
+      variations.push({
+        query: `"${mainTitle}" ${year} poster`,
+        label: 'With Date',
+        description: `Include: ${year}`,
+        priority: 3,
+      });
+    }
+
+    // 4. Artist + Date (if both known)
+    if (artist && year) {
+      variations.push({
+        query: `"${mainTitle}" ${artist} ${year}`,
+        label: 'Full Context',
+        description: `${artist}, ${year}`,
+        priority: 4,
+      });
+    }
+
+    setQueryVariations(variations);
+    if (variations.length > 0 && !editedQuery) {
+      setEditedQuery(variations[0].query);
+    }
+  }
 
   async function loadSearchUrls() {
     try {
       setLoadingUrls(true);
       setError('');
 
-      const res = await fetch(`/api/research/identification?posterId=${poster.id}&maxTier=${maxTier}`);
+      const res = await fetch(`/api/research/identification?posterId=${poster.id}&maxTier=6`);
       if (!res.ok) throw new Error('Failed to load dealer search URLs');
 
       const data = await res.json();
       setSearchUrls(data.searchUrls || []);
       setQuery(data.query || '');
+      setEditedQuery(data.query || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load search URLs');
     } finally {
       setLoadingUrls(false);
+    }
+  }
+
+  async function handleSearchAll() {
+    if (!searchConfigured) {
+      setError('Google Custom Search is not configured. Add API credentials to use this feature.');
+      return;
+    }
+
+    try {
+      setSearchingAll(true);
+      setError('');
+      setAggregatedResults([]);
+
+      const searchQuery = editedQuery || queryVariations[selectedVariation]?.query || query;
+
+      const res = await fetch('/api/research/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: searchQuery,
+          maxResults: 20,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Search failed');
+      }
+
+      setAggregatedResults(data.results || []);
+      setUnknownDomains(data.unknownDomains || []);
+      setCreditsUsed(prev => prev + (data.creditsUsed || 0));
+
+      if (data.results?.length === 0) {
+        setSuccess('Search completed - no results found. Try a broader query.');
+      } else {
+        setSuccess(`Found ${data.results.length} results from ${new Set(data.results.map((r: AggregatedSearchResult) => r.domain)).size} sites.`);
+      }
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setSearchingAll(false);
     }
   }
 
@@ -121,6 +273,18 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     setSelectedTiers(newSelected);
   }
 
+  function handleQueryChange(newQuery: string) {
+    setEditedQuery(newQuery);
+    // Regenerate search URLs with new query
+    const updatedUrls = searchUrls.map(url => ({
+      ...url,
+      searchUrl: url.searchUrl
+        ? url.searchUrl.replace(/\{query\}/, encodeURIComponent(newQuery))
+        : null,
+    }));
+    // Note: We don't update searchUrls here as the template uses {query}
+  }
+
   // Filter search URLs by selected tiers
   const filteredUrls = searchUrls.filter(u => selectedTiers.has(u.reliabilityTier));
 
@@ -144,6 +308,13 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       default: return 'bg-slate-100 text-slate-800';
     }
   };
+
+  // Get search URL with current query
+  function getSearchUrlWithQuery(template: string | null): string | null {
+    if (!template) return null;
+    const searchQuery = editedQuery || query;
+    return template.replace('{query}', encodeURIComponent(searchQuery));
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -185,11 +356,180 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
             </div>
           )}
 
-          {/* Search Query */}
+          {/* Search Query - Editable */}
           <div className="bg-slate-50 rounded-lg p-3">
-            <div className="text-sm text-slate-600 mb-1">Search Query:</div>
-            <div className="font-mono text-sm bg-white px-3 py-2 rounded border border-slate-200">
-              {query || 'Loading...'}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-slate-600">Search Query:</div>
+              {!isEditingQuery && (
+                <button
+                  onClick={() => setIsEditingQuery(true)}
+                  className="text-xs text-violet-600 hover:text-violet-700"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
+            {isEditingQuery ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editedQuery}
+                  onChange={(e) => setEditedQuery(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsEditingQuery(false)}
+                    className="px-3 py-1 bg-violet-600 text-white rounded text-xs hover:bg-violet-700"
+                  >
+                    Done
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditedQuery(query);
+                      setIsEditingQuery(false);
+                    }}
+                    className="px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs hover:bg-slate-300"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="font-mono text-sm bg-white px-3 py-2 rounded border border-slate-200">
+                {editedQuery || query || 'Loading...'}
+              </div>
+            )}
+
+            {/* Query Variations */}
+            {queryVariations.length > 1 && !isEditingQuery && (
+              <div className="mt-3">
+                <div className="text-xs text-slate-500 mb-2">Quick variations:</div>
+                <div className="flex flex-wrap gap-2">
+                  {queryVariations.map((variation, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedVariation(idx);
+                        setEditedQuery(variation.query);
+                      }}
+                      className={`px-2 py-1 rounded text-xs transition ${
+                        editedQuery === variation.query
+                          ? 'bg-violet-100 text-violet-700 border border-violet-300'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                      title={variation.description}
+                    >
+                      {variation.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Search All Dealers Button */}
+          <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-lg p-4 border border-violet-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-violet-900">Automated Search</div>
+                <div className="text-xs text-violet-600">
+                  {searchConfigured === null
+                    ? 'Checking configuration...'
+                    : searchConfigured
+                    ? 'Search all dealer sites at once'
+                    : 'Google Custom Search not configured'}
+                </div>
+              </div>
+              <button
+                onClick={handleSearchAll}
+                disabled={searchingAll || searchConfigured === false}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                  searchConfigured
+                    ? 'bg-violet-600 text-white hover:bg-violet-700 disabled:bg-violet-300'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {searchingAll ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span>
+                    Search All Dealers
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Aggregated Results */}
+            {aggregatedResults.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <div className="text-sm font-medium text-violet-900">
+                  Results ({aggregatedResults.length}):
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {aggregatedResults.map((result, idx) => (
+                    <div key={idx} className="bg-white rounded p-2 border border-violet-100">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-violet-700 hover:underline line-clamp-1"
+                          >
+                            {result.title}
+                          </a>
+                          <p className="text-xs text-slate-600 line-clamp-2 mt-1">
+                            {result.snippet}
+                          </p>
+                        </div>
+                        {result.isKnownDealer && result.reliabilityTier && (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${getTierBadgeColor(result.reliabilityTier)}`}>
+                            T{result.reliabilityTier}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {result.isKnownDealer ? result.dealerName : result.domain}
+                        {!result.isKnownDealer && (
+                          <span className="ml-1 text-amber-600">(unknown dealer)</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unknown Domains */}
+            {unknownDomains.length > 0 && (
+              <div className="mt-3 p-2 bg-amber-50 rounded border border-amber-200">
+                <div className="text-xs font-medium text-amber-800 mb-1">
+                  Unknown dealers found ({unknownDomains.length}):
+                </div>
+                <div className="text-xs text-amber-700">
+                  {unknownDomains.slice(0, 5).join(', ')}
+                  {unknownDomains.length > 5 && ` +${unknownDomains.length - 5} more`}
+                </div>
+                <div className="text-xs text-amber-600 mt-1">
+                  Consider adding these to your dealer database.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-2 text-slate-500">or search individual dealers</span>
             </div>
           </div>
 
@@ -252,7 +592,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                           <div className="flex items-center gap-2 ml-2">
                             {dealer.searchUrl ? (
                               <a
-                                href={dealer.searchUrl}
+                                href={getSearchUrlWithQuery(dealer.searchUrl) || '#'}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3 py-1 bg-violet-100 hover:bg-violet-200 text-violet-700 rounded text-xs font-medium transition"
@@ -370,10 +710,10 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-600">
             <strong>How to use:</strong>
             <ol className="list-decimal list-inside mt-1 space-y-1">
-              <li>Click "Search" links to search dealer sites for this poster</li>
+              <li>Use "Search All Dealers" for automated search across all sites</li>
+              <li>Or click individual "Search" links for specific dealers</li>
               <li>Note any artist attributions you find and which dealers cite them</li>
-              <li>Enter the artist name and sources below to update the attribution</li>
-              <li>Higher tiers (1-2) = more reliable sources, adjust confidence accordingly</li>
+              <li>Enter findings below to update the attribution</li>
             </ol>
           </div>
         </div>
