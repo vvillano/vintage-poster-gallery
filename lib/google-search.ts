@@ -116,6 +116,8 @@ export async function googleSearch(
 
   const apiUrl = `https://www.googleapis.com/customsearch/v1?${params}`;
 
+  console.log('Google CSE request:', { query: fullQuery, cx: searchEngineId.slice(0, 8) + '...' });
+
   try {
     const startTime = Date.now();
     const response = await fetch(apiUrl);
@@ -146,6 +148,12 @@ export async function googleSearch(
     }
 
     const data = await response.json();
+
+    console.log('Google CSE response:', {
+      totalResults: data.searchInformation?.totalResults,
+      itemCount: data.items?.length || 0,
+      searchTime: data.searchInformation?.searchTime,
+    });
 
     // Parse results
     const results: GoogleSearchResult[] = (data.items || []).map((item: any) => ({

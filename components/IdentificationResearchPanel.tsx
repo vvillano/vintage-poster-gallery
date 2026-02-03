@@ -211,6 +211,8 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
 
       const data = await res.json();
 
+      console.log('Search API response:', data);
+
       if (!data.success) {
         throw new Error(data.error || 'Search failed');
       }
@@ -219,8 +221,13 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       setUnknownDomains(data.unknownDomains || []);
       setCreditsUsed(prev => prev + (data.creditsUsed || 0));
 
+      // Show any API errors
+      if (data.errors && data.errors.length > 0) {
+        setError(`API warnings: ${data.errors.join(', ')}`);
+      }
+
       if (data.results?.length === 0) {
-        setSuccess('Search completed - no results found. Try a broader query.');
+        setSuccess(`Search completed - no results found for "${searchQuery}". Check CSE configuration.`);
       } else {
         setSuccess(`Found ${data.results.length} results from ${new Set(data.results.map((r: AggregatedSearchResult) => r.domain)).size} sites.`);
       }

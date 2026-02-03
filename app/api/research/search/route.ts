@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
     let creditsUsed = 0;
     const errors: string[] = [];
 
+    console.log('Search request:', { query, queryVariations, maxResults });
+
     if (queryVariations && queryVariations.length > 0) {
       // Multiple query search
       const multiResult = await googleSearchMultiple(queryVariations, {
@@ -97,6 +99,13 @@ export async function POST(request: NextRequest) {
       const singleResult = await googleSearch(query, {
         // No domain restriction - search whole web
         maxResults,
+      });
+
+      console.log('Google Search result:', {
+        resultCount: singleResult.results.length,
+        totalResults: singleResult.totalResults,
+        error: singleResult.error,
+        creditsUsed: singleResult.creditsUsed,
       });
 
       if (singleResult.error) {
