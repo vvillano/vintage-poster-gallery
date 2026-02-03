@@ -77,7 +77,7 @@ export const DEFAULT_DEALERS: CreateDealerInput[] = [
     canPrice: true,
     canProcure: true,
     canBeSource: true,
-    searchUrlTemplate: 'https://www.swanngalleries.com/search/?q={query}',
+    searchUrlTemplate: 'https://catalogue.swanngalleries.com/Lots/search/?searchTerm={query}',
     specializations: ['all_posters', 'advertising', 'illustration', 'books', 'maps', 'prints'],
     notes: 'Specializes in works on paper. Excellent for posters, prints, photographs, and rare books.',
   },
