@@ -438,9 +438,27 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                   {searchConfigured === null
                     ? 'Checking configuration...'
                     : searchConfigured
-                    ? 'Search all dealer sites at once'
+                    ? `Searches ${searchUrls.length} dealer sites via Google CSE`
                     : 'Google Custom Search not configured'}
                 </div>
+                {searchConfigured && searchUrls.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="text-xs text-violet-500 cursor-pointer hover:text-violet-700">
+                      Show sites to add to CSE
+                    </summary>
+                    <div className="mt-2 p-2 bg-white rounded border border-violet-100 text-xs font-mono max-h-32 overflow-y-auto">
+                      {Array.from(new Set(searchUrls.map(u => {
+                        try {
+                          return new URL(u.website || '').hostname.replace(/^www\./, '');
+                        } catch {
+                          return null;
+                        }
+                      }).filter(Boolean))).map((domain, i) => (
+                        <div key={i} className="text-slate-600">{domain}</div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
               <button
                 onClick={handleSearchAll}
