@@ -95,12 +95,20 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   function generateVariations() {
     const variations: QueryVariation[] = [];
 
-    // Extract main title (remove common suffixes)
+    // Extract main title (remove common descriptors anywhere in string)
     let mainTitle = poster.title || '';
     mainTitle = mainTitle
-      .replace(/\s*[-–]\s*(original\s*)?poster\s*$/i, '')
-      .replace(/\s*linen\s*backed\s*$/i, '')
-      .replace(/\s*poster\s*$/i, '')
+      // Remove backing/condition descriptors
+      .replace(/\s*linen[\s-]*backed\s*/gi, ' ')
+      .replace(/\s*paper[\s-]*backed\s*/gi, ' ')
+      .replace(/\s*canvas[\s-]*backed\s*/gi, ' ')
+      .replace(/\s*mounted\s*/gi, ' ')
+      // Remove format descriptors
+      .replace(/\s*[-–]\s*(original\s*)?poster\s*/gi, ' ')
+      .replace(/\s*(original\s*)?poster\s*/gi, ' ')
+      .replace(/\s*(original\s*)?vintage\s*/gi, ' ')
+      // Clean up extra whitespace
+      .replace(/\s+/g, ' ')
       .trim();
 
     if (!mainTitle) {
