@@ -65,8 +65,7 @@ export async function POST(request: NextRequest) {
       ? dealers.filter(d => dealerIds.includes(d.id))
       : dealers;
 
-    // Build domain map and list
-    const domains: string[] = [];
+    // Build domain map (but don't restrict search to these domains)
     for (const dealer of filteredDealers) {
       if (dealer.website) {
         const domain = extractDomain(dealer.website);
@@ -75,11 +74,11 @@ export async function POST(request: NextRequest) {
           name: dealer.name,
           reliabilityTier: dealer.reliabilityTier,
         });
-        domains.push(domain);
       }
     }
 
-    // Perform search
+    // Perform search WITHOUT domain restrictions (search entire web)
+    // Results will be matched to dealers after the fact
     let searchResults;
     let creditsUsed = 0;
     const errors: string[] = [];
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
     if (queryVariations && queryVariations.length > 0) {
       // Multiple query search
       const multiResult = await googleSearchMultiple(queryVariations, {
-        domains,
+        // No domain restriction - search whole web
         maxResultsPerQuery: Math.ceil(maxResults / queryVariations.length),
       });
       searchResults = multiResult.results.slice(0, maxResults);
@@ -96,7 +95,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Single query search
       const singleResult = await googleSearch(query, {
-        domains,
+        // No domain restriction - search whole web
         maxResults,
       });
 
