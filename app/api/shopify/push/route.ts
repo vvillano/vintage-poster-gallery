@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { posterId, fields } = body;
+    const { posterId, fields, customConciseDescription } = body;
 
     if (!posterId) {
       return NextResponse.json(
@@ -226,8 +226,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Get concise description from productDescriptions
-      const conciseDescription = item.raw_ai_response?.productDescriptions?.concise || null;
+      // Get concise description - use custom if provided, otherwise from AI response
+      const conciseDescription = customConciseDescription || item.raw_ai_response?.productDescriptions?.concise || null;
 
       // Get colors as comma-separated string for Shopify
       const colorsValue = item.colors && item.colors.length > 0

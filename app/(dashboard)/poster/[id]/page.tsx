@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, DescriptionTone, DESCRIPTION_TONES, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType } from '@/types/poster';
+import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType } from '@/types/poster';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
 import ShopifyPanel from '@/components/ShopifyPanel';
 import IdentificationResearchPanel from '@/components/IdentificationResearchPanel';
+import ProductDescriptionEditor from '@/components/ProductDescriptionEditor';
 import Twemoji from '@/components/Twemoji';
 
 // Map printing techniques to their Wikipedia article URLs
@@ -195,8 +196,6 @@ export default function PosterDetailPage() {
   const [additionalContext, setAdditionalContext] = useState('');
   const [skepticalMode, setSkepticalMode] = useState(false);
   const [showReanalyze, setShowReanalyze] = useState(false);
-  const [selectedTone, setSelectedTone] = useState<DescriptionTone>('standard');
-  const [refreshingDescriptions, setRefreshingDescriptions] = useState(false);
   const [uploadingSupplemental, setUploadingSupplemental] = useState(false);
   const [supplementalDescription, setSupplementalDescription] = useState('');
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
@@ -1085,36 +1084,6 @@ export default function PosterDetailPage() {
     }
   }
 
-  async function refreshDescriptions() {
-    if (!poster) return;
-
-    try {
-      setRefreshingDescriptions(true);
-      setError('');
-
-      const res = await fetch('/api/refresh-descriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posterId: poster.id }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        const errorMsg = errorData.details
-          ? `${errorData.error}: ${errorData.details}`
-          : errorData.error || 'Failed to refresh descriptions';
-        throw new Error(errorMsg);
-      }
-
-      // Refresh poster data
-      await fetchPoster();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh descriptions');
-    } finally {
-      setRefreshingDescriptions(false);
-    }
-  }
-
   // Add a comparable sale
   async function addComparableSale(e: React.FormEvent) {
     e.preventDefault();
@@ -1189,26 +1158,6 @@ export default function PosterDetailPage() {
       avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
       count: prices.length,
     };
-  }
-
-  // Get the current description based on selected tone
-  function getCurrentDescription(): string {
-    if (!poster) return '';
-
-    // Try to get from productDescriptions (new format)
-    const descriptions = poster.rawAiResponse?.productDescriptions;
-    if (descriptions && descriptions[selectedTone]) {
-      return descriptions[selectedTone];
-    }
-
-    // Fallback to legacy productDescription field
-    return poster.productDescription || '';
-  }
-
-  // Check if multiple tones are available
-  function hasMultipleTones(): boolean {
-    const descriptions = poster?.rawAiResponse?.productDescriptions;
-    return descriptions && typeof descriptions === 'object' && Object.keys(descriptions).length > 1;
   }
 
   if (loading) {
@@ -1492,104 +1441,8 @@ export default function PosterDetailPage() {
 
           {/* Product Description */}
           {poster.analysisCompleted && (poster.productDescription || poster.rawAiResponse?.productDescriptions) && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h4 className="text-lg font-bold text-slate-900">
-                  Product Description
-                </h4>
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={refreshDescriptions}
-                    disabled={refreshingDescriptions}
-                    className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded transition disabled:opacity-50 flex items-center gap-1"
-                    title="Generate new description variations"
-                  >
-                    {refreshingDescriptions ? (
-                      <>
-                        <span className="animate-spin">↻</span>
-                        <span>Refreshing...</span>
-                      </>
-                    ) : '↻'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Normalize multiple newlines to double newlines for clean copy/paste
-                      const normalizedText = getCurrentDescription()
-                        .replace(/\n{3,}/g, '\n\n')  // Convert 3+ newlines to double
-                        .replace(/\[PARA\]/gi, '\n\n')  // Convert [PARA] markers
-                        .trim();
-                      navigator.clipboard.writeText(normalizedText);
-                      alert('Description copied to clipboard!');
-                    }}
-                    className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              {/* Tone Selector - only show if multiple tones available */}
-              {hasMultipleTones() && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {DESCRIPTION_TONES.map((tone) => (
-                    <button
-                      key={tone}
-                      onClick={() => setSelectedTone(tone)}
-                      className={`text-xs px-3 py-1.5 rounded-full transition capitalize ${
-                        selectedTone === tone
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                      }`}
-                    >
-                      {tone}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Inline error for refresh */}
-              {error && (
-                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
-                  <button
-                    onClick={() => setError('')}
-                    className="float-right text-red-500 hover:text-red-700"
-                  >×</button>
-                  {error}
-                </div>
-              )}
-
-              {selectedTone === 'concise' ? (
-                <ul className="space-y-1.5">
-                  {(() => {
-                    const text = getCurrentDescription().replace(/[—–]/g, '-');
-                    // Check if content has bullet characters (•)
-                    const hasBulletChars = text.includes('•');
-                    // Split by bullet characters if present, otherwise split by sentences
-                    // Only split after words of 2+ chars followed by period (avoids splitting initials like "P.")
-                    const items = hasBulletChars
-                      ? text.split(/\s*•\s*/).filter((s: string) => s.trim())
-                      : text.split(/(?<=\w{2,}\.)\s+/).filter((s: string) => s.trim());
-                    return items.map((sentence: string, idx: number) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="text-blue-600 mt-0.5">•</span>
-                        <span>{sentence.trim()}</span>
-                      </li>
-                    ));
-                  })()}
-                </ul>
-              ) : (
-                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
-                  {getCurrentDescription().split(/\n\n+|\[PARA\]/g).filter((p: string) => p.trim()).map((paragraph: string, idx: number) => (
-                    <p key={idx}>{paragraph.trim()}</p>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-slate-600 mt-3">
-                {hasMultipleTones()
-                  ? `Showing ${selectedTone} tone • Ready for your Shopify listing`
-                  : 'Ready to use in your Shopify product listing'
-                }
-              </p>
+            <div className="mt-4">
+              <ProductDescriptionEditor poster={poster} onUpdate={fetchPoster} />
             </div>
           )}
 
