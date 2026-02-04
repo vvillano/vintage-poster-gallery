@@ -214,12 +214,12 @@ export async function POST(request: NextRequest) {
 
       if (item.book_id) {
         try {
-          const bookResult = await sql`SELECT title, author, publication_year FROM books WHERE id = ${item.book_id}`;
+          const bookResult = await sql`SELECT title, author FROM books WHERE id = ${item.book_id}`;
           if (bookResult.rows.length > 0) {
             const book = bookResult.rows[0];
             bookTitle = book.title;
             if (book.author) bookTitle += ` by ${book.author}`;
-            if (book.publication_year) bookTitle += ` (${book.publication_year})`;
+            // Note: Year goes in specs.year field, not here
           }
         } catch (err) {
           console.error('Error fetching book info:', err);
