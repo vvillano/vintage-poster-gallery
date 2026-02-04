@@ -148,7 +148,8 @@ export async function POST(request: NextRequest) {
             condition,
             condition_details,
             user_notes,
-            printing_technique
+            printing_technique,
+            dealer_name
           )
           VALUES (
             ${blob.url},
@@ -169,7 +170,8 @@ export async function POST(request: NextRequest) {
             ${mappedFields.condition || null},
             ${mappedFields.conditionDetails || null},
             ${mappedFields.userNotes || null},
-            ${mappedFields.printingTechnique || null}
+            ${mappedFields.printingTechnique || null},
+            ${mappedFields.dealerName || null}
           )
           RETURNING id
         `;

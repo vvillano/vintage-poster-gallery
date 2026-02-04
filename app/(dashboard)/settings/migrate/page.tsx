@@ -29,6 +29,12 @@ interface GoogleCSEStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'acquisition-tracking',
+    name: 'Acquisition Tracking',
+    description: 'Add source tracking columns: source_dealer_id (WHO you bought from), acquisition_platform_id (WHERE you bought), dealer_name (for Shopify matching), and platform_type (marketplace, venue, aggregator).',
+    endpoint: '/api/migrate/acquisition-tracking',
+  },
+  {
     id: 'shopify-refresh',
     name: 'Shopify Refresh Fields',
     description: 'Add shopify_reference_images and item_notes columns. Enables pulling reference images from Shopify and storing research-relevant notes separately from internal notes.',

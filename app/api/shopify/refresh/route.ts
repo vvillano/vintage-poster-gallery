@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
         printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
         colors = COALESCE(${colorsLiteral}::TEXT[], colors),
         shopify_reference_images = ${JSON.stringify(shopifyRefImages)},
+        dealer_name = ${mappedFields.dealerName || null},
         last_modified = NOW()
       WHERE id = ${posterId}
     `;

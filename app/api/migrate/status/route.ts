@@ -267,6 +267,37 @@ export async function GET() {
       status['dealers'] = { completed: false };
     }
 
+    // Check Acquisition Tracking migration - look for source_dealer_id column and platform_type
+    try {
+      await sql`SELECT source_dealer_id, acquisition_platform_id, dealer_name FROM posters LIMIT 1`;
+      await sql`SELECT platform_type FROM platforms LIMIT 1`;
+
+      // Count linked posters
+      const linkedResult = await sql`
+        SELECT
+          (SELECT COUNT(*) FROM posters WHERE source_dealer_id IS NOT NULL) as linked_dealers,
+          (SELECT COUNT(*) FROM posters WHERE acquisition_platform_id IS NOT NULL) as linked_platforms,
+          (SELECT COUNT(*) FROM posters WHERE dealer_name IS NOT NULL) as with_dealer_name
+      `;
+      const linkedDealers = parseInt(linkedResult.rows[0].linked_dealers || '0');
+      const linkedPlatforms = parseInt(linkedResult.rows[0].linked_platforms || '0');
+      const withDealerName = parseInt(linkedResult.rows[0].with_dealer_name || '0');
+
+      let details = 'Columns added';
+      const parts = [];
+      if (linkedDealers > 0) parts.push(`${linkedDealers} linked to dealers`);
+      if (linkedPlatforms > 0) parts.push(`${linkedPlatforms} linked to platforms`);
+      if (withDealerName > 0) parts.push(`${withDealerName} with dealer name`);
+      if (parts.length > 0) details = parts.join(', ');
+
+      status['acquisition-tracking'] = {
+        completed: true,
+        details,
+      };
+    } catch {
+      status['acquisition-tracking'] = { completed: false };
+    }
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

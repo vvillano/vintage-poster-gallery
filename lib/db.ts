@@ -748,5 +748,9 @@ function dbRowToPoster(row: any): Poster {
     // Research-specific fields
     shopifyTitle: row.shopify_title,
     researchImages: row.research_images,
+    // Acquisition tracking fields
+    sourceDealerId: row.source_dealer_id,
+    acquisitionPlatformId: row.acquisition_platform_id,
+    dealerName: row.dealer_name,
   };
 }

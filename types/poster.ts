@@ -432,6 +432,11 @@ export interface Poster {
   // Research-specific fields
   shopifyTitle?: string | null;           // Original Shopify title for revert option
   researchImages?: ResearchImage[] | null; // Local research images (signatures, title pages, etc.)
+
+  // Acquisition tracking - WHO and WHERE you bought from
+  sourceDealerId?: number | null;         // FK to dealers table (WHO you bought from)
+  acquisitionPlatformId?: number | null;  // FK to platforms table (WHERE you bought)
+  dealerName?: string | null;             // Raw dealer name from Shopify for matching
 }
 
 // Product type classifications from Product Classification Guide - 2025

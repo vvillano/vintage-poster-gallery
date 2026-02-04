@@ -435,6 +435,8 @@ export interface MappedMetafields {
   printingTechnique?: string;
   colors?: string[];            // Array of color names
   referenceImageUrls?: string[]; // Reference image URLs from Shopify (jadepuma.reference_images)
+  dealerName?: string;          // WHO you bought from (jadepuma.dealer) - for acquisition tracking
+  sourcePlatform?: string;      // WHERE you bought (jadepuma.source_platform) - for acquisition tracking
 }
 
 /**
@@ -548,6 +550,14 @@ export function mapMetafieldsToPosterFields(
         .filter(url => url.length > 0 && (url.startsWith('http://') || url.startsWith('https://')));
     }
   }
+
+  // Map dealer (WHO you bought from) - for acquisition tracking
+  const dealer = mfMap.get('jadepuma.dealer');
+  if (dealer) result.dealerName = dealer;
+
+  // Map source_platform (WHERE you bought) - for acquisition tracking
+  const sourcePlatform = mfMap.get('jadepuma.source_platform');
+  if (sourcePlatform) result.sourcePlatform = sourcePlatform;
 
   return result;
 }
