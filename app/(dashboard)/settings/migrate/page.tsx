@@ -16,6 +16,16 @@ interface MigrationStatusInfo {
   details?: string;
 }
 
+interface GoogleCSEStatus {
+  configured: boolean;
+  message: string;
+  testResult?: {
+    success: boolean;
+    resultCount?: number;
+    error?: string;
+  };
+}
+
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
@@ -113,6 +123,80 @@ export default function MigratePage() {
   const [completedStatus, setCompletedStatus] = useState<Record<string, MigrationStatusInfo>>({});
   const [loadingStatus, setLoadingStatus] = useState(true);
 
+  // Google CSE status
+  const [cseStatus, setCseStatus] = useState<GoogleCSEStatus | null>(null);
+  const [loadingCse, setLoadingCse] = useState(true);
+  const [testingCse, setTestingCse] = useState(false);
+
+  // Check Google CSE configuration on mount
+  useEffect(() => {
+    async function checkCseStatus() {
+      try {
+        const res = await fetch('/api/research/search');
+        if (res.ok) {
+          const data = await res.json();
+          setCseStatus({
+            configured: data.configured,
+            message: data.message,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to check CSE status:', err);
+        setCseStatus({
+          configured: false,
+          message: 'Failed to check configuration',
+        });
+      } finally {
+        setLoadingCse(false);
+      }
+    }
+    checkCseStatus();
+  }, []);
+
+  // Test Google CSE with a sample search
+  async function testGoogleCSE() {
+    setTestingCse(true);
+    try {
+      const res = await fetch('/api/research/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: 'vintage poster',
+          maxResults: 5,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.error || (data.errors && data.errors.length > 0)) {
+        setCseStatus(prev => prev ? {
+          ...prev,
+          testResult: {
+            success: false,
+            error: data.error || data.errors?.[0] || 'Search failed',
+          },
+        } : null);
+      } else {
+        setCseStatus(prev => prev ? {
+          ...prev,
+          testResult: {
+            success: true,
+            resultCount: data.totalResults || data.results?.length || 0,
+          },
+        } : null);
+      }
+    } catch (err) {
+      setCseStatus(prev => prev ? {
+        ...prev,
+        testResult: {
+          success: false,
+          error: err instanceof Error ? err.message : 'Test failed',
+        },
+      } : null);
+    } finally {
+      setTestingCse(false);
+    }
+  }
+
   // Check which migrations have been completed on mount
   useEffect(() => {
     async function checkStatus() {
@@ -188,6 +272,95 @@ export default function MigratePage() {
       </div>
 
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Database Migrations</h1>
+
+      {/* Google Custom Search API Status */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-start justify-between mb-2">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Google Custom Search API
+          </h2>
+          {!loadingCse && cseStatus && (
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+              cseStatus.configured
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              {cseStatus.configured ? (
+                <>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Configured
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Not Configured
+                </>
+              )}
+            </span>
+          )}
+        </div>
+        <p className="text-slate-600 text-sm mb-3">
+          Required for &quot;Search All Dealers&quot; feature. Searches across multiple dealer sites in one API call.
+        </p>
+
+        {loadingCse ? (
+          <div className="text-slate-500 text-sm">Checking configuration...</div>
+        ) : cseStatus ? (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">{cseStatus.message}</p>
+
+            {cseStatus.configured && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={testGoogleCSE}
+                  disabled={testingCse}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                >
+                  {testingCse ? 'Testing...' : 'Test Connection'}
+                </button>
+
+                {cseStatus.testResult && (
+                  <div className={`text-sm ${cseStatus.testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                    {cseStatus.testResult.success ? (
+                      <span className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Working! Found {cseStatus.testResult.resultCount} results
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        {cseStatus.testResult.error}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!cseStatus.configured && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-yellow-800 text-xs">
+                <p className="font-medium mb-1">Setup Instructions:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                  <li>Enable &quot;Custom Search API&quot;</li>
+                  <li>Create an API key</li>
+                  <li>Go to <a href="https://programmablesearchengine.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Programmable Search Engine</a></li>
+                  <li>Create a search engine and get the Search Engine ID</li>
+                  <li>Add to .env.local: GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID</li>
+                </ol>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
 
       <div className="space-y-6">
         {MIGRATIONS.map((migration) => {
