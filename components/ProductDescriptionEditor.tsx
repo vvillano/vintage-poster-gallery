@@ -239,9 +239,9 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
         </div>
       )}
 
-      {/* Current Shopify Description (Source of Truth) */}
-      {shopifyDescription && (
-        <div className="mb-4 bg-white/60 border border-blue-100 rounded-lg p-3">
+      {/* Current Shopify Description (Source of Truth) - only show if it's a real description, not condition text */}
+      {shopifyDescription && !stripHtml(shopifyDescription).toLowerCase().startsWith('condition') && (
+        <div className="mb-4 bg-white border border-blue-100 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-1">
               <span>🛒</span> Current Shopify Description
@@ -253,11 +253,6 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
               <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{p}</p>
             ))}
           </div>
-        </div>
-      )}
-      {!shopifyDescription && isLinked && (
-        <div className="mb-4 bg-amber-50/50 border border-amber-200 rounded-lg p-3">
-          <span className="text-xs text-amber-700">No description in Shopify yet. Push a description below to set it.</span>
         </div>
       )}
 
@@ -294,12 +289,12 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
           <textarea
             value={editedContent[selectedTone] || ''}
             onChange={(e) => setEditedContent(prev => ({ ...prev, [selectedTone]: e.target.value }))}
-            className="w-full h-48 p-3 text-sm text-slate-700 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+            className="w-full h-48 p-3 text-sm text-slate-700 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
             placeholder="Edit the description..."
           />
         ) : (
           <div
-            className="text-sm text-slate-700 leading-relaxed space-y-3 bg-white/40 rounded-lg p-3 min-h-[100px] cursor-pointer hover:bg-white/60 transition"
+            className="text-sm text-slate-700 leading-relaxed space-y-3 bg-white rounded-lg p-3 min-h-[100px] cursor-pointer hover:bg-slate-50 transition"
             onClick={() => setIsEditing(true)}
             title="Click to edit"
           >
@@ -396,12 +391,12 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
           <textarea
             value={editedConcise}
             onChange={(e) => setEditedConcise(e.target.value)}
-            className="w-full h-24 p-3 text-sm text-slate-700 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+            className="w-full h-24 p-3 text-sm text-slate-700 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
             placeholder="Brief factual description..."
           />
         ) : (
           <div
-            className="bg-white/40 rounded-lg p-3 cursor-pointer hover:bg-white/60 transition"
+            className="bg-white rounded-lg p-3 cursor-pointer hover:bg-slate-50 transition"
             onClick={() => setIsEditingConcise(true)}
             title="Click to edit"
           >
