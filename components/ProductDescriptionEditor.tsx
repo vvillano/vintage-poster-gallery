@@ -239,8 +239,8 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
         </div>
       )}
 
-      {/* Current Shopify Description (Source of Truth) - only show if it's a real description, not condition text */}
-      {shopifyDescription && !stripHtml(shopifyDescription).toLowerCase().startsWith('condition') && (
+      {/* Current Shopify Description (Source of Truth) */}
+      {shopifyDescription && (
         <div className="mb-4 bg-white border border-blue-100 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-1">
