@@ -1657,23 +1657,22 @@ export default function PosterDetailPage() {
               {/* Add Color from Available List */}
               <div>
                 <p className="text-xs font-medium text-slate-600 mb-2">Add Color</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {availableColors
                     .filter(c => !selectedColors.includes(c.name))
-                    .slice(0, 13)
+                    .slice(0, 20)
                     .map((color) => (
                       <button
                         key={color.name}
                         onClick={() => toggleColor(color.name)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition border border-slate-300 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 ${getContrastTextColor(color.hexCode)}`}
+                        title={color.name}
+                        className="w-6 h-6 rounded-full transition border border-slate-300 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:scale-110"
                         style={{ backgroundColor: color.hexCode || '#f1f5f9' }}
-                      >
-                        {color.name}
-                      </button>
+                      />
                     ))}
-                  {availableColors.filter(c => !selectedColors.includes(c.name)).length > 13 && (
-                    <span className="px-3 py-1 text-xs text-slate-500">
-                      +{availableColors.filter(c => !selectedColors.includes(c.name)).length - 13} more
+                  {availableColors.filter(c => !selectedColors.includes(c.name)).length > 20 && (
+                    <span className="text-xs text-slate-500 self-center ml-1">
+                      +{availableColors.filter(c => !selectedColors.includes(c.name)).length - 20} more
                     </span>
                   )}
                 </div>
