@@ -111,6 +111,13 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   const [comprehensiveResults, setComprehensiveResults] = useState<ComprehensiveSearchResponse | null>(null);
   const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
 
+  // Add dealer state
+  const [addingDealer, setAddingDealer] = useState<string | null>(null); // domain being added
+  const [addDealerName, setAddDealerName] = useState('');
+  const [addDealerType, setAddDealerType] = useState('poster_dealer');
+  const [addDealerSaving, setAddDealerSaving] = useState(false);
+  const [recentlyAddedDomains, setRecentlyAddedDomains] = useState<Set<string>>(new Set());
+
   // Load search URLs and check API config when expanded
   useEffect(() => {
     if (expanded && searchUrls.length === 0) {
@@ -168,9 +175,9 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       ? poster.artist.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
       : null;
 
-    // 1. Broad: Title only
+    // 1. Broad: Title only (no quotes for broader matching)
     variations.push({
-      query: `"${mainTitle}" poster`,
+      query: `${mainTitle} poster`,
       label: 'Broad',
       description: 'Title only - most matches',
       priority: 1,
@@ -179,7 +186,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     // 2. With artist (if known)
     if (artist) {
       variations.push({
-        query: `"${mainTitle}" ${artist} poster`,
+        query: `${mainTitle} ${artist} poster`,
         label: 'With Artist',
         description: `Include: ${artist}`,
         priority: 2,
@@ -189,7 +196,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     // 3. With date (if known)
     if (year) {
       variations.push({
-        query: `"${mainTitle}" ${year} poster`,
+        query: `${mainTitle} ${year} poster`,
         label: 'With Date',
         description: `Include: ${year}`,
         priority: 3,
@@ -199,7 +206,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     // 4. Artist + Date (if both known)
     if (artist && year) {
       variations.push({
-        query: `"${mainTitle}" ${artist} ${year}`,
+        query: `${mainTitle} ${artist} ${year}`,
         label: 'Full Context',
         description: `${artist}, ${year}`,
         priority: 4,
@@ -400,6 +407,63 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
         : null,
     }));
     // Note: We don't update searchUrls here as the template uses {query}
+  }
+
+  // Start adding a dealer from unknown domain
+  function startAddDealer(domain: string) {
+    // Generate a name from the domain (capitalize, remove common suffixes)
+    const name = domain
+      .replace(/\.(com|net|org|co\.uk|fr|de|it|es)$/i, '')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+    setAddDealerName(name);
+    setAddDealerType('poster_dealer');
+    setAddingDealer(domain);
+  }
+
+  // Save the new dealer
+  async function handleAddDealer() {
+    if (!addingDealer || !addDealerName.trim()) return;
+
+    try {
+      setAddDealerSaving(true);
+      setError('');
+
+      const res = await fetch('/api/dealers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: addDealerName.trim(),
+          type: addDealerType,
+          website: `https://${addingDealer}`,
+          reliabilityTier: 4, // Default to tier 4 for new discoveries
+          canResearch: true,
+          canPrice: true,
+          canBeSource: true,
+          isActive: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to add dealer');
+      }
+
+      // Mark as added
+      setRecentlyAddedDomains(prev => new Set([...prev, addingDealer]));
+      setSuccess(`Added ${addDealerName} to dealer database`);
+      setAddingDealer(null);
+      setAddDealerName('');
+
+      // Refresh search URLs to include new dealer
+      loadSearchUrls();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add dealer');
+    } finally {
+      setAddDealerSaving(false);
+    }
   }
 
   // Filter search URLs by selected tiers
@@ -674,10 +738,19 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                         {result.snippet && (
                           <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{result.snippet}</p>
                         )}
-                        <div className="text-xs text-slate-400 mt-0.5">
+                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                           {result.isKnownDealer ? result.dealerName : result.domain}
-                          {!result.isKnownDealer && (
-                            <span className="ml-1 text-amber-600">(unknown)</span>
+                          {!result.isKnownDealer && !recentlyAddedDomains.has(result.domain) && (
+                            <button
+                              onClick={(e) => { e.preventDefault(); startAddDealer(result.domain); }}
+                              className="text-green-600 hover:text-green-700 hover:underline"
+                              title="Add to dealer database"
+                            >
+                              + add
+                            </button>
+                          )}
+                          {recentlyAddedDomains.has(result.domain) && (
+                            <span className="text-green-600">✓ added</span>
                           )}
                         </div>
                       </div>
@@ -685,15 +758,73 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                   ))}
                 </div>
 
-                {/* Unknown Domains from comprehensive search */}
+                {/* Unknown Domains from comprehensive search - Click to Add */}
                 {comprehensiveResults.unknownDomains.length > 0 && (
-                  <div className="p-2 bg-amber-50 rounded border border-amber-200">
-                    <div className="text-xs font-medium text-amber-800 mb-1">
-                      Unknown dealers ({comprehensiveResults.unknownDomains.length}):
+                  <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                    <div className="text-xs font-medium text-amber-800 mb-2">
+                      Unknown dealers ({comprehensiveResults.unknownDomains.length}) - Click to add:
                     </div>
-                    <div className="text-xs text-amber-700">
-                      {comprehensiveResults.unknownDomains.slice(0, 5).join(', ')}
+                    <div className="flex flex-wrap gap-2">
+                      {comprehensiveResults.unknownDomains.slice(0, 8).map((domain, idx) => (
+                        recentlyAddedDomains.has(domain) ? (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
+                          >
+                            <span>✓</span> {domain}
+                          </span>
+                        ) : addingDealer === domain ? (
+                          <div key={idx} className="flex items-center gap-2 bg-white rounded p-2 border border-amber-300">
+                            <input
+                              type="text"
+                              value={addDealerName}
+                              onChange={(e) => setAddDealerName(e.target.value)}
+                              placeholder="Dealer name"
+                              className="px-2 py-1 border border-slate-200 rounded text-xs w-32"
+                              autoFocus
+                            />
+                            <select
+                              value={addDealerType}
+                              onChange={(e) => setAddDealerType(e.target.value)}
+                              className="px-2 py-1 border border-slate-200 rounded text-xs"
+                            >
+                              <option value="poster_dealer">Poster Dealer</option>
+                              <option value="auction_house">Auction House</option>
+                              <option value="gallery">Gallery</option>
+                              <option value="marketplace">Marketplace</option>
+                              <option value="print_dealer">Print Dealer</option>
+                              <option value="book_dealer">Book Dealer</option>
+                            </select>
+                            <button
+                              onClick={handleAddDealer}
+                              disabled={addDealerSaving || !addDealerName.trim()}
+                              className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:bg-green-300"
+                            >
+                              {addDealerSaving ? '...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={() => setAddingDealer(null)}
+                              className="px-2 py-1 text-slate-500 text-xs hover:text-slate-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            key={idx}
+                            onClick={() => startAddDealer(domain)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-white text-amber-700 text-xs rounded border border-amber-300 hover:bg-amber-100 transition"
+                          >
+                            <span className="text-green-600">+</span> {domain}
+                          </button>
+                        )
+                      ))}
                     </div>
+                    {comprehensiveResults.unknownDomains.length > 8 && (
+                      <div className="text-xs text-amber-600 mt-2">
+                        +{comprehensiveResults.unknownDomains.length - 8} more
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
