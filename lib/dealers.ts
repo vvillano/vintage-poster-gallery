@@ -4,20 +4,24 @@ import type {
   CreateDealerInput,
   UpdateDealerInput,
   DealerType,
+  DealerCategory,
   DealerRegion,
   DealerSpecialization,
 } from '@/types/dealer';
-import { generateDealerSlug } from '@/types/dealer';
+import { generateDealerSlug, DEALER_TYPE_TO_CATEGORY } from '@/types/dealer';
 
 /**
  * Convert a database row to a Dealer object
  */
 function dbRowToDealer(row: Record<string, unknown>): Dealer {
+  const type = row.type as DealerType;
   return {
     id: row.id as number,
     name: row.name as string,
     slug: row.slug as string,
-    type: row.type as DealerType,
+    type,
+    // Use stored category or derive from type for backwards compatibility
+    category: (row.category as DealerCategory) || DEALER_TYPE_TO_CATEGORY[type] || 'dealer',
     website: row.website as string | null,
     country: row.country as string | null,
     city: row.city as string | null,
@@ -48,11 +52,15 @@ function dbRowToDealer(row: Record<string, unknown>): Dealer {
 export async function createDealer(input: CreateDealerInput): Promise<Dealer> {
   const slug = generateDealerSlug(input.name);
 
+  // Default category based on type if not provided
+  const category = input.category || DEALER_TYPE_TO_CATEGORY[input.type] || 'dealer';
+
   const result = await sql`
     INSERT INTO dealers (
       name,
       slug,
       type,
+      category,
       website,
       country,
       city,
@@ -77,6 +85,7 @@ export async function createDealer(input: CreateDealerInput): Promise<Dealer> {
       ${input.name},
       ${slug},
       ${input.type},
+      ${category},
       ${input.website || null},
       ${input.country || null},
       ${input.city || null},
@@ -138,6 +147,9 @@ export async function getDealerBySlug(slug: string): Promise<Dealer | null> {
  */
 export async function getAllDealers(options?: {
   type?: DealerType;
+  category?: DealerCategory;
+  categories?: DealerCategory[];  // Include only these categories
+  excludeCategories?: DealerCategory[];  // Exclude these categories
   region?: DealerRegion;
   specialization?: DealerSpecialization;
   canResearch?: boolean;
@@ -151,6 +163,9 @@ export async function getAllDealers(options?: {
 }): Promise<Dealer[]> {
   const {
     type,
+    category,
+    categories,
+    excludeCategories,
     region,
     specialization,
     canResearch,
@@ -204,6 +219,15 @@ export async function getAllDealers(options?: {
   let dealers = result.rows.map(dbRowToDealer);
 
   // Apply additional client-side filters for complex conditions
+  if (category) {
+    dealers = dealers.filter(d => d.category === category);
+  }
+  if (categories && categories.length > 0) {
+    dealers = dealers.filter(d => categories.includes(d.category));
+  }
+  if (excludeCategories && excludeCategories.length > 0) {
+    dealers = dealers.filter(d => !excludeCategories.includes(d.category));
+  }
   if (specialization) {
     dealers = dealers.filter(d => d.specializations.includes(specialization));
   }
@@ -257,12 +281,19 @@ export async function updateDealer(input: UpdateDealerInput): Promise<Dealer> {
   // Generate new slug if name changed
   const slug = updates.name ? generateDealerSlug(updates.name) : current.slug;
 
+  // If type changes and category not explicitly set, update category to match new type
+  const newType = updates.type ?? current.type;
+  const newCategory = updates.category !== undefined
+    ? updates.category
+    : (updates.type ? DEALER_TYPE_TO_CATEGORY[updates.type] : current.category);
+
   const result = await sql`
     UPDATE dealers
     SET
       name = ${updates.name ?? current.name},
       slug = ${slug},
-      type = ${updates.type ?? current.type},
+      type = ${newType},
+      category = ${newCategory},
       website = ${updates.website !== undefined ? updates.website : current.website},
       country = ${updates.country !== undefined ? updates.country : current.country},
       city = ${updates.city !== undefined ? updates.city : current.city},
@@ -359,4 +390,22 @@ export async function getResearchDealers(): Promise<Dealer[]> {
  */
 export async function getDealersBySpecialization(specialization: DealerSpecialization): Promise<Dealer[]> {
   return getAllDealers({ specialization, isActive: true });
+}
+
+/**
+ * Get dealers by category
+ */
+export async function getDealersByCategory(category: DealerCategory): Promise<Dealer[]> {
+  return getAllDealers({ category, isActive: true });
+}
+
+/**
+ * Get dealers for valuation (excludes research institutions)
+ */
+export async function getValuationDealers(): Promise<Dealer[]> {
+  return getAllDealers({
+    excludeCategories: ['research'],
+    canPrice: true,
+    isActive: true,
+  });
 }

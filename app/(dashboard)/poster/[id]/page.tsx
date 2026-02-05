@@ -8,6 +8,7 @@ import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
 import ShopifyPanel from '@/components/ShopifyPanel';
 import IdentificationResearchPanel from '@/components/IdentificationResearchPanel';
+import ValuationPanel from '@/components/ValuationPanel';
 import ProductDescriptionEditor from '@/components/ProductDescriptionEditor';
 import Twemoji from '@/components/Twemoji';
 
@@ -275,6 +276,10 @@ export default function PosterDetailPage() {
   // Book linking state
   const [linkedBook, setLinkedBook] = useState<LinkedBook | null>(null);
   const [unlinkingBook, setUnlinkingBook] = useState(false);
+
+  // Research/Valuation tabs state
+  const [activeResearchTab, setActiveResearchTab] = useState<'research' | 'valuation'>('research');
+
   const [newSale, setNewSale] = useState({
     date: '',
     price: '',
@@ -2909,10 +2914,47 @@ export default function PosterDetailPage() {
               {/* Shopify Integration */}
               <ShopifyPanel poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
 
-              {/* Dealer Research for Identification */}
-              <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
+              {/* Research & Valuation Tabs */}
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                {/* Tab Headers */}
+                <div className="flex border-b border-slate-200">
+                  <button
+                    onClick={() => setActiveResearchTab('research')}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                      activeResearchTab === 'research'
+                        ? 'bg-violet-50 text-violet-700 border-b-2 border-violet-600'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="mr-2">🔍</span>
+                    Research
+                    <span className="ml-2 text-xs text-slate-400">(What is this?)</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveResearchTab('valuation')}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                      activeResearchTab === 'valuation'
+                        ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="mr-2">💰</span>
+                    Valuation
+                    <span className="ml-2 text-xs text-slate-400">(What's it worth?)</span>
+                  </button>
+                </div>
 
-              {/* Price Research & Sales */}
+                {/* Tab Content */}
+                <div>
+                  {activeResearchTab === 'research' ? (
+                    <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
+                  ) : (
+                    <ValuationPanel poster={poster} onUpdate={fetchPoster} />
+                  )}
+                </div>
+              </div>
+
+              {/* Legacy Price Research & Sales - to be removed after ValuationPanel is tested */}
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">
                   Price Research & Sales

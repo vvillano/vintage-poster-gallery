@@ -298,6 +298,34 @@ export async function GET() {
       status['acquisition-tracking'] = { completed: false };
     }
 
+    // Check Dealer Category migration - look for category column on dealers
+    try {
+      const categoryResult = await sql`
+        SELECT category, COUNT(*) as count
+        FROM dealers
+        WHERE category IS NOT NULL
+        GROUP BY category
+        ORDER BY category
+      `;
+
+      if (categoryResult.rows.length > 0) {
+        const distribution = categoryResult.rows.map(r => `${r.category}: ${r.count}`).join(', ');
+        status['dealer-category'] = {
+          completed: true,
+          details: distribution,
+        };
+      } else {
+        // Column exists but no data
+        await sql`SELECT category FROM dealers LIMIT 1`;
+        status['dealer-category'] = {
+          completed: true,
+          details: 'Column added (run backfill)',
+        };
+      }
+    } catch {
+      status['dealer-category'] = { completed: false };
+    }
+
     // Check Serper API configuration (not a database migration, but important for research features)
     const serperConfigured = !!process.env.SERPER_API_KEY;
     status['serper-api'] = {

@@ -13,6 +13,9 @@ export type DealerType =
   | 'aggregator'
   | 'museum';
 
+// Category for filtering by purpose (Research vs Valuation)
+export type DealerCategory = 'dealer' | 'research' | 'platform';
+
 export type DealerRegion =
   | 'North America'
   | 'Europe'
@@ -122,6 +125,28 @@ export const DEALER_TYPE_LABELS: Record<DealerType, string> = {
   museum: 'Museum/Institution',
 };
 
+// Category labels for UI
+export const DEALER_CATEGORY_LABELS: Record<DealerCategory, string> = {
+  dealer: 'Dealer',
+  research: 'Research Institution',
+  platform: 'Platform',
+};
+
+// Map dealer types to their default category
+export const DEALER_TYPE_TO_CATEGORY: Record<DealerType, DealerCategory> = {
+  auction_house: 'dealer',
+  poster_dealer: 'dealer',
+  book_dealer: 'dealer',
+  print_dealer: 'dealer',
+  map_dealer: 'dealer',
+  ephemera_dealer: 'dealer',
+  photography_dealer: 'dealer',
+  gallery: 'dealer',
+  marketplace: 'platform',
+  aggregator: 'platform',
+  museum: 'research',
+};
+
 // Specialization categories for UI grouping
 export const SPECIALIZATION_CATEGORIES: Record<string, { label: string; options: DealerSpecialization[] }> = {
   poster: {
@@ -219,6 +244,7 @@ export interface Dealer {
   name: string;
   slug: string;
   type: DealerType;
+  category: DealerCategory; // dealer, research, or platform
   website?: string | null;
 
   // Location
@@ -262,6 +288,7 @@ export interface Dealer {
 export interface CreateDealerInput {
   name: string;
   type: DealerType;
+  category?: DealerCategory; // Defaults based on type if not provided
   website?: string | null;
   country?: string | null;
   city?: string | null;
@@ -290,9 +317,13 @@ export interface UpdateDealerInput extends Partial<CreateDealerInput> {
 
 // Default values for new dealers based on type
 export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealerInput> {
+  // Get category from type mapping
+  const category = DEALER_TYPE_TO_CATEGORY[type] || 'dealer';
+
   switch (type) {
     case 'auction_house':
       return {
+        category,
         reliabilityTier: 1,
         attributionWeight: 0.9,
         pricingWeight: 0.9,
@@ -308,6 +339,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
     case 'ephemera_dealer':
     case 'photography_dealer':
       return {
+        category,
         reliabilityTier: 2,
         attributionWeight: 0.85,
         pricingWeight: 0.85,
@@ -318,6 +350,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
       };
     case 'gallery':
       return {
+        category,
         reliabilityTier: 2,
         attributionWeight: 0.8,
         pricingWeight: 0.8,
@@ -328,6 +361,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
       };
     case 'museum':
       return {
+        category,
         reliabilityTier: 3,
         attributionWeight: 0.9,
         pricingWeight: 0.5,
@@ -338,6 +372,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
       };
     case 'marketplace':
       return {
+        category,
         reliabilityTier: 4,
         attributionWeight: 0.7,
         pricingWeight: 0.7,
@@ -348,6 +383,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
       };
     case 'aggregator':
       return {
+        category,
         reliabilityTier: 5,
         attributionWeight: 0.65,
         pricingWeight: 0.7,
@@ -358,6 +394,7 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
       };
     default:
       return {
+        category: 'dealer',
         reliabilityTier: 3,
         attributionWeight: 0.7,
         pricingWeight: 0.7,

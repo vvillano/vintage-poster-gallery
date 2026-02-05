@@ -1,4 +1,5 @@
-import type { CreateDealerInput } from '@/types/dealer';
+import type { CreateDealerInput, DealerCategory } from '@/types/dealer';
+import { DEALER_TYPE_TO_CATEGORY } from '@/types/dealer';
 
 /**
  * Curated list of default dealers for seeding the database.
@@ -703,4 +704,23 @@ export function getDefaultDealersByType(type: string): CreateDealerInput[] {
  */
 export function getDefaultDealersBySpecialization(specialization: string): CreateDealerInput[] {
   return DEFAULT_DEALERS.filter(d => d.specializations?.includes(specialization as any));
+}
+
+/**
+ * Get dealers filtered by category (derived from type)
+ */
+export function getDefaultDealersByCategory(category: DealerCategory): CreateDealerInput[] {
+  return DEFAULT_DEALERS.filter(d => DEALER_TYPE_TO_CATEGORY[d.type] === category);
+}
+
+/**
+ * Get count of dealers by category
+ */
+export function getDealerCountByCategory(): Record<DealerCategory, number> {
+  const counts: Record<DealerCategory, number> = { dealer: 0, research: 0, platform: 0 };
+  for (const dealer of DEFAULT_DEALERS) {
+    const category = DEALER_TYPE_TO_CATEGORY[dealer.type];
+    counts[category] = (counts[category] || 0) + 1;
+  }
+  return counts;
 }

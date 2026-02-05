@@ -9,6 +9,7 @@ import {
 } from '@/lib/serper';
 import { getAllDealers } from '@/lib/dealers';
 import { parseSearchResultsWithAI } from '@/lib/identification-research';
+import type { DealerCategory } from '@/types/dealer';
 
 /**
  * POST /api/research/search
@@ -18,6 +19,8 @@ import { parseSearchResultsWithAI } from '@/lib/identification-research';
  *   query: string,              // Primary search query
  *   queryVariations?: string[], // Optional: multiple queries to run
  *   dealerIds?: number[],       // Optional: limit to specific dealers
+ *   excludeCategories?: DealerCategory[], // Optional: exclude certain dealer categories
+ *                                         // e.g., ['research'] for valuation mode
  *   maxResults?: number,        // Max results (default: 20)
  *   parseWithAI?: boolean,      // Whether to parse results with AI (default: false)
  *   posterContext?: {           // Context for AI parsing
@@ -39,6 +42,7 @@ export async function POST(request: NextRequest) {
       query,
       queryVariations,
       dealerIds,
+      excludeCategories,  // e.g., ['research'] for valuation mode
       maxResults = 20,
       parseWithAI = false,
       posterContext,
@@ -61,9 +65,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get dealers for domain matching
-    const dealers = await getAllDealers({ isActive: true });
-    const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number }>();
+    // Get dealers for domain matching (with optional category filter)
+    const dealers = await getAllDealers({
+      isActive: true,
+      excludeCategories: excludeCategories as DealerCategory[] | undefined,
+    });
+    const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number; category: string }>();
 
     // Filter dealers if specific IDs requested
     const filteredDealers = dealerIds?.length
@@ -78,6 +85,7 @@ export async function POST(request: NextRequest) {
           id: dealer.id,
           name: dealer.name,
           reliabilityTier: dealer.reliabilityTier,
+          category: dealer.category,
         });
       }
     }
@@ -136,6 +144,7 @@ export async function POST(request: NextRequest) {
         dealerId: dealer?.id,
         dealerName: dealer?.name,
         reliabilityTier: dealer?.reliabilityTier,
+        dealerCategory: dealer?.category,
         isKnownDealer: !!dealer,
       };
     });
