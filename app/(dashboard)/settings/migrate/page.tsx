@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'dealer-category',
+    name: 'Dealer Category Field',
+    description: 'Add category field to dealers table for filtering by purpose: dealer (auctions/galleries), research (museums/institutions), or platform (marketplaces). Enables Research vs Valuation mode separation.',
+    endpoint: '/api/migrate/dealer-category',
+    successLink: { href: '/settings/dealers', label: 'Manage Dealers' },
+  },
+  {
     id: 'acquisition-tracking',
     name: 'Acquisition Tracking',
     description: 'Add source tracking columns: source_dealer_id (WHO you bought from), acquisition_platform_id (WHERE you bought), dealer_name (for Shopify matching), and platform_type (marketplace, venue, aggregator).',
