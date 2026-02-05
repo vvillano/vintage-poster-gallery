@@ -94,6 +94,13 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
   const [researchQuery, setResearchQuery] = useState('');
   const [copiedCredential, setCopiedCredential] = useState<string | null>(null);
 
+  // Add dealer state
+  const [addingDealer, setAddingDealer] = useState<string | null>(null); // domain being added
+  const [addDealerName, setAddDealerName] = useState('');
+  const [addDealerType, setAddDealerType] = useState('poster_dealer');
+  const [addDealerSaving, setAddDealerSaving] = useState(false);
+  const [recentlyAddedDomains, setRecentlyAddedDomains] = useState<Set<string>>(new Set());
+
   // Sales log state
   const [showAddSale, setShowAddSale] = useState(false);
   const [addingSale, setAddingSale] = useState(false);
@@ -263,6 +270,60 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
       setError(err instanceof Error ? err.message : 'Failed to delete sale');
     } finally {
       setDeletingSaleId(null);
+    }
+  }
+
+  // Start adding a new dealer from unknown domain
+  function startAddingDealer(domain: string) {
+    // Try to extract a name from the domain
+    const nameParts = domain.replace(/\.(com|net|org|co\.uk|de|fr|it)$/, '').split('.');
+    const suggestedName = nameParts[nameParts.length - 1]
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    setAddDealerName(suggestedName);
+    setAddingDealer(domain);
+  }
+
+  // Save the new dealer
+  async function handleAddDealer() {
+    if (!addingDealer || !addDealerName.trim()) return;
+
+    try {
+      setAddDealerSaving(true);
+      setError('');
+
+      const res = await fetch('/api/dealers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: addDealerName.trim(),
+          type: addDealerType,
+          website: `https://${addingDealer}`,
+          reliabilityTier: 4, // Default to tier 4 for new discoveries
+          canResearch: true,
+          canPrice: true,
+          canBeSource: true,
+          isActive: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add dealer');
+      }
+
+      // Mark as added
+      setRecentlyAddedDomains(prev => new Set([...prev, addingDealer]));
+      setSuccess(`Added ${addDealerName} to dealer database`);
+      setAddingDealer(null);
+      setAddDealerName('');
+
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add dealer');
+    } finally {
+      setAddDealerSaving(false);
     }
   }
 
@@ -472,6 +533,77 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                       ))}
                     </div>
                   </details>
+                )}
+
+                {/* Unknown Dealers - Add to Database */}
+                {searchResults.unknownDomains.length > 0 && (
+                  <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200">
+                    <div className="text-xs font-medium text-amber-800 mb-2 flex items-center gap-1">
+                      <span>🏪</span>
+                      New sources found ({searchResults.unknownDomains.length}) - Click to add to dealer database:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {searchResults.unknownDomains.slice(0, 8).map((domain, idx) => (
+                        recentlyAddedDomains.has(domain) ? (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
+                          >
+                            <span>✓</span> {domain}
+                          </span>
+                        ) : addingDealer === domain ? (
+                          <div key={idx} className="flex items-center gap-2 bg-white rounded p-2 border border-amber-300">
+                            <input
+                              type="text"
+                              value={addDealerName}
+                              onChange={(e) => setAddDealerName(e.target.value)}
+                              placeholder="Dealer name"
+                              className="px-2 py-1 border border-slate-200 rounded text-xs w-32"
+                              autoFocus
+                            />
+                            <select
+                              value={addDealerType}
+                              onChange={(e) => setAddDealerType(e.target.value)}
+                              className="px-2 py-1 border border-slate-200 rounded text-xs"
+                            >
+                              <option value="poster_dealer">Poster Dealer</option>
+                              <option value="auction_house">Auction House</option>
+                              <option value="gallery">Gallery</option>
+                              <option value="marketplace">Marketplace</option>
+                              <option value="print_dealer">Print Dealer</option>
+                              <option value="book_dealer">Book Dealer</option>
+                            </select>
+                            <button
+                              onClick={handleAddDealer}
+                              disabled={addDealerSaving || !addDealerName.trim()}
+                              className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:bg-green-300"
+                            >
+                              {addDealerSaving ? '...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={() => setAddingDealer(null)}
+                              className="px-2 py-1 text-slate-500 text-xs hover:text-slate-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            key={idx}
+                            onClick={() => startAddingDealer(domain)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded hover:bg-amber-200 transition"
+                          >
+                            <span className="text-green-600">+</span> {domain}
+                          </button>
+                        )
+                      ))}
+                    </div>
+                    {searchResults.unknownDomains.length > 8 && (
+                      <div className="text-xs text-amber-600 mt-2">
+                        +{searchResults.unknownDomains.length - 8} more sources found
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
