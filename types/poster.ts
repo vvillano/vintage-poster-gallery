@@ -681,6 +681,45 @@ export interface UpdatePosterInput {
 }
 
 // =====================
+// Visual Verification Types
+// =====================
+
+// Result of visual comparison between poster and search result
+export interface VisualMatchResult {
+  visualMatch: number;      // 0-100, how similar are the images?
+  sameImage: boolean;       // High confidence this is the same poster
+  sameArtist: boolean;      // Appears to be same artist/style (different work)
+  explanation: string;      // Brief explanation for debugging
+}
+
+// Search result with visual verification
+export interface VerifiedSearchResult {
+  // Core search result fields
+  title: string;
+  url: string;
+  snippet?: string;
+  domain: string;
+  thumbnail?: string;
+  price?: string;
+  priceValue?: number;
+  currency?: string;
+
+  // Dealer matching
+  dealerId?: number;
+  dealerName?: string;
+  reliabilityTier?: number;
+  dealerCategory?: string;
+  isKnownDealer: boolean;
+
+  // Visual verification (added after search)
+  visualMatch?: number;           // 0-100 similarity score
+  sameImage?: boolean;            // High confidence same poster
+  sameArtist?: boolean;           // Same artist, different work
+  visuallyVerified: boolean;      // Was visual check performed?
+  visualExplanation?: string;     // Why the AI thinks this
+}
+
+// =====================
 // Shopify Integration Types
 // =====================
 

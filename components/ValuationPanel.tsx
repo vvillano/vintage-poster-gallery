@@ -19,6 +19,12 @@ interface ValuationSearchResult {
   reliabilityTier?: number;
   dealerCategory?: string;
   isKnownDealer: boolean;
+  // Visual verification fields
+  visualMatch?: number;        // 0-100 visual similarity score
+  sameImage?: boolean;         // High confidence this is the same poster
+  sameArtist?: boolean;        // Same artist/style but different work
+  visuallyVerified: boolean;   // Whether visual verification was performed
+  visualExplanation?: string;  // Brief explanation from Claude
 }
 
 interface ValuationSearchResponse {
@@ -27,6 +33,12 @@ interface ValuationSearchResponse {
   unknownDomains: string[];
   totalResults: number;
   creditsUsed: number;
+  visualVerification?: {
+    enabled: boolean;
+    resultsVerified: number;
+    confirmedMatches: number;
+    highMatchCount: number;
+  };
   parsedResults?: {
     priceSummary: {
       currentListings: { low: number; high: number; average: number; count: number } | null;
@@ -88,6 +100,7 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<ValuationSearchResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [enableVisualVerification, setEnableVisualVerification] = useState(true);
 
   // Research sites for manual search
   const [researchSites, setResearchSites] = useState<ResearchSite[]>([]);
@@ -178,6 +191,9 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
           },
           // Exclude research-only sources (museums, LOC, etc.)
           excludeCategories: ['research'],
+          // Visual verification
+          enableVisualVerification,
+          maxVisualVerifications: 10,
         }),
       });
 
@@ -339,6 +355,31 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
     }
   };
 
+  // Visual match helpers
+  const getVisualMatchColor = (result: ValuationSearchResult) => {
+    if (!result.visuallyVerified) return 'text-slate-400';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return 'text-green-600';
+    if ((result.visualMatch ?? 0) >= 60) return 'text-blue-600';
+    if ((result.visualMatch ?? 0) >= 40) return 'text-amber-600';
+    return 'text-slate-400';
+  };
+
+  const getVisualMatchLabel = (result: ValuationSearchResult) => {
+    if (!result.visuallyVerified) return 'Not verified';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return 'Same poster';
+    if ((result.visualMatch ?? 0) >= 60) return 'Likely match';
+    if (result.sameArtist || (result.visualMatch ?? 0) >= 40) return 'Different work';
+    return 'Low match';
+  };
+
+  const getVisualMatchIcon = (result: ValuationSearchResult) => {
+    if (!result.visuallyVerified) return '🔍';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return '✓';
+    if ((result.visualMatch ?? 0) >= 60) return '~';
+    if (result.sameArtist || (result.visualMatch ?? 0) >= 40) return '⚠';
+    return '✗';
+  };
+
   const priceSummary = getPriceSummary();
 
   return (
@@ -426,6 +467,42 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
               />
             </div>
 
+            {/* Visual Verification Toggle */}
+            <div className="mt-2 flex items-center gap-2">
+              <label className="flex items-center gap-2 text-xs text-green-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableVisualVerification}
+                  onChange={(e) => setEnableVisualVerification(e.target.checked)}
+                  className="rounded border-green-300 text-green-600 focus:ring-green-500"
+                />
+                <span>Visual verification</span>
+              </label>
+              <span className="text-[10px] text-green-600">
+                (Uses AI to confirm results show this poster, not just same artist)
+              </span>
+            </div>
+
+            {/* Visual Verification Stats */}
+            {searchResults?.visualVerification && (
+              <div className="mt-3 p-2 bg-white rounded border border-green-100 flex items-center gap-4">
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-green-700 font-medium">{searchResults.visualVerification.confirmedMatches}</span>
+                  <span className="text-green-600">confirmed</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-blue-600">~</span>
+                  <span className="text-blue-700 font-medium">{searchResults.visualVerification.highMatchCount - searchResults.visualVerification.confirmedMatches}</span>
+                  <span className="text-blue-600">likely matches</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-slate-400">🔍</span>
+                  <span className="text-slate-600">{searchResults.visualVerification.resultsVerified} verified</span>
+                </div>
+              </div>
+            )}
+
             {/* Search Results - Current Listings */}
             {searchResults?.parsedResults?.priceSummary && (
               <div className="mt-4 space-y-3">
@@ -494,15 +571,45 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                     <summary className="text-xs text-green-600 cursor-pointer hover:text-green-800">
                       View all {searchResults.results.length} results
                     </summary>
-                    <div className="mt-2 max-h-48 overflow-y-auto space-y-2">
+                    <div className="mt-2 max-h-64 overflow-y-auto space-y-2">
                       {searchResults.results.map((result, idx) => (
-                        <div key={idx} className="bg-white rounded p-2 border border-green-100 flex gap-2">
+                        <div
+                          key={idx}
+                          className={`bg-white rounded p-2 border flex gap-2 ${
+                            result.sameImage || (result.visualMatch ?? 0) >= 85
+                              ? 'border-green-300 bg-green-50/50'
+                              : (result.visualMatch ?? 0) >= 60
+                              ? 'border-blue-200'
+                              : result.visuallyVerified && (result.visualMatch ?? 0) < 40
+                              ? 'border-slate-200 opacity-60'
+                              : 'border-green-100'
+                          }`}
+                        >
                           {result.thumbnail && (
-                            <img
-                              src={result.thumbnail}
-                              alt=""
-                              className="w-10 h-10 object-cover rounded flex-shrink-0"
-                            />
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={result.thumbnail}
+                                alt=""
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              {/* Visual match badge on thumbnail */}
+                              {result.visuallyVerified && (
+                                <span
+                                  className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold ${
+                                    result.sameImage || (result.visualMatch ?? 0) >= 85
+                                      ? 'bg-green-500 text-white'
+                                      : (result.visualMatch ?? 0) >= 60
+                                      ? 'bg-blue-500 text-white'
+                                      : (result.visualMatch ?? 0) >= 40
+                                      ? 'bg-amber-500 text-white'
+                                      : 'bg-slate-400 text-white'
+                                  }`}
+                                  title={result.visualExplanation || getVisualMatchLabel(result)}
+                                >
+                                  {result.visualMatch ?? 0}
+                                </span>
+                              )}
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <a
@@ -513,7 +620,7 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                             >
                               {result.title}
                             </a>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               {result.price && (
                                 <span className="text-xs font-medium text-green-600">
                                   {result.price}
@@ -525,6 +632,15 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                               {result.reliabilityTier && (
                                 <span className={`px-1 py-0.5 rounded text-[10px] ${getTierBadgeColor(result.reliabilityTier)}`}>
                                   T{result.reliabilityTier}
+                                </span>
+                              )}
+                              {/* Visual match indicator */}
+                              {result.visuallyVerified && (
+                                <span
+                                  className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] ${getVisualMatchColor(result)} bg-slate-100`}
+                                  title={result.visualExplanation}
+                                >
+                                  {getVisualMatchIcon(result)} {getVisualMatchLabel(result)}
                                 </span>
                               )}
                             </div>

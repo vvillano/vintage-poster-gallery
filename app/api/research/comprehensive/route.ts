@@ -7,7 +7,7 @@ import { isSerperConfigured } from '@/lib/serper';
 
 /**
  * POST /api/research/comprehensive
- * Multi-stage search: Image (Lens) → Text → Combined Results → AI Parsing
+ * Multi-stage search: Image (Lens) → Text → Combined Results → Visual Verification → AI Parsing
  *
  * This is the main entry point for the visual-first research workflow.
  *
@@ -26,6 +26,11 @@ import { isSerperConfigured } from '@/lib/serper';
  *   includeWebSearch?: boolean,  // Auto-run web search after Lens (default: true)
  *   dealerIds?: number[],        // Limit to specific dealers
  *
+ *   // Visual verification (optional - uses Claude Vision)
+ *   enableVisualVerification?: boolean,  // Compare results to poster image (default: false)
+ *   maxVisualVerifications?: number,     // Max results to verify (default: 10)
+ *   visualVerificationThreshold?: number, // Min score to include (default: 0 = all)
+ *
  *   // AI parsing (optional)
  *   parseWithAI?: boolean,       // Use AI to extract structured data (default: false)
  *   posterContext?: {            // Context for AI parsing
@@ -42,6 +47,7 @@ import { isSerperConfigured } from '@/lib/serper';
  * - Extracted titles (for follow-up searches)
  * - Knowledge graph (if item identified)
  * - Unknown dealers (for discovery)
+ * - Visual verification stats (if enabled)
  * - Parsed results with attribution/price data (if parseWithAI=true)
  */
 export async function POST(request: NextRequest) {
@@ -61,6 +67,11 @@ export async function POST(request: NextRequest) {
       maxWebQueries = 3,
       includeWebSearch = true,
       dealerIds,
+      // Visual verification options
+      enableVisualVerification = false,
+      maxVisualVerifications = 10,
+      visualVerificationThreshold = 0,
+      // AI parsing
       parseWithAI = false,
       posterContext,
     } = body;
@@ -88,6 +99,7 @@ export async function POST(request: NextRequest) {
       hasQuery: !!query,
       queryVariations: queryVariations?.length || 0,
       includeWebSearch,
+      enableVisualVerification,
     });
 
     // Run multi-stage search
@@ -100,6 +112,10 @@ export async function POST(request: NextRequest) {
       maxWebQueries,
       includeWebSearch,
       dealerIds,
+      // Visual verification
+      enableVisualVerification,
+      maxVisualVerifications,
+      visualVerificationThreshold,
     };
 
     const result = await multiStageSearch(searchOptions);
@@ -151,16 +167,20 @@ export async function GET(request: NextRequest) {
 
     const configured = isSerperConfigured();
 
+    // Check if Anthropic API is available for visual verification
+    const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY;
+
     return NextResponse.json({
       configured,
       provider: 'serper',
       features: {
-        lens: configured,      // Google Lens (visual search)
-        web: configured,       // Web search
-        multiStage: configured, // Automated multi-stage search
+        lens: configured,               // Google Lens (visual search)
+        web: configured,                // Web search
+        multiStage: configured,         // Automated multi-stage search
+        visualVerification: anthropicConfigured, // Claude Vision comparison
       },
       message: configured
-        ? 'Comprehensive search is available (Google Lens + Web Search)'
+        ? 'Comprehensive search is available (Google Lens + Web Search' + (anthropicConfigured ? ' + Visual Verification' : '') + ')'
         : 'Serper API is not configured. Add SERPER_API_KEY to enable comprehensive search.',
     });
   } catch (error) {

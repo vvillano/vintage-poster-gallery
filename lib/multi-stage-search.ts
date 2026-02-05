@@ -19,6 +19,7 @@ import {
   type SerperSearchResult,
 } from './serper';
 import { getAllDealers } from './dealers';
+import { batchCompareImages, type VisualMatchResult } from './visual-match';
 import type { Dealer } from '@/types/dealer';
 
 /**
@@ -51,6 +52,13 @@ export interface UnifiedSearchResult {
 
   // Match confidence (0-1)
   confidence?: number;
+
+  // Visual verification (optional - only populated if visual verification is enabled)
+  visualMatch?: number;        // 0-100 visual similarity score
+  sameImage?: boolean;         // High confidence this is the same poster
+  sameArtist?: boolean;        // Same artist/style but different work
+  visuallyVerified: boolean;   // Whether visual verification was performed
+  visualExplanation?: string;  // Brief explanation from Claude
 }
 
 /**
@@ -92,6 +100,14 @@ export interface MultiStageSearchResponse {
   // Unknown dealers found
   unknownDomains: string[];
 
+  // Visual verification stats (if enabled)
+  visualVerification?: {
+    enabled: boolean;
+    resultsVerified: number;
+    confirmedMatches: number;
+    highMatchCount: number;
+  };
+
   // Stats
   totalResults: number;
   creditsUsed: number;
@@ -114,6 +130,11 @@ export interface MultiStageSearchOptions {
   maxWebResults?: number;
   maxWebQueries?: number;
   includeWebSearch?: boolean; // Default: true if image provided
+
+  // Visual verification
+  enableVisualVerification?: boolean; // Enable Claude Vision comparison
+  maxVisualVerifications?: number;    // Max results to verify (default: 10)
+  visualVerificationThreshold?: number; // Min visual match to include (default: 0 = include all)
 
   // Filtering
   dealerIds?: number[];
@@ -219,6 +240,7 @@ function lensToUnified(
     priceValue: priceInfo?.value,
     currency: priceInfo?.currency,
     thumbnail: result.thumbnail,
+    visuallyVerified: false, // Not verified until visual verification runs
     ...dealerMatch,
   };
 }
@@ -242,6 +264,7 @@ function webToUnified(
     price: priceInfo?.price,
     priceValue: priceInfo?.value,
     currency: priceInfo?.currency,
+    visuallyVerified: false, // Not verified until visual verification runs
     ...dealerMatch,
   };
 }
@@ -335,6 +358,15 @@ function deduplicateResults(results: UnifiedSearchResult[]): UnifiedSearchResult
       if (result.priceValue && !existing.priceValue) {
         seen.set(key, { ...existing, priceValue: result.priceValue, price: result.price, currency: result.currency });
       }
+      // Preserve visual verification data (prefer verified over unverified)
+      if (result.visuallyVerified && !existing.visuallyVerified) {
+        const merged = seen.get(key)!;
+        merged.visuallyVerified = true;
+        merged.visualMatch = result.visualMatch;
+        merged.sameImage = result.sameImage;
+        merged.sameArtist = result.sameArtist;
+        merged.visualExplanation = result.visualExplanation;
+      }
     }
   }
 
@@ -343,18 +375,37 @@ function deduplicateResults(results: UnifiedSearchResult[]): UnifiedSearchResult
 
 /**
  * Sort results by relevance
- * - Known dealers first
- * - Higher reliability tier first
- * - With price info first
- * - Lens results before web
+ * Priority order:
+ * 1. Visually verified same-image results first
+ * 2. High visual match scores (>= 60)
+ * 3. Known dealers with good reliability tier
+ * 4. Results with price info
+ * 5. Lens results before web
  */
 function sortResults(results: UnifiedSearchResult[]): UnifiedSearchResult[] {
   return results.sort((a, b) => {
-    // Known dealers first
+    // 1. Visually verified same-image results first
+    if (a.sameImage && !b.sameImage) return -1;
+    if (!a.sameImage && b.sameImage) return 1;
+
+    // 2. High visual match scores (both verified)
+    if (a.visuallyVerified && b.visuallyVerified) {
+      const aMatch = a.visualMatch ?? 0;
+      const bMatch = b.visualMatch ?? 0;
+      if (aMatch !== bMatch) {
+        return bMatch - aMatch; // Higher match first
+      }
+    } else if (a.visuallyVerified && (a.visualMatch ?? 0) >= 60) {
+      return -1; // Verified high-match before unverified
+    } else if (b.visuallyVerified && (b.visualMatch ?? 0) >= 60) {
+      return 1;
+    }
+
+    // 3. Known dealers first
     if (a.isKnownDealer && !b.isKnownDealer) return -1;
     if (!a.isKnownDealer && b.isKnownDealer) return 1;
 
-    // Higher reliability tier first (lower number = higher tier)
+    // 4. Higher reliability tier first (lower number = higher tier)
     if (a.reliabilityTier && b.reliabilityTier) {
       if (a.reliabilityTier !== b.reliabilityTier) {
         return a.reliabilityTier - b.reliabilityTier;
@@ -365,11 +416,11 @@ function sortResults(results: UnifiedSearchResult[]): UnifiedSearchResult[] {
       return 1;
     }
 
-    // With price first
+    // 5. With price first
     if (a.priceValue && !b.priceValue) return -1;
     if (!a.priceValue && b.priceValue) return 1;
 
-    // Lens results first
+    // 6. Lens results first
     if (a.source === 'lens' && b.source === 'web') return -1;
     if (a.source === 'web' && b.source === 'lens') return 1;
 
@@ -416,6 +467,9 @@ export async function multiStageSearch(
     maxWebResults = 20,
     maxWebQueries = 3,
     includeWebSearch = true,
+    enableVisualVerification = false,
+    maxVisualVerifications = 10,
+    visualVerificationThreshold = 0,
     dealerIds,
   } = options;
 
@@ -525,15 +579,86 @@ export async function multiStageSearch(
 
   // STAGE 3: Combine and sort results
   const dedupedResults = deduplicateResults(allResults);
-  const sortedResults = sortResults(dedupedResults);
+  let sortedResults = sortResults(dedupedResults);
+
+  // STAGE 4: Visual Verification (optional)
+  // Uses Claude Vision to verify that search results show the same poster
+  if (enableVisualVerification && imageUrl) {
+    console.log('[multi-stage] Stage 4: Running visual verification');
+
+    // Get results with thumbnails to verify
+    const resultsWithThumbnails = sortedResults.filter(r => r.thumbnail);
+    const toVerify = resultsWithThumbnails.slice(0, maxVisualVerifications);
+
+    if (toVerify.length > 0) {
+      console.log(`[multi-stage] Verifying ${toVerify.length} results with thumbnails`);
+
+      try {
+        // Get thumbnail URLs
+        const thumbnailUrls = toVerify.map(r => r.thumbnail!);
+
+        // Batch compare with poster image
+        const verificationResults = await batchCompareImages(
+          imageUrl,
+          thumbnailUrls,
+          5 // Max concurrent comparisons
+        );
+
+        // Apply verification results to search results
+        for (const result of sortedResults) {
+          if (result.thumbnail && verificationResults.has(result.thumbnail)) {
+            const verification = verificationResults.get(result.thumbnail)!;
+            result.visuallyVerified = true;
+            result.visualMatch = verification.visualMatch;
+            result.sameImage = verification.sameImage;
+            result.sameArtist = verification.sameArtist;
+            result.visualExplanation = verification.explanation;
+          }
+        }
+
+        // Re-sort with visual verification data
+        sortedResults = sortResults(sortedResults);
+
+        // Optionally filter by threshold
+        if (visualVerificationThreshold > 0) {
+          sortedResults = sortedResults.filter(r => {
+            // Keep unverified results and results above threshold
+            if (!r.visuallyVerified) return true;
+            return (r.visualMatch ?? 0) >= visualVerificationThreshold;
+          });
+        }
+
+        console.log('[multi-stage] Visual verification complete:', {
+          verified: toVerify.length,
+          confirmedMatches: sortedResults.filter(r => r.sameImage).length,
+          highMatches: sortedResults.filter(r => (r.visualMatch ?? 0) >= 60).length,
+        });
+      } catch (verifyError) {
+        console.error('[multi-stage] Visual verification error:', verifyError);
+        // Continue without verification - don't fail the search
+      }
+    } else {
+      console.log('[multi-stage] No thumbnails available for visual verification');
+    }
+  }
 
   const searchTime = (Date.now() - startTime) / 1000;
+
+  // Calculate visual verification stats
+  const verifiedResults = sortedResults.filter(r => r.visuallyVerified);
+  const confirmedMatches = sortedResults.filter(r => r.sameImage);
+  const highVisualMatches = sortedResults.filter(r => (r.visualMatch ?? 0) >= 60);
 
   console.log('[multi-stage] Search complete:', {
     totalResults: sortedResults.length,
     lensResults: lensResults.length,
     webResults: webResults.length,
     unknownDomains: unknownDomains.size,
+    visualVerification: enableVisualVerification ? {
+      verified: verifiedResults.length,
+      confirmed: confirmedMatches.length,
+      highMatch: highVisualMatches.length,
+    } : 'disabled',
     creditsUsed,
     searchTime,
   });
@@ -548,6 +673,12 @@ export async function multiStageSearch(
     extractedTitles,
     knowledgeGraph,
     unknownDomains: Array.from(unknownDomains),
+    visualVerification: enableVisualVerification ? {
+      enabled: true,
+      resultsVerified: verifiedResults.length,
+      confirmedMatches: confirmedMatches.length,
+      highMatchCount: highVisualMatches.length,
+    } : undefined,
     totalResults: sortedResults.length,
     creditsUsed,
     searchTime,

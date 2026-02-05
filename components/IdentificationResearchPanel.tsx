@@ -19,6 +19,12 @@ interface UnifiedSearchResult {
   dealerName?: string;
   reliabilityTier?: number;
   isKnownDealer: boolean;
+  // Visual verification fields
+  visualMatch?: number;        // 0-100 visual similarity score
+  sameImage?: boolean;         // High confidence this is the same poster
+  sameArtist?: boolean;        // Same artist/style but different work
+  visuallyVerified: boolean;   // Whether visual verification was performed
+  visualExplanation?: string;  // Brief explanation from Claude
 }
 
 interface ComprehensiveSearchResponse {
@@ -32,6 +38,12 @@ interface ComprehensiveSearchResponse {
   totalResults: number;
   creditsUsed: number;
   searchTime: number;
+  visualVerification?: {
+    enabled: boolean;
+    resultsVerified: number;
+    confirmedMatches: number;
+    highMatchCount: number;
+  };
   parsedResults?: {
     results: any[];
     consensus: any;
@@ -110,6 +122,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   const [comprehensiveSearch, setComprehensiveSearch] = useState(false);
   const [comprehensiveResults, setComprehensiveResults] = useState<ComprehensiveSearchResponse | null>(null);
   const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
+  const [enableVisualVerification, setEnableVisualVerification] = useState(true);
 
   // Add dealer state
   const [addingDealer, setAddingDealer] = useState<string | null>(null); // domain being added
@@ -281,6 +294,9 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
             dimensions: poster.dimensionsEstimate,
             technique: poster.printingTechnique,
           },
+          // Visual verification
+          enableVisualVerification,
+          maxVisualVerifications: 10,
         }),
       });
 
@@ -502,6 +518,31 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     }
   };
 
+  // Visual match helpers
+  const getVisualMatchColor = (result: UnifiedSearchResult) => {
+    if (!result.visuallyVerified) return 'text-slate-400';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return 'text-green-600';
+    if ((result.visualMatch ?? 0) >= 60) return 'text-blue-600';
+    if ((result.visualMatch ?? 0) >= 40) return 'text-amber-600';
+    return 'text-slate-400';
+  };
+
+  const getVisualMatchLabel = (result: UnifiedSearchResult) => {
+    if (!result.visuallyVerified) return 'Not verified';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return 'Same poster';
+    if ((result.visualMatch ?? 0) >= 60) return 'Likely match';
+    if (result.sameArtist || (result.visualMatch ?? 0) >= 40) return 'Different work';
+    return 'Low match';
+  };
+
+  const getVisualMatchIcon = (result: UnifiedSearchResult) => {
+    if (!result.visuallyVerified) return '🔍';
+    if (result.sameImage || (result.visualMatch ?? 0) >= 85) return '✓';
+    if ((result.visualMatch ?? 0) >= 60) return '~';
+    if (result.sameArtist || (result.visualMatch ?? 0) >= 40) return '⚠';
+    return '✗';
+  };
+
   // Get search URL with current query
   function getSearchUrlWithQuery(template: string | null): string | null {
     if (!template) return null;
@@ -632,9 +673,45 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
               </button>
             </div>
 
+            {/* Visual Verification Toggle */}
+            <div className="flex items-center gap-2 mb-3">
+              <label className="flex items-center gap-2 text-xs text-purple-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableVisualVerification}
+                  onChange={(e) => setEnableVisualVerification(e.target.checked)}
+                  className="rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span>Visual verification</span>
+              </label>
+              <span className="text-[10px] text-purple-600">
+                (Uses AI to confirm results show this poster, not just same artist)
+              </span>
+            </div>
+
             {/* Comprehensive Results */}
             {comprehensiveResults && (
               <div className="space-y-3">
+                {/* Visual Verification Stats */}
+                {comprehensiveResults.visualVerification && (
+                  <div className="p-2 bg-white rounded border border-purple-100 flex items-center gap-4">
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-green-600">✓</span>
+                      <span className="text-green-700 font-medium">{comprehensiveResults.visualVerification.confirmedMatches}</span>
+                      <span className="text-green-600">confirmed</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-blue-600">~</span>
+                      <span className="text-blue-700 font-medium">{comprehensiveResults.visualVerification.highMatchCount - comprehensiveResults.visualVerification.confirmedMatches}</span>
+                      <span className="text-blue-600">likely matches</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-slate-400">🔍</span>
+                      <span className="text-slate-600">{comprehensiveResults.visualVerification.resultsVerified} verified</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Knowledge Graph */}
                 {comprehensiveResults.knowledgeGraph?.title && (
                   <div className="bg-white rounded p-3 border border-purple-100">
@@ -745,15 +822,45 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                 <div className="text-sm font-medium text-purple-900">
                   Visual Matches ({comprehensiveResults.results.length}):
                 </div>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {comprehensiveResults.results.slice(0, 15).map((result, idx) => (
-                    <div key={idx} className="bg-white rounded p-2 border border-purple-100 flex gap-2">
+                <div className="max-h-80 overflow-y-auto space-y-2">
+                  {comprehensiveResults.results.slice(0, 20).map((result, idx) => (
+                    <div
+                      key={idx}
+                      className={`bg-white rounded p-2 border flex gap-2 ${
+                        result.sameImage || (result.visualMatch ?? 0) >= 85
+                          ? 'border-green-300 bg-green-50/50'
+                          : (result.visualMatch ?? 0) >= 60
+                          ? 'border-blue-200'
+                          : result.visuallyVerified && (result.visualMatch ?? 0) < 40
+                          ? 'border-slate-200 opacity-60'
+                          : 'border-purple-100'
+                      }`}
+                    >
                       {result.thumbnail && (
-                        <img
-                          src={result.thumbnail}
-                          alt=""
-                          className="w-12 h-12 object-cover rounded flex-shrink-0"
-                        />
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={result.thumbnail}
+                            alt=""
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          {/* Visual match badge on thumbnail */}
+                          {result.visuallyVerified && (
+                            <span
+                              className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold ${
+                                result.sameImage || (result.visualMatch ?? 0) >= 85
+                                  ? 'bg-green-500 text-white'
+                                  : (result.visualMatch ?? 0) >= 60
+                                  ? 'bg-blue-500 text-white'
+                                  : (result.visualMatch ?? 0) >= 40
+                                  ? 'bg-amber-500 text-white'
+                                  : 'bg-slate-400 text-white'
+                              }`}
+                              title={result.visualExplanation || getVisualMatchLabel(result)}
+                            >
+                              {result.visualMatch ?? 0}
+                            </span>
+                          )}
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
@@ -786,7 +893,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                         {result.snippet && (
                           <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{result.snippet}</p>
                         )}
-                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
                           {result.isKnownDealer ? result.dealerName : result.domain}
                           {!result.isKnownDealer && !recentlyAddedDomains.has(result.domain) && (
                             <button
@@ -799,6 +906,15 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                           )}
                           {recentlyAddedDomains.has(result.domain) && (
                             <span className="text-green-600">✓ added</span>
+                          )}
+                          {/* Visual match indicator */}
+                          {result.visuallyVerified && (
+                            <span
+                              className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] ${getVisualMatchColor(result)} bg-slate-100`}
+                              title={result.visualExplanation}
+                            >
+                              {getVisualMatchIcon(result)} {getVisualMatchLabel(result)}
+                            </span>
                           )}
                         </div>
                       </div>
