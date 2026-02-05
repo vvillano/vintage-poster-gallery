@@ -38,7 +38,7 @@ interface ComprehensiveSearchResponse {
     priceSummary: {
       currentListings: { low: number; high: number; average: number; count: number } | null;
       soldPrices: { low: number; high: number; average: number; count: number; sources: string[] } | null;
-      allPrices: { price: number; status: string; source: string }[];
+      allPrices: { price: number; currency: string; status: string; source: string; url: string }[];
     };
   };
 }
@@ -664,6 +664,24 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                           <div className="text-green-600">
                             {comprehensiveResults.parsedResults.priceSummary.currentListings.count} listings
                           </div>
+                          {/* Clickable links to view current listings */}
+                          <div className="mt-2 space-y-1">
+                            {comprehensiveResults.parsedResults.priceSummary.allPrices
+                              .filter(p => p.status === 'for_sale')
+                              .slice(0, 3)
+                              .map((p, idx) => (
+                                <a
+                                  key={idx}
+                                  href={p.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-green-700 hover:text-green-900 hover:underline truncate"
+                                  title={`View listing: ${p.source}`}
+                                >
+                                  → {p.currency === 'USD' ? '$' : p.currency === 'GBP' ? '£' : p.currency === 'EUR' ? '€' : ''}{p.price.toLocaleString()} @ {p.source}
+                                </a>
+                              ))}
+                          </div>
                         </div>
                       )}
                       {comprehensiveResults.parsedResults.priceSummary.soldPrices && (
@@ -675,6 +693,24 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                           </div>
                           <div className="text-amber-600">
                             {comprehensiveResults.parsedResults.priceSummary.soldPrices.count} sales
+                          </div>
+                          {/* Clickable links to validate sold prices */}
+                          <div className="mt-2 space-y-1">
+                            {comprehensiveResults.parsedResults.priceSummary.allPrices
+                              .filter(p => p.status === 'sold' || p.status === 'out_of_stock' || p.status === 'auction_result')
+                              .slice(0, 3)
+                              .map((p, idx) => (
+                                <a
+                                  key={idx}
+                                  href={p.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-amber-700 hover:text-amber-900 hover:underline truncate"
+                                  title={`Verify: ${p.source}`}
+                                >
+                                  → {p.currency === 'USD' ? '$' : p.currency === 'GBP' ? '£' : p.currency === 'EUR' ? '€' : ''}{p.price.toLocaleString()} @ {p.source}
+                                </a>
+                              ))}
                           </div>
                         </div>
                       )}
