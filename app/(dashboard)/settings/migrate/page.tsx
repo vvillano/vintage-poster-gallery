@@ -16,10 +16,16 @@ interface MigrationStatusInfo {
   details?: string;
 }
 
-interface GoogleCSEStatus {
+interface SerperStatus {
   configured: boolean;
+  provider: string;
   message: string;
-  testResult?: {
+  webTestResult?: {
+    success: boolean;
+    resultCount?: number;
+    error?: string;
+  };
+  lensTestResult?: {
     success: boolean;
     resultCount?: number;
     error?: string;
@@ -129,39 +135,42 @@ export default function MigratePage() {
   const [completedStatus, setCompletedStatus] = useState<Record<string, MigrationStatusInfo>>({});
   const [loadingStatus, setLoadingStatus] = useState(true);
 
-  // Google CSE status
-  const [cseStatus, setCseStatus] = useState<GoogleCSEStatus | null>(null);
-  const [loadingCse, setLoadingCse] = useState(true);
-  const [testingCse, setTestingCse] = useState(false);
+  // Serper API status
+  const [serperStatus, setSerperStatus] = useState<SerperStatus | null>(null);
+  const [loadingSerper, setLoadingSerper] = useState(true);
+  const [testingWeb, setTestingWeb] = useState(false);
+  const [testingLens, setTestingLens] = useState(false);
 
-  // Check Google CSE configuration on mount
+  // Check Serper API configuration on mount
   useEffect(() => {
-    async function checkCseStatus() {
+    async function checkSerperStatus() {
       try {
         const res = await fetch('/api/research/search');
         if (res.ok) {
           const data = await res.json();
-          setCseStatus({
+          setSerperStatus({
             configured: data.configured,
+            provider: data.provider || 'serper',
             message: data.message,
           });
         }
       } catch (err) {
-        console.error('Failed to check CSE status:', err);
-        setCseStatus({
+        console.error('Failed to check Serper status:', err);
+        setSerperStatus({
           configured: false,
+          provider: 'serper',
           message: 'Failed to check configuration',
         });
       } finally {
-        setLoadingCse(false);
+        setLoadingSerper(false);
       }
     }
-    checkCseStatus();
+    checkSerperStatus();
   }, []);
 
-  // Test Google CSE with a sample search
-  async function testGoogleCSE() {
-    setTestingCse(true);
+  // Test Serper web search
+  async function testWebSearch() {
+    setTestingWeb(true);
     try {
       const res = await fetch('/api/research/search', {
         method: 'POST',
@@ -174,32 +183,77 @@ export default function MigratePage() {
       const data = await res.json();
 
       if (data.error || (data.errors && data.errors.length > 0)) {
-        setCseStatus(prev => prev ? {
+        setSerperStatus(prev => prev ? {
           ...prev,
-          testResult: {
+          webTestResult: {
             success: false,
             error: data.error || data.errors?.[0] || 'Search failed',
           },
         } : null);
       } else {
-        setCseStatus(prev => prev ? {
+        setSerperStatus(prev => prev ? {
           ...prev,
-          testResult: {
+          webTestResult: {
             success: true,
             resultCount: data.totalResults || data.results?.length || 0,
           },
         } : null);
       }
     } catch (err) {
-      setCseStatus(prev => prev ? {
+      setSerperStatus(prev => prev ? {
         ...prev,
-        testResult: {
+        webTestResult: {
           success: false,
           error: err instanceof Error ? err.message : 'Test failed',
         },
       } : null);
     } finally {
-      setTestingCse(false);
+      setTestingWeb(false);
+    }
+  }
+
+  // Test Serper Lens (visual search) with a sample image
+  async function testLensSearch() {
+    setTestingLens(true);
+    try {
+      // Use a public domain test image
+      const res = await fetch('/api/research/lens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/VanGogh-starry_night_ballance1.jpg/300px-VanGogh-starry_night_ballance1.jpg',
+          includeKnownDealers: false,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setSerperStatus(prev => prev ? {
+          ...prev,
+          lensTestResult: {
+            success: false,
+            error: data.error,
+          },
+        } : null);
+      } else {
+        setSerperStatus(prev => prev ? {
+          ...prev,
+          lensTestResult: {
+            success: true,
+            resultCount: data.totalResults || data.results?.length || 0,
+          },
+        } : null);
+      }
+    } catch (err) {
+      setSerperStatus(prev => prev ? {
+        ...prev,
+        lensTestResult: {
+          success: false,
+          error: err instanceof Error ? err.message : 'Test failed',
+        },
+      } : null);
+    } finally {
+      setTestingLens(false);
     }
   }
 
@@ -279,19 +333,19 @@ export default function MigratePage() {
 
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Database Migrations</h1>
 
-      {/* Google Custom Search API Status */}
+      {/* Serper API Status (Google Search + Lens) */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-start justify-between mb-2">
           <h2 className="text-lg font-semibold text-slate-900">
-            Google Custom Search API
+            Serper API (Google Search + Lens)
           </h2>
-          {!loadingCse && cseStatus && (
+          {!loadingSerper && serperStatus && (
             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-              cseStatus.configured
+              serperStatus.configured
                 ? 'bg-green-100 text-green-700'
                 : 'bg-yellow-100 text-yellow-700'
             }`}>
-              {cseStatus.configured ? (
+              {serperStatus.configured ? (
                 <>
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -310,58 +364,93 @@ export default function MigratePage() {
           )}
         </div>
         <p className="text-slate-600 text-sm mb-3">
-          Required for &quot;Search All Dealers&quot; feature. Searches across multiple dealer sites in one API call.
+          Powers visual-first research workflow: Google Lens for image search + web search for text queries. 10x cheaper than Google CSE with more features.
         </p>
 
-        {loadingCse ? (
+        {loadingSerper ? (
           <div className="text-slate-500 text-sm">Checking configuration...</div>
-        ) : cseStatus ? (
+        ) : serperStatus ? (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">{cseStatus.message}</p>
+            <p className="text-xs text-slate-500">{serperStatus.message}</p>
 
-            {cseStatus.configured && (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={testGoogleCSE}
-                  disabled={testingCse}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
-                >
-                  {testingCse ? 'Testing...' : 'Test Connection'}
-                </button>
+            {serperStatus.configured && (
+              <div className="space-y-2">
+                {/* Web Search Test */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={testWebSearch}
+                    disabled={testingWeb}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                  >
+                    {testingWeb ? 'Testing...' : 'Test Web Search'}
+                  </button>
 
-                {cseStatus.testResult && (
-                  <div className={`text-sm ${cseStatus.testResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                    {cseStatus.testResult.success ? (
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Working! Found {cseStatus.testResult.resultCount} results
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        {cseStatus.testResult.error}
-                      </span>
-                    )}
-                  </div>
-                )}
+                  {serperStatus.webTestResult && (
+                    <div className={`text-sm ${serperStatus.webTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {serperStatus.webTestResult.success ? (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Web search working! Found {serperStatus.webTestResult.resultCount} results
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          {serperStatus.webTestResult.error}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lens (Visual) Search Test */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={testLensSearch}
+                    disabled={testingLens}
+                    className="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium disabled:opacity-50"
+                  >
+                    {testingLens ? 'Testing...' : 'Test Visual Search (Lens)'}
+                  </button>
+
+                  {serperStatus.lensTestResult && (
+                    <div className={`text-sm ${serperStatus.lensTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {serperStatus.lensTestResult.success ? (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Lens working! Found {serperStatus.lensTestResult.resultCount} visual matches
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          {serperStatus.lensTestResult.error}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {!cseStatus.configured && (
+            {!serperStatus.configured && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-yellow-800 text-xs">
                 <p className="font-medium mb-1">Setup Instructions:</p>
                 <ol className="list-decimal list-inside space-y-1">
-                  <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
-                  <li>Enable &quot;Custom Search API&quot;</li>
-                  <li>Create an API key</li>
-                  <li>Go to <a href="https://programmablesearchengine.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Programmable Search Engine</a></li>
-                  <li>Create a search engine and get the Search Engine ID</li>
-                  <li>Add to .env.local: GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID</li>
+                  <li>Go to <a href="https://serper.dev" target="_blank" rel="noopener noreferrer" className="underline">serper.dev</a></li>
+                  <li>Sign up for a free account (2,500 free credits)</li>
+                  <li>Copy your API key</li>
+                  <li>Add to environment: <code className="bg-yellow-100 px-1">SERPER_API_KEY=your_key</code></li>
                 </ol>
+                <p className="mt-2 text-yellow-700">
+                  Pricing: ~$0.30-1.00 per 1,000 searches (10x cheaper than Google CSE)
+                </p>
               </div>
             )}
           </div>

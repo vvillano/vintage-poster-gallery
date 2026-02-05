@@ -298,6 +298,15 @@ export async function GET() {
       status['acquisition-tracking'] = { completed: false };
     }
 
+    // Check Serper API configuration (not a database migration, but important for research features)
+    const serperConfigured = !!process.env.SERPER_API_KEY;
+    status['serper-api'] = {
+      completed: serperConfigured,
+      details: serperConfigured
+        ? 'Google Search + Lens enabled'
+        : 'Add SERPER_API_KEY to enable web search and visual search',
+    };
+
     return NextResponse.json({ status });
   } catch (error) {
     console.error('Migration status check error:', error);

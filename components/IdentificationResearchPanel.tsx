@@ -4,6 +4,45 @@ import { useState, useEffect } from 'react';
 import type { Poster } from '@/types/poster';
 import { DEALER_TYPE_LABELS, RELIABILITY_TIERS } from '@/types/dealer';
 
+// Comprehensive search result types
+interface UnifiedSearchResult {
+  title: string;
+  url: string;
+  snippet?: string;
+  domain: string;
+  source: 'lens' | 'web';
+  price?: string;
+  priceValue?: number;
+  currency?: string;
+  thumbnail?: string;
+  dealerId?: number;
+  dealerName?: string;
+  reliabilityTier?: number;
+  isKnownDealer: boolean;
+}
+
+interface ComprehensiveSearchResponse {
+  success: boolean;
+  results: UnifiedSearchResult[];
+  lensResults?: UnifiedSearchResult[];
+  webResults?: UnifiedSearchResult[];
+  extractedTitles?: { title: string; source: string; confidence: number }[];
+  knowledgeGraph?: { title?: string; type?: string; description?: string };
+  unknownDomains: string[];
+  totalResults: number;
+  creditsUsed: number;
+  searchTime: number;
+  parsedResults?: {
+    results: any[];
+    consensus: any;
+    priceSummary: {
+      currentListings: { low: number; high: number; average: number; count: number } | null;
+      soldPrices: { low: number; high: number; average: number; count: number; sources: string[] } | null;
+      allPrices: { price: number; status: string; source: string }[];
+    };
+  };
+}
+
 interface SearchUrlResult {
   dealerId: number;
   dealerName: string;
@@ -66,6 +105,11 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   const [proposedArtist, setProposedArtist] = useState('');
   const [proposedConfidence, setProposedConfidence] = useState(75);
   const [proposedSources, setProposedSources] = useState<string[]>([]);
+
+  // Comprehensive (visual-first) search state
+  const [comprehensiveSearch, setComprehensiveSearch] = useState(false);
+  const [comprehensiveResults, setComprehensiveResults] = useState<ComprehensiveSearchResponse | null>(null);
+  const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
 
   // Load search URLs and check API config when expanded
   useEffect(() => {
@@ -187,9 +231,68 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     }
   }
 
+  // Comprehensive visual-first search (Image → Text → Combined)
+  async function handleComprehensiveSearch() {
+    if (!poster.imageUrl) {
+      setError('No image available for visual search');
+      return;
+    }
+
+    try {
+      setComprehensiveLoading(true);
+      setError('');
+      setComprehensiveResults(null);
+
+      const searchQuery = editedQuery || queryVariations[selectedVariation]?.query || query;
+
+      const res = await fetch('/api/research/comprehensive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: poster.imageUrl,
+          query: searchQuery,
+          maxLensResults: 20,
+          maxWebResults: 20,
+          includeWebSearch: true,
+          parseWithAI: true,
+          posterContext: {
+            title: poster.title || '',
+            artist: poster.artist !== 'Unknown' ? poster.artist : undefined,
+            date: poster.estimatedDate,
+            dimensions: poster.dimensionsEstimate,
+            technique: poster.printingTechnique,
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        if (!data.configured) {
+          setError('Serper API is not configured. Add SERPER_API_KEY to enable visual search.');
+        } else {
+          throw new Error(data.error || 'Comprehensive search failed');
+        }
+        return;
+      }
+
+      setComprehensiveResults(data);
+      setCreditsUsed(prev => prev + (data.creditsUsed || 0));
+
+      const lensCount = data.lensResults?.length || 0;
+      const webCount = data.webResults?.length || 0;
+      setSuccess(`Found ${data.totalResults} results (${lensCount} visual, ${webCount} web) in ${data.searchTime.toFixed(1)}s`);
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setComprehensiveLoading(false);
+    }
+  }
+
   async function handleSearchAll() {
     if (!searchConfigured) {
-      setError('Google Custom Search is not configured. Add API credentials to use this feature.');
+      setError('Serper API is not configured. Add SERPER_API_KEY to use this feature.');
       return;
     }
 
@@ -419,17 +522,205 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
             )}
           </div>
 
-          {/* Search All Dealers Button */}
+          {/* Comprehensive Visual-First Search */}
+          <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg p-4 border border-purple-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="font-medium text-purple-900 flex items-center gap-2">
+                  <span>📷</span> Visual Search (Recommended)
+                </div>
+                <div className="text-xs text-purple-600">
+                  Uses Google Lens + web search to find similar items automatically
+                </div>
+              </div>
+              <button
+                onClick={handleComprehensiveSearch}
+                disabled={comprehensiveLoading || !poster.imageUrl}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                  poster.imageUrl
+                    ? 'bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-300'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {comprehensiveLoading ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span>
+                    Search by Image
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Comprehensive Results */}
+            {comprehensiveResults && (
+              <div className="space-y-3">
+                {/* Knowledge Graph */}
+                {comprehensiveResults.knowledgeGraph?.title && (
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <div className="text-xs font-medium text-purple-700 mb-1">Identified as:</div>
+                    <div className="font-medium text-slate-900">{comprehensiveResults.knowledgeGraph.title}</div>
+                    {comprehensiveResults.knowledgeGraph.type && (
+                      <div className="text-xs text-slate-500">{comprehensiveResults.knowledgeGraph.type}</div>
+                    )}
+                    {comprehensiveResults.knowledgeGraph.description && (
+                      <p className="text-xs text-slate-600 mt-1 line-clamp-2">{comprehensiveResults.knowledgeGraph.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Price Summary */}
+                {comprehensiveResults.parsedResults?.priceSummary && (
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <div className="text-xs font-medium text-purple-700 mb-2">Price Data Found:</div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {comprehensiveResults.parsedResults.priceSummary.currentListings && (
+                        <div className="bg-green-50 rounded p-2">
+                          <div className="font-medium text-green-800">Current Listings</div>
+                          <div className="text-green-700">
+                            ${comprehensiveResults.parsedResults.priceSummary.currentListings.low.toLocaleString()} -
+                            ${comprehensiveResults.parsedResults.priceSummary.currentListings.high.toLocaleString()}
+                          </div>
+                          <div className="text-green-600">
+                            {comprehensiveResults.parsedResults.priceSummary.currentListings.count} listings
+                          </div>
+                        </div>
+                      )}
+                      {comprehensiveResults.parsedResults.priceSummary.soldPrices && (
+                        <div className="bg-amber-50 rounded p-2">
+                          <div className="font-medium text-amber-800">Sold Prices</div>
+                          <div className="text-amber-700">
+                            ${comprehensiveResults.parsedResults.priceSummary.soldPrices.low.toLocaleString()} -
+                            ${comprehensiveResults.parsedResults.priceSummary.soldPrices.high.toLocaleString()}
+                          </div>
+                          <div className="text-amber-600">
+                            {comprehensiveResults.parsedResults.priceSummary.soldPrices.count} sales
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attribution Consensus */}
+                {comprehensiveResults.parsedResults?.consensus?.artist && (
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <div className="text-xs font-medium text-purple-700 mb-1">Attribution Consensus:</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-slate-900">
+                          {comprehensiveResults.parsedResults.consensus.artist.value}
+                        </span>
+                        <span className="text-xs text-slate-500 ml-2">
+                          ({comprehensiveResults.parsedResults.consensus.artist.agreementCount} sources)
+                        </span>
+                      </div>
+                      <span className="text-xs text-green-600 font-medium">
+                        {Math.round(comprehensiveResults.parsedResults.consensus.artist.weightedConfidence * 100)}% confidence
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      From: {comprehensiveResults.parsedResults.consensus.artist.sources.slice(0, 3).join(', ')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Results List */}
+                <div className="text-sm font-medium text-purple-900">
+                  Visual Matches ({comprehensiveResults.results.length}):
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {comprehensiveResults.results.slice(0, 15).map((result, idx) => (
+                    <div key={idx} className="bg-white rounded p-2 border border-purple-100 flex gap-2">
+                      {result.thumbnail && (
+                        <img
+                          src={result.thumbnail}
+                          alt=""
+                          className="w-12 h-12 object-cover rounded flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-purple-700 hover:underline line-clamp-1"
+                          >
+                            {result.title}
+                          </a>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {result.price && (
+                              <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                {result.price}
+                              </span>
+                            )}
+                            {result.isKnownDealer && result.reliabilityTier && (
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(result.reliabilityTier)}`}>
+                                T{result.reliabilityTier}
+                              </span>
+                            )}
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${
+                              result.source === 'lens' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              {result.source === 'lens' ? '📷' : '🔤'}
+                            </span>
+                          </div>
+                        </div>
+                        {result.snippet && (
+                          <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{result.snippet}</p>
+                        )}
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {result.isKnownDealer ? result.dealerName : result.domain}
+                          {!result.isKnownDealer && (
+                            <span className="ml-1 text-amber-600">(unknown)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Unknown Domains from comprehensive search */}
+                {comprehensiveResults.unknownDomains.length > 0 && (
+                  <div className="p-2 bg-amber-50 rounded border border-amber-200">
+                    <div className="text-xs font-medium text-amber-800 mb-1">
+                      Unknown dealers ({comprehensiveResults.unknownDomains.length}):
+                    </div>
+                    <div className="text-xs text-amber-700">
+                      {comprehensiveResults.unknownDomains.slice(0, 5).join(', ')}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-2 text-slate-500">or use text search only</span>
+            </div>
+          </div>
+
+          {/* Search All Dealers Button (Text Search) */}
           <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-lg p-4 border border-violet-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-violet-900">Automated Search</div>
+                <div className="font-medium text-violet-900">Text Search</div>
                 <div className="text-xs text-violet-600">
                   {searchConfigured === null
                     ? 'Checking configuration...'
                     : searchConfigured
-                    ? `Searches ${searchUrls.length} dealer sites via Google CSE`
-                    : 'Google Custom Search not configured'}
+                    ? 'Searches web for matching posters'
+                    : 'Serper API not configured'}
                 </div>
                 {searchConfigured && searchUrls.length > 0 && (
                   <details className="mt-1">

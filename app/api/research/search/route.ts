@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { googleSearch, googleSearchMultiple, isGoogleSearchConfigured, extractDomain } from '@/lib/google-search';
+import {
+  serperWebSearch,
+  serperSearchMultiple,
+  isSerperConfigured,
+  extractDomain,
+} from '@/lib/serper';
 import { getAllDealers } from '@/lib/dealers';
 import { parseSearchResultsWithAI } from '@/lib/identification-research';
 
 /**
  * POST /api/research/search
- * Aggregated search across dealer sites using Google Custom Search API
+ * Aggregated search across dealer sites using Serper API (Google Search)
  *
  * Body: {
  *   query: string,              // Primary search query
@@ -46,12 +51,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Google Search is configured
-    if (!isGoogleSearchConfigured()) {
+    // Check if Serper is configured
+    if (!isSerperConfigured()) {
       return NextResponse.json({
         success: false,
         configured: false,
-        error: 'Google Custom Search is not configured. Add GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID to environment variables.',
+        error: 'Serper API is not configured. Add SERPER_API_KEY to environment variables.',
         results: [],
       });
     }
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     if (queryVariations && queryVariations.length > 0) {
       // Multiple query search
-      const multiResult = await googleSearchMultiple(queryVariations, {
+      const multiResult = await serperSearchMultiple(queryVariations, {
         // No domain restriction - search whole web
         maxResultsPerQuery: Math.ceil(maxResults / queryVariations.length),
       });
@@ -96,12 +101,12 @@ export async function POST(request: NextRequest) {
       errors.push(...multiResult.errors);
     } else {
       // Single query search
-      const singleResult = await googleSearch(query, {
+      const singleResult = await serperWebSearch(query, {
         // No domain restriction - search whole web
         maxResults,
       });
 
-      console.log('Google Search result:', {
+      console.log('Serper search result:', {
         resultCount: singleResult.results.length,
         totalResults: singleResult.totalResults,
         error: singleResult.error,
@@ -180,7 +185,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/research/search/status
- * Check if Google Custom Search is configured
+ * Check if Serper API is configured
  */
 export async function GET(request: NextRequest) {
   try {
@@ -189,13 +194,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const configured = isGoogleSearchConfigured();
+    const configured = isSerperConfigured();
 
     return NextResponse.json({
       configured,
+      provider: 'serper',
       message: configured
-        ? 'Google Custom Search is configured and ready'
-        : 'Google Custom Search is not configured. Add GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID to environment variables.',
+        ? 'Serper API is configured and ready (Google Search + Lens)'
+        : 'Serper API is not configured. Add SERPER_API_KEY to environment variables.',
     });
   } catch (error) {
     console.error('Search status error:', error);
