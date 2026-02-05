@@ -472,8 +472,12 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
         }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
+        // Handle duplicate dealer case with helpful message
+        if (res.status === 409) {
+          throw new Error(data.message || `Dealer already exists: ${data.existingName}`);
+        }
         throw new Error(data.error || 'Failed to add dealer');
       }
 
@@ -952,12 +956,23 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                               onChange={(e) => setAddDealerType(e.target.value)}
                               className="px-2 py-1 border border-slate-200 rounded text-xs"
                             >
-                              <option value="poster_dealer">Poster Dealer</option>
-                              <option value="auction_house">Auction House</option>
-                              <option value="gallery">Gallery</option>
-                              <option value="marketplace">Marketplace</option>
-                              <option value="print_dealer">Print Dealer</option>
-                              <option value="book_dealer">Book Dealer</option>
+                              <optgroup label="Dealers">
+                                <option value="poster_dealer">Poster Dealer</option>
+                                <option value="auction_house">Auction House</option>
+                                <option value="gallery">Gallery</option>
+                                <option value="print_dealer">Print Dealer</option>
+                                <option value="book_dealer">Book Dealer</option>
+                                <option value="map_dealer">Map Dealer</option>
+                                <option value="ephemera_dealer">Ephemera Dealer</option>
+                                <option value="photography_dealer">Photography Dealer</option>
+                              </optgroup>
+                              <optgroup label="Platforms">
+                                <option value="marketplace">Marketplace</option>
+                                <option value="aggregator">Aggregator</option>
+                              </optgroup>
+                              <optgroup label="Research">
+                                <option value="museum">Museum / Institution</option>
+                              </optgroup>
                             </select>
                             <button
                               onClick={handleAddDealer}

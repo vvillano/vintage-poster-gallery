@@ -345,6 +345,44 @@ export async function dealerExistsByName(name: string): Promise<boolean> {
 }
 
 /**
+ * Find existing dealer by name or website domain
+ * Returns the dealer info if found, null otherwise
+ */
+export async function findExistingDealer(name: string, website?: string | null): Promise<{ id: number; name: string; matchedBy: 'name' | 'website' } | null> {
+  const slug = generateDealerSlug(name);
+
+  // Check by name/slug first
+  const byName = await sql`
+    SELECT id, name FROM dealers WHERE slug = ${slug}
+  `;
+  if (byName.rows.length > 0) {
+    return { id: byName.rows[0].id as number, name: byName.rows[0].name as string, matchedBy: 'name' };
+  }
+
+  // Check by website domain if provided
+  if (website) {
+    // Extract domain from website URL
+    let domain: string;
+    try {
+      const url = new URL(website.startsWith('http') ? website : `https://${website}`);
+      domain = url.hostname.replace(/^www\./, '');
+    } catch {
+      domain = website.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    }
+
+    const byWebsite = await sql`
+      SELECT id, name FROM dealers
+      WHERE website ILIKE ${`%${domain}%`}
+    `;
+    if (byWebsite.rows.length > 0) {
+      return { id: byWebsite.rows[0].id as number, name: byWebsite.rows[0].name as string, matchedBy: 'website' };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Seed multiple dealers (for initial setup)
  */
 export async function seedDealers(dealers: CreateDealerInput[]): Promise<{ created: number; skipped: number }> {

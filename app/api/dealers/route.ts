@@ -8,6 +8,7 @@ import {
   updateDealer,
   deleteDealer,
   getDealerCount,
+  findExistingDealer,
 } from '@/lib/dealers';
 import type { DealerType, DealerRegion, DealerSpecialization } from '@/types/dealer';
 
@@ -121,6 +122,18 @@ export async function POST(request: NextRequest) {
 
     if (!body.type) {
       return NextResponse.json({ error: 'type is required' }, { status: 400 });
+    }
+
+    // Check for existing dealer with same name or website
+    const existing = await findExistingDealer(body.name, body.website);
+    if (existing) {
+      const message = existing.matchedBy === 'name'
+        ? `A dealer named "${existing.name}" already exists`
+        : `A dealer with this website already exists: "${existing.name}"`;
+      return NextResponse.json(
+        { error: 'Dealer already exists', message, existingId: existing.id, existingName: existing.name },
+        { status: 409 }
+      );
     }
 
     const dealer = await createDealer({
