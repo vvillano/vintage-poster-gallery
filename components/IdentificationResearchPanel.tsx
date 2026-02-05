@@ -365,7 +365,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       }
 
       if (data.results?.length === 0) {
-        setSuccess(`Search completed - no results found for "${searchQuery}". Check CSE configuration.`);
+        setSuccess(`Search completed - no results found for "${searchQuery}". Try different search terms.`);
       } else {
         setSuccess(`Found ${data.results.length} results from ${new Set(data.results.map((r: AggregatedSearchResult) => r.domain)).size} sites.`);
       }
@@ -1017,24 +1017,6 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                     ? 'Searches web for matching posters'
                     : 'Serper API not configured'}
                 </div>
-                {searchConfigured && searchUrls.length > 0 && (
-                  <details className="mt-1">
-                    <summary className="text-xs text-violet-500 cursor-pointer hover:text-violet-700">
-                      Show sites to add to CSE
-                    </summary>
-                    <div className="mt-2 p-2 bg-white rounded border border-violet-100 text-xs font-mono max-h-32 overflow-y-auto">
-                      {Array.from(new Set(searchUrls.map(u => {
-                        try {
-                          return new URL(u.website || '').hostname.replace(/^www\./, '');
-                        } catch {
-                          return null;
-                        }
-                      }).filter(Boolean))).map((domain, i) => (
-                        <div key={i} className="text-slate-600">{domain}</div>
-                      ))}
-                    </div>
-                  </details>
-                )}
               </div>
               <button
                 onClick={handleSearchAll}
