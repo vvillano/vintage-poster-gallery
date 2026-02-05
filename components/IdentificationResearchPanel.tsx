@@ -166,8 +166,20 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       mainTitle = poster.title || 'poster';
     }
 
-    // Extract year
+    // Determine product type term for search (use actual type instead of always "poster")
+    const productType = poster.productType?.toLowerCase() || 'poster';
+    const searchTypeTerm = productType === 'poster' ? 'poster' :
+                           productType === 'cover art' ? 'magazine cover' :
+                           productType === 'print' ? 'print' :
+                           productType === 'photograph' ? 'photograph' :
+                           productType === 'illustration' ? 'illustration' :
+                           productType === 'ephemera' ? '' : // Don't add type for ephemera
+                           productType; // Use the type as-is for others
+
+    // Extract date - prefer full date if available (e.g., "May 9, 1931"), otherwise just year
+    const fullDateMatch = poster.estimatedDate?.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})/);
     const yearMatch = poster.estimatedDate?.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+    const dateForSearch = fullDateMatch ? fullDateMatch[1] : (yearMatch ? yearMatch[1] : null);
     const year = yearMatch ? yearMatch[1] : null;
 
     // Clean artist name
@@ -175,9 +187,9 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       ? poster.artist.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
       : null;
 
-    // 1. Broad: Title only (no quotes for broader matching)
+    // 1. Broad: Title + product type (no quotes for broader matching)
     variations.push({
-      query: `${mainTitle} poster`,
+      query: searchTypeTerm ? `${mainTitle} ${searchTypeTerm}` : mainTitle,
       label: 'Broad',
       description: 'Title only - most matches',
       priority: 1,
@@ -186,29 +198,29 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
     // 2. With artist (if known)
     if (artist) {
       variations.push({
-        query: `${mainTitle} ${artist} poster`,
+        query: searchTypeTerm ? `${mainTitle} ${artist} ${searchTypeTerm}` : `${mainTitle} ${artist}`,
         label: 'With Artist',
         description: `Include: ${artist}`,
         priority: 2,
       });
     }
 
-    // 3. With date (if known)
-    if (year) {
+    // 3. With date (if known) - use full date if available
+    if (dateForSearch) {
       variations.push({
-        query: `${mainTitle} ${year} poster`,
+        query: searchTypeTerm ? `${mainTitle} ${dateForSearch} ${searchTypeTerm}` : `${mainTitle} ${dateForSearch}`,
         label: 'With Date',
-        description: `Include: ${year}`,
+        description: `Include: ${dateForSearch}`,
         priority: 3,
       });
     }
 
     // 4. Artist + Date (if both known)
-    if (artist && year) {
+    if (artist && dateForSearch) {
       variations.push({
-        query: `${mainTitle} ${artist} ${year}`,
+        query: `${mainTitle} ${artist} ${dateForSearch}`,
         label: 'Full Context',
-        description: `${artist}, ${year}`,
+        description: `${artist}, ${dateForSearch}`,
         priority: 4,
       });
     }
