@@ -264,6 +264,7 @@ function webToUnified(
     price: priceInfo?.price,
     priceValue: priceInfo?.value,
     currency: priceInfo?.currency,
+    thumbnail: result.imageUrl, // Rich snippet image from Serper (if available)
     visuallyVerified: false, // Not verified until visual verification runs
     ...dealerMatch,
   };

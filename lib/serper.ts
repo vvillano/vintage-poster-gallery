@@ -24,6 +24,7 @@ export interface SerperSearchResult {
   position?: number;
   date?: string; // Publication date if available
   sitelinks?: { title: string; link: string }[];
+  imageUrl?: string; // Rich snippet image if available
 }
 
 export interface SerperImageResult {
@@ -223,6 +224,7 @@ export async function serperWebSearch(
         position: item.position || index + 1,
         date: item.date,
         sitelinks: item.sitelinks,
+        imageUrl: item.imageUrl || item.thumbnail, // Rich snippet image
       })
     );
 
