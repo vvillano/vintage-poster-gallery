@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import type { Poster, ResearchSite } from '@/types/poster';
 import UnifiedDealerSearch from './UnifiedDealerSearch';
 
@@ -180,13 +179,12 @@ export default function PosterValuationTab({ poster, onUpdate }: PosterValuation
       {poster.imageUrl && (
         <div className="bg-white border border-slate-200 rounded-lg p-4">
           <div className="flex items-start gap-4">
-            <div className="relative w-32 h-32 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden">
-              <Image
+            <div className="w-32 h-32 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden">
+              {/* Using img tag for reliability with external URLs */}
+              <img
                 src={poster.imageUrl}
                 alt={poster.title || 'Poster'}
-                fill
-                className="object-contain"
-                sizes="128px"
+                className="w-full h-full object-contain"
               />
             </div>
             <div className="flex-1 min-w-0">
