@@ -78,12 +78,46 @@ export default function UnifiedDealerSearch({ poster, onUpdate }: UnifiedDealerS
   const [addDealerSaving, setAddDealerSaving] = useState(false);
   const [recentlyAddedDomains, setRecentlyAddedDomains] = useState<Set<string>>(new Set());
 
-  // Initialize search query from poster
+  // Generate query variations
+  const generateQueryVariations = () => {
+    const variations: { label: string; query: string }[] = [];
+    const title = poster.title || '';
+    const artist = poster.artist && poster.artist !== 'Unknown' ? poster.artist : '';
+    const date = poster.estimatedDate || '';
+
+    // Extract core title (first part before common separators)
+    const coreTitle = title.split(/[-–—|,]/)[0].trim();
+
+    // Broad: just core title + "vintage poster"
+    if (coreTitle) {
+      variations.push({ label: 'Broad', query: `${coreTitle} vintage poster` });
+    }
+
+    // With Artist
+    if (coreTitle && artist) {
+      variations.push({ label: '+ Artist', query: `${coreTitle} ${artist} poster` });
+    }
+
+    // With Date
+    if (coreTitle && date) {
+      const yearMatch = date.match(/\d{4}/);
+      if (yearMatch) {
+        variations.push({ label: '+ Date', query: `${coreTitle} ${yearMatch[0]} poster` });
+      }
+    }
+
+    return variations;
+  };
+
+  const queryVariations = generateQueryVariations();
+
+  // Initialize search query from poster - include "vintage poster" by default
   useEffect(() => {
     if (poster) {
       const parts: string[] = [];
       if (poster.title) parts.push(poster.title);
-      if (poster.artist && poster.artist !== 'Unknown') parts.push(poster.artist);
+      // Add "vintage poster" to help focus search results
+      parts.push('vintage poster');
       setSearchQuery(parts.join(' '));
     }
   }, [poster?.id]);
@@ -306,6 +340,22 @@ export default function UnifiedDealerSearch({ poster, onUpdate }: UnifiedDealerS
             {searching ? 'Searching...' : 'Search'}
           </button>
         </div>
+
+        {/* Quick Variations */}
+        {queryVariations.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-500">Quick variations:</span>
+            {queryVariations.map((v, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSearchQuery(v.query)}
+                className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 text-slate-600 transition"
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Visual Verification Toggle */}
         <div className="mt-2 flex items-center gap-2">
