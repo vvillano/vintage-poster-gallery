@@ -11,6 +11,8 @@ import IdentificationResearchPanel from '@/components/IdentificationResearchPane
 import ValuationPanel from '@/components/ValuationPanel';
 import ProductDescriptionEditor from '@/components/ProductDescriptionEditor';
 import Twemoji from '@/components/Twemoji';
+import PosterResearchTab from '@/components/PosterResearchTab';
+import PosterValuationTab from '@/components/PosterValuationTab';
 
 // Map printing techniques to their Wikipedia article URLs
 function getPrintingWikiUrl(technique: string): string {
@@ -1233,23 +1235,60 @@ export default function PosterDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Image */}
-        <div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <ImagePreview
-              src={poster.imageUrl}
-              alt={poster.title || poster.fileName}
-              className="w-full h-full object-contain aspect-[3/4] bg-slate-100 rounded-lg"
-            />
-            <div className="mt-4 text-sm text-slate-600">
-              {poster.productType && (
-                <div className="mb-3">
-                  <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {poster.productType}
-                  </span>
-                </div>
-              )}
+      {/* Main Tab Navigation */}
+      <div className="bg-white border border-slate-200 rounded-t-lg overflow-hidden mb-0">
+        <div className="flex">
+          <button
+            onClick={() => setActiveResearchTab('research')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition flex items-center justify-center gap-2 ${
+              activeResearchTab === 'research'
+                ? 'bg-violet-50 text-violet-700 border-b-2 border-violet-600'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent'
+            }`}
+          >
+            <span className="text-lg">🔍</span>
+            <span>Research</span>
+            <span className="text-xs text-slate-400 ml-1">(What is this?)</span>
+          </button>
+          <button
+            onClick={() => setActiveResearchTab('valuation')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition flex items-center justify-center gap-2 ${
+              activeResearchTab === 'valuation'
+                ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent'
+            }`}
+          >
+            <span className="text-lg">💰</span>
+            <span>Valuation</span>
+            <span className="text-xs text-slate-400 ml-1">(What's it worth?)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeResearchTab === 'valuation' ? (
+        <div className="bg-slate-50 border border-t-0 border-slate-200 rounded-b-lg p-6">
+          <PosterValuationTab poster={poster} onUpdate={fetchPoster} />
+        </div>
+      ) : (
+        <div className="bg-slate-50 border border-t-0 border-slate-200 rounded-b-lg p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Image */}
+            <div>
+              <div className="bg-white rounded-lg shadow p-4">
+                <ImagePreview
+                  src={poster.imageUrl}
+                  alt={poster.title || poster.fileName}
+                  className="w-full h-full object-contain aspect-[3/4] bg-slate-100 rounded-lg"
+                />
+                <div className="mt-4 text-sm text-slate-600">
+                  {poster.productType && (
+                    <div className="mb-3">
+                      <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {poster.productType}
+                      </span>
+                    </div>
+                  )}
               <p>
                 <strong>Uploaded:</strong> {formatDate(poster.uploadDate)}
               </p>
@@ -2914,492 +2953,8 @@ export default function PosterDetailPage() {
               {/* Shopify Integration */}
               <ShopifyPanel poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
 
-              {/* Research & Valuation Tabs */}
-              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                {/* Tab Headers */}
-                <div className="flex border-b border-slate-200">
-                  <button
-                    onClick={() => setActiveResearchTab('research')}
-                    className={`flex-1 px-4 py-3 text-sm font-medium transition ${
-                      activeResearchTab === 'research'
-                        ? 'bg-violet-50 text-violet-700 border-b-2 border-violet-600'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="mr-2">🔍</span>
-                    Research
-                    <span className="ml-2 text-xs text-slate-400">(What is this?)</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveResearchTab('valuation')}
-                    className={`flex-1 px-4 py-3 text-sm font-medium transition ${
-                      activeResearchTab === 'valuation'
-                        ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="mr-2">💰</span>
-                    Valuation
-                    <span className="ml-2 text-xs text-slate-400">(What's it worth?)</span>
-                  </button>
-                </div>
-
-                {/* Tab Content */}
-                <div>
-                  {activeResearchTab === 'research' ? (
-                    <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
-                  ) : (
-                    <ValuationPanel poster={poster} onUpdate={fetchPoster} />
-                  )}
-                </div>
-              </div>
-
-              {/* Legacy Price Research & Sales - to be removed after ValuationPanel is tested */}
-              <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">
-                  Price Research & Sales
-                </h3>
-
-                {/* Research Links */}
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-slate-700 mb-2">Research Links</p>
-
-                  {/* Editable search term with copy button */}
-                  <div className="flex items-center gap-2 mb-3 p-2 bg-white rounded border border-slate-200">
-                    <input
-                      type="text"
-                      value={researchQuery}
-                      onChange={(e) => setResearchQuery(e.target.value)}
-                      className="text-sm text-slate-600 flex-1 bg-transparent outline-none focus:ring-0 border-none"
-                      placeholder="Enter search terms..."
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(researchQuery);
-                        alert('Search term copied!');
-                      }}
-                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition whitespace-nowrap"
-                    >
-                      Copy
-                    </button>
-                  </div>
-
-                  {/* Subscription sites */}
-                  {researchSites.filter(s => s.requiresSubscription).length > 0 && (
-                    <>
-                      <p className="text-xs text-slate-500 mb-2">Subscription sites:</p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {researchSites.filter(s => s.requiresSubscription).map((site) => {
-                          const siteUrl = site.urlTemplate.includes('{search}')
-                            ? site.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))
-                            : site.urlTemplate;
-                          const hasCredentials = site.username || site.password;
-                          return (
-                            <div key={site.id} className="relative group">
-                              <a
-                                href={siteUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm px-3 py-1.5 rounded transition bg-violet-600 hover:bg-violet-700 text-white inline-block"
-                              >
-                                {site.name}
-                              </a>
-                              {/* Credentials tooltip */}
-                              {hasCredentials && (
-                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 z-50">
-                                  <div className="bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl min-w-[180px]">
-                                    <p className="text-slate-400 text-[10px] uppercase tracking-wide mb-2">Credentials</p>
-                                    {site.username && (
-                                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                                        <span className="text-slate-300">UN:</span>
-                                        <span className="font-mono">{site.username}</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            navigator.clipboard.writeText(site.username || '');
-                                            setCopiedCredential(`${site.id}-un`);
-                                            setTimeout(() => setCopiedCredential(null), 1500);
-                                          }}
-                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
-                                        >
-                                          {copiedCredential === `${site.id}-un` ? 'Copied!' : 'Copy'}
-                                        </button>
-                                      </div>
-                                    )}
-                                    {site.password && (
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-slate-300">PW:</span>
-                                        <span className="font-mono">••••••</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            navigator.clipboard.writeText(site.password || '');
-                                            setCopiedCredential(`${site.id}-pw`);
-                                            setTimeout(() => setCopiedCredential(null), 1500);
-                                          }}
-                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
-                                        >
-                                          {copiedCredential === `${site.id}-pw` ? 'Copied!' : 'Copy'}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Free sites */}
-                  {researchSites.filter(s => !s.requiresSubscription).length > 0 && (
-                    <>
-                      <p className="text-xs text-slate-500 mb-2">Free sites (direct search):</p>
-                      <div className="flex flex-wrap gap-2">
-                        {researchSites.filter(s => !s.requiresSubscription).map((site) => {
-                          const siteUrl = site.urlTemplate.includes('{search}')
-                            ? site.urlTemplate.replace('{search}', encodeURIComponent(researchQuery))
-                            : site.urlTemplate;
-                          const hasCredentials = site.username || site.password;
-                          return (
-                            <div key={site.id} className="relative group">
-                              <a
-                                href={siteUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm px-3 py-1.5 rounded transition bg-slate-100 hover:bg-slate-200 text-slate-700 inline-block"
-                              >
-                                {site.name}
-                              </a>
-                              {/* Credentials tooltip */}
-                              {hasCredentials && (
-                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 z-50">
-                                  <div className="bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl min-w-[180px]">
-                                    <p className="text-slate-400 text-[10px] uppercase tracking-wide mb-2">Credentials</p>
-                                    {site.username && (
-                                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                                        <span className="text-slate-300">UN:</span>
-                                        <span className="font-mono">{site.username}</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            navigator.clipboard.writeText(site.username || '');
-                                            setCopiedCredential(`${site.id}-un`);
-                                            setTimeout(() => setCopiedCredential(null), 1500);
-                                          }}
-                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
-                                        >
-                                          {copiedCredential === `${site.id}-un` ? 'Copied!' : 'Copy'}
-                                        </button>
-                                      </div>
-                                    )}
-                                    {site.password && (
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-slate-300">PW:</span>
-                                        <span className="font-mono">••••••</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            navigator.clipboard.writeText(site.password || '');
-                                            setCopiedCredential(`${site.id}-pw`);
-                                            setTimeout(() => setCopiedCredential(null), 1500);
-                                          }}
-                                          className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded"
-                                        >
-                                          {copiedCredential === `${site.id}-pw` ? 'Copied!' : 'Copy'}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {/* No sites message */}
-                  {researchSites.length === 0 && (
-                    <p className="text-sm text-slate-500">
-                      No research sites configured.{' '}
-                      <a href="/settings/platforms" className="text-violet-600 hover:underline">
-                        Add sites in Settings
-                      </a>
-                    </p>
-                  )}
-                </div>
-
-                {/* Price Summary */}
-                {getPriceSummary() && (
-                  <div className="mb-6 p-4 bg-white rounded-lg border border-violet-200">
-                    <p className="text-sm font-medium text-slate-700 mb-2">Price Summary</p>
-                    <div className="grid grid-cols-4 gap-4 text-center">
-                      <div>
-                        <p className="text-xs text-slate-500">Low</p>
-                        <p className="text-lg font-bold text-red-600">${getPriceSummary()!.low.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">High</p>
-                        <p className="text-lg font-bold text-green-600">${getPriceSummary()!.high.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Average</p>
-                        <p className="text-lg font-bold text-violet-600">${getPriceSummary()!.avg.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Sales</p>
-                        <p className="text-lg font-bold text-slate-700">{getPriceSummary()!.count}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sales Log */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-slate-700">Sales Log</p>
-                    <button
-                      onClick={() => setShowAddSale(!showAddSale)}
-                      className="text-sm bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded transition"
-                    >
-                      {showAddSale ? 'Cancel' : '+ Add Sale'}
-                    </button>
-                  </div>
-
-                  {/* Add Sale Form */}
-                  {showAddSale && (
-                    <form onSubmit={addComparableSale} className="mb-4 p-4 bg-white rounded-lg border border-violet-200 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-medium text-slate-600">Date *</label>
-                          <input
-                            type="date"
-                            value={newSale.date}
-                            onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
-                            required
-                            className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-slate-600">Price *</label>
-                          <div className="flex mt-1">
-                            <select
-                              value={newSale.currency}
-                              onChange={(e) => setNewSale({ ...newSale, currency: e.target.value })}
-                              className="px-2 py-2 text-sm border border-r-0 border-slate-300 rounded-l bg-slate-50"
-                            >
-                              <option value="USD">$</option>
-                              <option value="EUR">€</option>
-                              <option value="GBP">£</option>
-                            </select>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={newSale.price}
-                              onChange={(e) => setNewSale({ ...newSale, price: e.target.value })}
-                              required
-                              placeholder="0.00"
-                              className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-r focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600">Source *</label>
-                        <select
-                          value={newSale.source}
-                          onChange={(e) => setNewSale({ ...newSale, source: e.target.value })}
-                          required
-                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                        >
-                          <option value="">Select source...</option>
-                          {researchSites.map((site) => (
-                            <option key={site.id} value={site.name}>{site.name}</option>
-                          ))}
-                          <option value="Christie's">Christie's</option>
-                          <option value="Sotheby's">Sotheby's</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600">Condition</label>
-                        <input
-                          type="text"
-                          value={newSale.condition}
-                          onChange={(e) => setNewSale({ ...newSale, condition: e.target.value })}
-                          placeholder="e.g., Excellent, Good, Fair"
-                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600">URL</label>
-                        <input
-                          type="url"
-                          value={newSale.url}
-                          onChange={(e) => setNewSale({ ...newSale, url: e.target.value })}
-                          placeholder="Link to the sale listing"
-                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600">Notes</label>
-                        <textarea
-                          value={newSale.notes}
-                          onChange={(e) => setNewSale({ ...newSale, notes: e.target.value })}
-                          placeholder="Any additional details..."
-                          rows={2}
-                          className="w-full mt-1 px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none resize-none"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={addingSale || !newSale.date || !newSale.price || !newSale.source}
-                        className="w-full bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {addingSale ? 'Adding...' : 'Add Sale Record'}
-                      </button>
-                    </form>
-                  )}
-
-                  {/* Sales List */}
-                  {poster.comparableSales && poster.comparableSales.length > 0 ? (
-                    <div className="space-y-2">
-                      {poster.comparableSales
-                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                        .map((sale) => (
-                          <div
-                            key={sale.id}
-                            className="p-3 bg-white rounded-lg border border-slate-200 group"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-1">
-                                  <span className="font-bold text-violet-700">
-                                    {sale.currency === 'USD' ? '$' : sale.currency === 'EUR' ? '€' : '£'}
-                                    {sale.price.toLocaleString()}
-                                  </span>
-                                  <span className="text-sm text-slate-600">{sale.source}</span>
-                                  <span className="text-xs text-slate-400">
-                                    {new Date(sale.date).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                {sale.condition && (
-                                  <p className="text-xs text-slate-500">Condition: {sale.condition}</p>
-                                )}
-                                {sale.notes && (
-                                  <p className="text-xs text-slate-500 mt-1">{sale.notes}</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-                                {sale.url && (
-                                  <a
-                                    href={sale.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded"
-                                  >
-                                    View →
-                                  </a>
-                                )}
-                                <button
-                                  onClick={() => deleteComparableSale(sale.id)}
-                                  disabled={deletingSaleId === sale.id}
-                                  className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded disabled:opacity-50"
-                                >
-                                  {deletingSaleId === sale.id ? '...' : 'Delete'}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-lg border border-dashed border-slate-300">
-                      No sales recorded yet. Use the research links above to find comparable sales.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Find This Item */}
-              {poster.title && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">
-                    Find This Item
-                  </h3>
-                  <p className="text-sm text-slate-600 mb-4">
-                    Search marketplaces for current listings of this exact piece
-                  </p>
-
-                  {/* Image Search */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-slate-500 uppercase mb-2">Image Search (Most Accurate)</p>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(poster.imageUrl)}&q=${encodeURIComponent(
-                          `${poster.title} Original ${poster.productType || 'Poster'}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition"
-                      >
-                        Google Lens
-                      </a>
-                      <a
-                        href={`https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&sbisrc=UrlPaste&q=imgurl:${encodeURIComponent(poster.imageUrl)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition"
-                      >
-                        Bing Visual
-                      </a>
-                      <a
-                        href={`https://tineye.com/search?url=${encodeURIComponent(poster.imageUrl)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded transition"
-                      >
-                        TinEye
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Marketplace Search */}
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase mb-2">Marketplace Search</p>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-yellow-500 hover:bg-yellow-600 text-slate-900 px-3 py-1.5 rounded transition"
-                      >
-                        eBay
-                      </a>
-                      <a
-                        href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        Google Shopping
-                      </a>
-                      <a
-                        href={`https://www.liveauctioneers.com/search/?q=${encodeURIComponent(buildMarketplaceQuery(poster))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded transition"
-                      >
-                        LiveAuctioneers
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Dealer Research for Attribution */}
+              <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
 
               {/* User Notes */}
               <div className="bg-white rounded-lg shadow p-6">
@@ -3435,7 +2990,9 @@ export default function PosterDetailPage() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+        </div>
+      )}
     </div>
   );
 }

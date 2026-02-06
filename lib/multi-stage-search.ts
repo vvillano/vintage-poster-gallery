@@ -41,6 +41,10 @@ export interface UnifiedSearchResult {
   priceValue?: number;
   currency?: string;
 
+  // Product page indicators (even when price not extracted)
+  isProductPage?: boolean;     // URL/snippet indicates this is a product page
+  productIndicators?: string[]; // What triggered product detection (for debugging)
+
   // Dealer matching
   dealerId?: number;
   dealerName?: string;
@@ -106,6 +110,13 @@ export interface MultiStageSearchResponse {
     resultsVerified: number;
     confirmedMatches: number;
     highMatchCount: number;
+  };
+
+  // Product page detection stats
+  productPageStats?: {
+    total: number;          // Total product pages detected
+    withPrice: number;      // Product pages with price extracted
+    needingPrice: number;   // Product pages that likely have price but we couldn't extract
   };
 
   // Stats
@@ -186,6 +197,80 @@ function matchToDealer(
 }
 
 /**
+ * Detect if a URL and/or snippet indicates a product page
+ * This helps flag potential price sources even when price isn't in the snippet
+ */
+function detectProductPage(url: string, snippet?: string): { isProductPage: boolean; indicators: string[] } {
+  const indicators: string[] = [];
+  const lowerUrl = url.toLowerCase();
+  const lowerSnippet = (snippet || '').toLowerCase();
+
+  // URL patterns that indicate product pages
+  const productUrlPatterns = [
+    { pattern: /\/products?\//, indicator: 'URL contains /product/' },
+    { pattern: /\/listing\//, indicator: 'URL contains /listing/' },
+    { pattern: /\/item\//, indicator: 'URL contains /item/' },
+    { pattern: /\/lot\//, indicator: 'URL contains /lot/' },
+    { pattern: /\/auction\//, indicator: 'URL contains /auction/' },
+    { pattern: /\/p\/[a-z0-9-]+$/i, indicator: 'URL ends with /p/SKU' },
+    { pattern: /\/(dp|gp)\/[A-Z0-9]+/i, indicator: 'Amazon-style product URL' },
+    { pattern: /\/itm\//, indicator: 'eBay item URL' },
+    { pattern: /etsy\.com\/listing\/\d+/, indicator: 'Etsy listing' },
+    { pattern: /\/poster\/[a-z0-9-]+/i, indicator: 'Poster-specific URL' },
+    { pattern: /\/prints?\//i, indicator: 'Print-specific URL' },
+    { pattern: /\/vintage[_-]?poster/i, indicator: 'Vintage poster URL' },
+  ];
+
+  for (const { pattern, indicator } of productUrlPatterns) {
+    if (pattern.test(lowerUrl)) {
+      indicators.push(indicator);
+    }
+  }
+
+  // Snippet patterns that indicate product pages
+  const productSnippetPatterns = [
+    { pattern: /\badd to cart\b/i, indicator: 'Add to cart text' },
+    { pattern: /\bbuy now\b/i, indicator: 'Buy now text' },
+    { pattern: /\bin stock\b/i, indicator: 'In stock text' },
+    { pattern: /\bout of stock\b/i, indicator: 'Out of stock text' },
+    { pattern: /\bsold\b(?!\s*(by|at|in|on))/i, indicator: 'Sold indicator' },
+    { pattern: /\bshipping\b/i, indicator: 'Shipping mentioned' },
+    { pattern: /\bfree delivery\b/i, indicator: 'Free delivery mentioned' },
+    { pattern: /condition:?\s*(mint|excellent|good|fair|poor|fine|very fine)/i, indicator: 'Condition grade' },
+    { pattern: /\blinen[- ]?backed\b/i, indicator: 'Linen backed (poster condition)' },
+    { pattern: /\boriginal\s+(vintage\s+)?poster\b/i, indicator: 'Original poster' },
+    { pattern: /\bapprox\.?\s*\d+\s*[x×]\s*\d+/i, indicator: 'Dimension listed' },
+    { pattern: /\d+["″]?\s*[x×]\s*\d+["″]?/i, indicator: 'Dimensions in inches' },
+    { pattern: /\d+\s*cm\s*[x×]\s*\d+\s*cm/i, indicator: 'Dimensions in cm' },
+  ];
+
+  for (const { pattern, indicator } of productSnippetPatterns) {
+    if (pattern.test(lowerSnippet)) {
+      indicators.push(indicator);
+    }
+  }
+
+  // Known e-commerce/dealer domains are likely product pages
+  const ecommerceDomains = [
+    'ebay.com', 'etsy.com', 'amazon.com', '1stdibs.com', 'rubylane.com',
+    'liveauctioneers.com', 'invaluable.com', 'ha.com', 'sothebys.com',
+    'christies.com', 'bonhams.com', 'postermuseum.com', 'galerie123.com',
+    'goldenageposters.com', 'posteritati.com', 'filmartgallery.com',
+    'originalfilmart.com', 'vintagemovieposters.co.uk', 'sirjacks.com',
+  ];
+
+  const domain = lowerUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  if (ecommerceDomains.some(d => domain.includes(d))) {
+    indicators.push(`Known e-commerce domain: ${domain}`);
+  }
+
+  return {
+    isProductPage: indicators.length > 0,
+    indicators,
+  };
+}
+
+/**
  * Extract price from text (e.g., "$1,200" or "€950")
  */
 function extractPrice(text: string): { price: string; value: number; currency: string } | null {
@@ -229,6 +314,7 @@ function lensToUnified(
 ): UnifiedSearchResult {
   const dealerMatch = matchToDealer(result.url, dealerMap);
   const priceInfo = result.price ? extractPrice(result.price) : null;
+  const productDetection = detectProductPage(result.url);
 
   return {
     title: result.title,
@@ -239,6 +325,8 @@ function lensToUnified(
     price: result.price || priceInfo?.price,
     priceValue: priceInfo?.value,
     currency: priceInfo?.currency,
+    isProductPage: productDetection.isProductPage || !!result.price, // Lens results with price are product pages
+    productIndicators: productDetection.indicators.length > 0 ? productDetection.indicators : undefined,
     thumbnail: result.thumbnail,
     visuallyVerified: false, // Not verified until visual verification runs
     ...dealerMatch,
@@ -254,6 +342,7 @@ function webToUnified(
 ): UnifiedSearchResult {
   const dealerMatch = matchToDealer(result.url, dealerMap);
   const priceInfo = result.snippet ? extractPrice(result.snippet) : null;
+  const productDetection = detectProductPage(result.url, result.snippet);
 
   return {
     title: result.title,
@@ -264,6 +353,8 @@ function webToUnified(
     price: priceInfo?.price,
     priceValue: priceInfo?.value,
     currency: priceInfo?.currency,
+    isProductPage: productDetection.isProductPage,
+    productIndicators: productDetection.indicators.length > 0 ? productDetection.indicators : undefined,
     thumbnail: result.imageUrl, // Rich snippet image from Serper (if available)
     visuallyVerified: false, // Not verified until visual verification runs
     ...dealerMatch,
@@ -650,11 +741,32 @@ export async function multiStageSearch(
   const confirmedMatches = sortedResults.filter(r => r.sameImage);
   const highVisualMatches = sortedResults.filter(r => (r.visualMatch ?? 0) >= 60);
 
+  // Count results with thumbnails and product pages for diagnostics
+  const resultsWithThumbnails = sortedResults.filter(r => r.thumbnail);
+  const productPages = sortedResults.filter(r => r.isProductPage);
+  const productPagesWithPrice = sortedResults.filter(r => r.isProductPage && r.priceValue);
+  const productPagesNeedingPrice = sortedResults.filter(r => r.isProductPage && !r.priceValue);
+
   console.log('[multi-stage] Search complete:', {
     totalResults: sortedResults.length,
     lensResults: lensResults.length,
     webResults: webResults.length,
     unknownDomains: unknownDomains.size,
+    thumbnails: {
+      total: resultsWithThumbnails.length,
+      lens: lensResults.filter(r => r.thumbnail).length,
+      web: webResults.filter(r => r.thumbnail).length,
+    },
+    productPages: {
+      total: productPages.length,
+      withPrice: productPagesWithPrice.length,
+      needingPrice: productPagesNeedingPrice.length,
+      // Log first few product pages without prices for debugging
+      samplesNeedingPrice: productPagesNeedingPrice.slice(0, 3).map(r => ({
+        url: r.url,
+        indicators: r.productIndicators?.slice(0, 2),
+      })),
+    },
     visualVerification: enableVisualVerification ? {
       verified: verifiedResults.length,
       confirmed: confirmedMatches.length,
@@ -680,6 +792,11 @@ export async function multiStageSearch(
       confirmedMatches: confirmedMatches.length,
       highMatchCount: highVisualMatches.length,
     } : undefined,
+    productPageStats: {
+      total: productPages.length,
+      withPrice: productPagesWithPrice.length,
+      needingPrice: productPagesNeedingPrice.length,
+    },
     totalResults: sortedResults.length,
     creditsUsed,
     searchTime,

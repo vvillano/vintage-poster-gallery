@@ -19,6 +19,9 @@ interface UnifiedSearchResult {
   dealerName?: string;
   reliabilityTier?: number;
   isKnownDealer: boolean;
+  // Product page detection (even without extracted price)
+  isProductPage?: boolean;     // URL/snippet indicates this is a product page
+  productIndicators?: string[]; // What triggered product detection
   // Visual verification fields
   visualMatch?: number;        // 0-100 visual similarity score
   sameImage?: boolean;         // High confidence this is the same poster
@@ -43,6 +46,11 @@ interface ComprehensiveSearchResponse {
     resultsVerified: number;
     confirmedMatches: number;
     highMatchCount: number;
+  };
+  productPageStats?: {
+    total: number;
+    withPrice: number;
+    needingPrice: number;
   };
   parsedResults?: {
     results: any[];
@@ -698,7 +706,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
               <div className="space-y-3">
                 {/* Visual Verification Stats */}
                 {comprehensiveResults.visualVerification && (
-                  <div className="p-2 bg-white rounded border border-purple-100 flex items-center gap-4">
+                  <div className="p-2 bg-white rounded border border-purple-100 flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-green-600">✓</span>
                       <span className="text-green-700 font-medium">{comprehensiveResults.visualVerification.confirmedMatches}</span>
@@ -713,6 +721,29 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                       <span className="text-slate-400">🔍</span>
                       <span className="text-slate-600">{comprehensiveResults.visualVerification.resultsVerified} verified</span>
                     </div>
+                  </div>
+                )}
+
+                {/* Product Page Stats */}
+                {comprehensiveResults.productPageStats && comprehensiveResults.productPageStats.total > 0 && (
+                  <div className="p-2 bg-amber-50 rounded border border-amber-100 flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-amber-600">🏷️</span>
+                      <span className="text-amber-700 font-medium">{comprehensiveResults.productPageStats.total}</span>
+                      <span className="text-amber-600">product pages</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-green-600">💵</span>
+                      <span className="text-green-700 font-medium">{comprehensiveResults.productPageStats.withPrice}</span>
+                      <span className="text-green-600">with price</span>
+                    </div>
+                    {comprehensiveResults.productPageStats.needingPrice > 0 && (
+                      <div className="flex items-center gap-1 text-xs" title="Product pages detected but price not in snippet - click to view on site">
+                        <span className="text-amber-500">⚠</span>
+                        <span className="text-amber-700 font-medium">{comprehensiveResults.productPageStats.needingPrice}</span>
+                        <span className="text-amber-600">price on site</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -877,11 +908,18 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                             {result.title}
                           </a>
                           <div className="flex items-center gap-1 flex-shrink-0">
-                            {result.price && (
+                            {result.price ? (
                               <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
                                 {result.price}
                               </span>
-                            )}
+                            ) : result.isProductPage ? (
+                              <span
+                                className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded"
+                                title={result.productIndicators?.join(', ') || 'Product page detected'}
+                              >
+                                🏷️ Price on site
+                              </span>
+                            ) : null}
                             {result.isKnownDealer && result.reliabilityTier && (
                               <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(result.reliabilityTier)}`}>
                                 T{result.reliabilityTier}

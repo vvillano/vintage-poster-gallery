@@ -19,6 +19,9 @@ interface ValuationSearchResult {
   reliabilityTier?: number;
   dealerCategory?: string;
   isKnownDealer: boolean;
+  // Product page detection (even without extracted price)
+  isProductPage?: boolean;     // URL/snippet indicates this is a product page
+  productIndicators?: string[]; // What triggered product detection
   // Visual verification fields
   visualMatch?: number;        // 0-100 visual similarity score
   sameImage?: boolean;         // High confidence this is the same poster
@@ -38,6 +41,11 @@ interface ValuationSearchResponse {
     resultsVerified: number;
     confirmedMatches: number;
     highMatchCount: number;
+  };
+  productPageStats?: {
+    total: number;
+    withPrice: number;
+    needingPrice: number;
   };
   parsedResults?: {
     priceSummary: {
@@ -489,7 +497,7 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
 
             {/* Visual Verification Stats */}
             {searchResults?.visualVerification && (
-              <div className="mt-3 p-2 bg-white rounded border border-green-100 flex items-center gap-4">
+              <div className="mt-3 p-2 bg-white rounded border border-green-100 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-1 text-xs">
                   <span className="text-green-600">✓</span>
                   <span className="text-green-700 font-medium">{searchResults.visualVerification.confirmedMatches}</span>
@@ -504,6 +512,29 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                   <span className="text-slate-400">🔍</span>
                   <span className="text-slate-600">{searchResults.visualVerification.resultsVerified} verified</span>
                 </div>
+              </div>
+            )}
+
+            {/* Product Page Stats */}
+            {searchResults?.productPageStats && searchResults.productPageStats.total > 0 && (
+              <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-100 flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-amber-600">🏷️</span>
+                  <span className="text-amber-700 font-medium">{searchResults.productPageStats.total}</span>
+                  <span className="text-amber-600">product pages</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-green-600">💵</span>
+                  <span className="text-green-700 font-medium">{searchResults.productPageStats.withPrice}</span>
+                  <span className="text-green-600">with price</span>
+                </div>
+                {searchResults.productPageStats.needingPrice > 0 && (
+                  <div className="flex items-center gap-1 text-xs" title="Product pages detected but price not in snippet - click to view on site">
+                    <span className="text-amber-500">⚠</span>
+                    <span className="text-amber-700 font-medium">{searchResults.productPageStats.needingPrice}</span>
+                    <span className="text-amber-600">price on site</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -625,11 +656,18 @@ export default function ValuationPanel({ poster, onUpdate }: ValuationPanelProps
                               {result.title}
                             </a>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              {result.price && (
+                              {result.price ? (
                                 <span className="text-xs font-medium text-green-600">
                                   {result.price}
                                 </span>
-                              )}
+                              ) : result.isProductPage ? (
+                                <span
+                                  className="text-xs text-amber-600 italic"
+                                  title={result.productIndicators?.join(', ') || 'Product page detected'}
+                                >
+                                  🏷️ Price on site
+                                </span>
+                              ) : null}
                               <span className="text-xs text-slate-400">
                                 {result.isKnownDealer ? result.dealerName : result.domain}
                               </span>

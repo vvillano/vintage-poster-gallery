@@ -345,6 +345,34 @@ export async function dealerExistsByName(name: string): Promise<boolean> {
 }
 
 /**
+ * Extract the root/registrable domain from a hostname
+ * e.g., "auctions.potterauctions.com" -> "potterauctions.com"
+ *       "www.ha.com" -> "ha.com"
+ *       "comics.ha.com" -> "ha.com"
+ */
+function extractRootDomain(hostname: string): string {
+  // Remove common prefixes
+  let domain = hostname.replace(/^www\./, '');
+
+  // Split into parts
+  const parts = domain.split('.');
+
+  // Handle common compound TLDs - keep last 3 parts for compound TLDs
+  const compoundTLDs = ['co.uk', 'com.au', 'co.nz', 'co.jp', 'com.br', 'co.za'];
+  const lastTwo = parts.slice(-2).join('.');
+
+  if (compoundTLDs.includes(lastTwo) && parts.length > 2) {
+    // e.g., "auctions.example.co.uk" -> "example.co.uk"
+    return parts.slice(-3).join('.');
+  } else if (parts.length > 2) {
+    // e.g., "auctions.potterauctions.com" -> "potterauctions.com"
+    return parts.slice(-2).join('.');
+  }
+
+  return domain;
+}
+
+/**
  * Find existing dealer by name or website domain
  * Returns the dealer info if found, null otherwise
  */
@@ -361,18 +389,21 @@ export async function findExistingDealer(name: string, website?: string | null):
 
   // Check by website domain if provided
   if (website) {
-    // Extract domain from website URL
-    let domain: string;
+    // Extract root domain from website URL (handles subdomains)
+    let rootDomain: string;
     try {
       const url = new URL(website.startsWith('http') ? website : `https://${website}`);
-      domain = url.hostname.replace(/^www\./, '');
+      rootDomain = extractRootDomain(url.hostname);
     } catch {
-      domain = website.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+      const cleanedUrl = website.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+      rootDomain = extractRootDomain(cleanedUrl);
     }
 
+    // Search for any dealer whose website contains this root domain
+    // This catches both potterauctions.com and auctions.potterauctions.com
     const byWebsite = await sql`
       SELECT id, name FROM dealers
-      WHERE website ILIKE ${`%${domain}%`}
+      WHERE website ILIKE ${`%${rootDomain}%`}
     `;
     if (byWebsite.rows.length > 0) {
       return { id: byWebsite.rows[0].id as number, name: byWebsite.rows[0].name as string, matchedBy: 'website' };
