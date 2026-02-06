@@ -1634,7 +1634,7 @@ export default function PosterDetailPage() {
 
           {/* Colors */}
           {(poster.analysisCompleted || selectedColors.length > 0) && availableColors.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-lg p-4 mt-4 shadow-sm">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mt-4 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-lg font-bold text-slate-900">
                   Colors
