@@ -602,13 +602,21 @@ export async function findOrCreatePrinter(
   }
 
   try {
-    // First, check if printer already exists (by name or alias)
-    const existingResult = await sql`
+    // First, check for exact name match (prioritize over alias match)
+    let existingResult = await sql`
       SELECT id, name, location, country, founded_year, wikipedia_url, bio, image_url FROM printers
       WHERE LOWER(name) = LOWER(${printerName})
-         OR ${printerName} = ANY(aliases)
       LIMIT 1
     `;
+
+    // If no exact name match, check aliases
+    if (existingResult.rows.length === 0) {
+      existingResult = await sql`
+        SELECT id, name, location, country, founded_year, wikipedia_url, bio, image_url FROM printers
+        WHERE ${printerName} = ANY(aliases)
+        LIMIT 1
+      `;
+    }
 
     if (existingResult.rows.length > 0) {
       const existing = existingResult.rows[0];
@@ -773,13 +781,21 @@ export async function findOrCreatePublisher(
   }
 
   try {
-    // First, check if publisher already exists (by name or alias)
-    const existingResult = await sql`
+    // First, check for exact name match (prioritize over alias match)
+    let existingResult = await sql`
       SELECT id, name, publication_type, country, founded_year, wikipedia_url, bio, image_url FROM publishers
       WHERE LOWER(name) = LOWER(${publicationName})
-         OR ${publicationName} = ANY(aliases)
       LIMIT 1
     `;
+
+    // If no exact name match, check aliases
+    if (existingResult.rows.length === 0) {
+      existingResult = await sql`
+        SELECT id, name, publication_type, country, founded_year, wikipedia_url, bio, image_url FROM publishers
+        WHERE ${publicationName} = ANY(aliases)
+        LIMIT 1
+      `;
+    }
 
     if (existingResult.rows.length > 0) {
       const existing = existingResult.rows[0];
@@ -921,13 +937,21 @@ export async function findOrCreateArtist(
   }
 
   try {
-    // First, check if artist already exists (by name or alias)
-    const existingResult = await sql`
+    // First, check for exact name match (prioritize over alias match)
+    let existingResult = await sql`
       SELECT id, name, nationality, birth_year, death_year, wikipedia_url, bio, image_url FROM artists
       WHERE LOWER(name) = LOWER(${artistName})
-         OR ${artistName} = ANY(aliases)
       LIMIT 1
     `;
+
+    // If no exact name match, check aliases
+    if (existingResult.rows.length === 0) {
+      existingResult = await sql`
+        SELECT id, name, nationality, birth_year, death_year, wikipedia_url, bio, image_url FROM artists
+        WHERE ${artistName} = ANY(aliases)
+        LIMIT 1
+      `;
+    }
 
     if (existingResult.rows.length > 0) {
       const existing = existingResult.rows[0];
