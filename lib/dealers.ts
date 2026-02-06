@@ -35,6 +35,8 @@ function dbRowToDealer(row: Record<string, unknown>): Dealer {
     canPrice: row.can_price as boolean,
     canProcure: row.can_procure as boolean,
     canBeSource: row.can_be_source as boolean,
+    // Default excludeFromResults based on type if column doesn't exist yet
+    excludeFromResults: (row.exclude_from_results as boolean) ?? (type === 'reproduction'),
     searchUrlTemplate: row.search_url_template as string | null,
     searchSoldUrlTemplate: row.search_sold_url_template as string | null,
     specializations: (row.specializations as DealerSpecialization[]) || [],

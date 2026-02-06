@@ -50,6 +50,7 @@ export interface UnifiedSearchResult {
   dealerName?: string;
   reliabilityTier?: number;
   isKnownDealer: boolean;
+  isExcluded?: boolean; // If true, result is from an excluded source (e.g., reproduction-only site)
 
   // Thumbnail/image
   thumbnail?: string;
@@ -156,9 +157,9 @@ export interface MultiStageSearchOptions {
  */
 async function buildDealerDomainMap(
   dealerIds?: number[]
-): Promise<Map<string, { id: number; name: string; reliabilityTier: number }>> {
+): Promise<Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>> {
   const dealers = await getAllDealers({ isActive: true });
-  const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number }>();
+  const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>();
 
   const filteredDealers = dealerIds?.length
     ? dealers.filter((d) => dealerIds.includes(d.id))
@@ -171,6 +172,8 @@ async function buildDealerDomainMap(
         id: dealer.id,
         name: dealer.name,
         reliabilityTier: dealer.reliabilityTier,
+        // Exclude reproduction-only sites from results
+        isExcluded: dealer.type === 'reproduction',
       });
     }
   }
@@ -183,8 +186,8 @@ async function buildDealerDomainMap(
  */
 function matchToDealer(
   url: string,
-  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number }>
-): { dealerId?: number; dealerName?: string; reliabilityTier?: number; isKnownDealer: boolean } {
+  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>
+): { dealerId?: number; dealerName?: string; reliabilityTier?: number; isKnownDealer: boolean; isExcluded: boolean } {
   const domain = extractDomain(url);
   const dealer = dealerMap.get(domain);
 
@@ -193,6 +196,7 @@ function matchToDealer(
     dealerName: dealer?.name,
     reliabilityTier: dealer?.reliabilityTier,
     isKnownDealer: !!dealer,
+    isExcluded: dealer?.isExcluded ?? false,
   };
 }
 
@@ -310,7 +314,7 @@ function extractPrice(text: string): { price: string; value: number; currency: s
  */
 function lensToUnified(
   result: SerperLensResult,
-  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number }>
+  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>
 ): UnifiedSearchResult {
   const dealerMatch = matchToDealer(result.url, dealerMap);
   const priceInfo = result.price ? extractPrice(result.price) : null;
@@ -338,7 +342,7 @@ function lensToUnified(
  */
 function webToUnified(
   result: SerperSearchResult,
-  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number }>
+  dealerMap: Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>
 ): UnifiedSearchResult {
   const dealerMatch = matchToDealer(result.url, dealerMap);
   const priceInfo = result.snippet ? extractPrice(result.snippet) : null;
@@ -672,6 +676,13 @@ export async function multiStageSearch(
   // STAGE 3: Combine and sort results
   const dedupedResults = deduplicateResults(allResults);
   let sortedResults = sortResults(dedupedResults);
+
+  // Filter out results from excluded sources (e.g., reproduction-only sites)
+  const excludedCount = sortedResults.filter(r => r.isExcluded).length;
+  if (excludedCount > 0) {
+    console.log(`[multi-stage] Filtering out ${excludedCount} results from excluded sources`);
+    sortedResults = sortedResults.filter(r => !r.isExcluded);
+  }
 
   // STAGE 4: Visual Verification (optional)
   // Uses Claude Vision to verify that search results show the same poster

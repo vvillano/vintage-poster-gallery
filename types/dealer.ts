@@ -11,7 +11,8 @@ export type DealerType =
   | 'gallery'
   | 'marketplace'
   | 'aggregator'
-  | 'museum';
+  | 'museum'
+  | 'reproduction'; // Sites that only sell reproductions - exclude from results
 
 // Category for filtering by purpose (Research vs Valuation)
 export type DealerCategory = 'dealer' | 'research' | 'platform';
@@ -123,6 +124,7 @@ export const DEALER_TYPE_LABELS: Record<DealerType, string> = {
   marketplace: 'Marketplace',
   aggregator: 'Aggregator',
   museum: 'Museum/Institution',
+  reproduction: 'Reproduction Only (excluded)',
 };
 
 // Category labels for UI
@@ -145,6 +147,7 @@ export const DEALER_TYPE_TO_CATEGORY: Record<DealerType, DealerCategory> = {
   marketplace: 'platform',
   aggregator: 'platform',
   museum: 'research',
+  reproduction: 'platform', // Will be excluded via excludeFromResults flag
 };
 
 // Specialization categories for UI grouping
@@ -266,6 +269,7 @@ export interface Dealer {
   canPrice: boolean;
   canProcure: boolean;
   canBeSource: boolean;
+  excludeFromResults: boolean; // If true, filter out from search results (e.g., reproduction-only sites)
 
   // Search Integration
   searchUrlTemplate?: string | null;
@@ -302,6 +306,7 @@ export interface CreateDealerInput {
   canPrice?: boolean;
   canProcure?: boolean;
   canBeSource?: boolean;
+  excludeFromResults?: boolean;
   searchUrlTemplate?: string | null;
   searchSoldUrlTemplate?: string | null;
   specializations?: DealerSpecialization[];
@@ -391,6 +396,18 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
         canPrice: true,
         canProcure: true,
         canBeSource: true,
+      };
+    case 'reproduction':
+      return {
+        category,
+        reliabilityTier: 6,
+        attributionWeight: 0.0,
+        pricingWeight: 0.0,
+        canResearch: false,
+        canPrice: false,
+        canProcure: false,
+        canBeSource: false,
+        excludeFromResults: true, // Auto-exclude reproduction sites
       };
     default:
       return {
