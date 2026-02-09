@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
-import type { PrivateSeller, PlatformIdentity, SellerType } from '@/types/poster';
+import type { PrivateSeller, PlatformIdentity, PrivateSellerType } from '@/types/poster';
 
 /**
  * Transform database row to PrivateSeller
@@ -11,7 +11,7 @@ function dbRowToPrivateSeller(row: any): PrivateSeller {
   return {
     id: row.id,
     name: row.name,
-    sellerType: row.seller_type as SellerType,
+    sellerType: row.seller_type as PrivateSellerType,
     email: row.email,
     phone: row.phone,
     url: row.url,

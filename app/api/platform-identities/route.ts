@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
-import type { PlatformIdentity, PrivateSeller, SellerType } from '@/types/poster';
+import type { PlatformIdentity, PrivateSeller, PrivateSellerType } from '@/types/poster';
 
 /**
  * Transform database row to PlatformIdentity with optional seller
@@ -23,7 +23,7 @@ function dbRowToPlatformIdentity(row: any, includesSeller = false): PlatformIden
     identity.seller = {
       id: row.seller_id,
       name: row.seller_name,
-      sellerType: row.seller_type as SellerType,
+      sellerType: row.seller_type as PrivateSellerType,
       email: row.seller_email,
       phone: row.seller_phone,
       url: row.seller_url,
