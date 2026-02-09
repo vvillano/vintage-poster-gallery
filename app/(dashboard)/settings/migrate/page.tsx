@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'platforms-sellers',
+    name: 'Platforms & Sellers Refactoring',
+    description: 'Implements the new acquisition tracking model: Platforms = WHERE you buy (marketplaces, venues, aggregators), Sellers = WHO you buy from (auction houses, dealers, individuals). Adds canResearchPrices to platforms, canResearchAt to sellers, renames dealers to sellers, and seeds common platforms.',
+    endpoint: '/api/migrate/platforms-sellers',
+    successLink: { href: '/settings/platforms', label: 'Manage Platforms' },
+  },
+  {
     id: 'dealer-category',
     name: 'Dealer Category Field',
     description: 'Add category field to dealers table for filtering by purpose: dealer (auctions/galleries), research (museums/institutions), or platform (marketplaces). Enables Research vs Valuation mode separation.',

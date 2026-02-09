@@ -4,15 +4,24 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 
 /**
+ * Platform type - WHERE you can buy
+ */
+type PlatformType = 'marketplace' | 'venue' | 'aggregator' | 'direct';
+
+/**
  * Platform interface for the unified platforms table
+ * Represents WHERE you buy (marketplaces, venues, aggregators)
  */
 interface Platform {
   id: number;
   name: string;
   url: string | null;
   searchUrlTemplate: string | null;
+  searchSoldUrlTemplate: string | null;  // For sold price research
+  platformType: PlatformType;
   isAcquisitionPlatform: boolean;
-  isResearchSite: boolean;
+  isResearchSite: boolean;               // Legacy - use canResearchPrices
+  canResearchPrices: boolean;            // Can be used for price/valuation research
   requiresSubscription: boolean;
   username: string | null;
   password: string | null;
@@ -31,8 +40,11 @@ function dbRowToPlatform(row: Record<string, unknown>): Platform {
     name: row.name as string,
     url: row.url as string | null,
     searchUrlTemplate: row.search_url_template as string | null,
+    searchSoldUrlTemplate: row.search_sold_url_template as string | null,
+    platformType: (row.platform_type as PlatformType) || 'marketplace',
     isAcquisitionPlatform: row.is_acquisition_platform as boolean,
     isResearchSite: row.is_research_site as boolean,
+    canResearchPrices: (row.can_research_prices as boolean) ?? (row.is_research_site as boolean),
     requiresSubscription: row.requires_subscription as boolean,
     username: row.username as string | null,
     password: row.password as string | null,
@@ -50,8 +62,10 @@ function dbRowToPlatform(row: Record<string, unknown>): Platform {
  * Query params:
  * - search: partial name match
  * - name: exact name match
- * - acquisition: filter to acquisition platforms only
- * - research: filter to research sites only
+ * - acquisition: filter to acquisition platforms only (WHERE you buy)
+ * - research: filter to research sites only (legacy, use canResearchPrices)
+ * - canResearchPrices: filter to platforms usable for price research
+ * - type: filter by platform type (marketplace, venue, aggregator, direct)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +78,8 @@ export async function GET(request: NextRequest) {
     const name = request.nextUrl.searchParams.get('name');
     const acquisitionOnly = request.nextUrl.searchParams.get('acquisition') === 'true';
     const researchOnly = request.nextUrl.searchParams.get('research') === 'true';
+    const canResearchPrices = request.nextUrl.searchParams.get('canResearchPrices');
+    const platformType = request.nextUrl.searchParams.get('type') as PlatformType | null;
 
     let result;
 
@@ -83,6 +99,12 @@ export async function GET(request: NextRequest) {
           WHERE name ILIKE ${searchTerm} AND is_acquisition_platform = true
           ORDER BY name ASC
         `;
+      } else if (canResearchPrices === 'true') {
+        result = await sql`
+          SELECT * FROM platforms
+          WHERE name ILIKE ${searchTerm} AND can_research_prices = true
+          ORDER BY display_order ASC, name ASC
+        `;
       } else if (researchOnly) {
         result = await sql`
           SELECT * FROM platforms
@@ -100,7 +122,14 @@ export async function GET(request: NextRequest) {
       result = await sql`
         SELECT * FROM platforms
         WHERE is_acquisition_platform = true
-        ORDER BY name ASC
+        ORDER BY display_order ASC, name ASC
+      `;
+    } else if (canResearchPrices === 'true') {
+      // Filter by canResearchPrices (for valuation research)
+      result = await sql`
+        SELECT * FROM platforms
+        WHERE can_research_prices = true
+        ORDER BY display_order ASC, name ASC
       `;
     } else if (researchOnly) {
       result = await sql`
@@ -108,11 +137,17 @@ export async function GET(request: NextRequest) {
         WHERE is_research_site = true
         ORDER BY display_order ASC, name ASC
       `;
+    } else if (platformType) {
+      result = await sql`
+        SELECT * FROM platforms
+        WHERE platform_type = ${platformType}
+        ORDER BY display_order ASC, name ASC
+      `;
     } else {
       // Get all
       result = await sql`
         SELECT * FROM platforms
-        ORDER BY name ASC
+        ORDER BY display_order ASC, name ASC
       `;
     }
 
@@ -149,8 +184,11 @@ export async function POST(request: NextRequest) {
         name,
         url,
         search_url_template,
+        search_sold_url_template,
+        platform_type,
         is_acquisition_platform,
         is_research_site,
+        can_research_prices,
         requires_subscription,
         username,
         password,
@@ -161,8 +199,11 @@ export async function POST(request: NextRequest) {
         ${body.name},
         ${body.url || null},
         ${body.searchUrlTemplate || null},
-        ${body.isAcquisitionPlatform || false},
+        ${body.searchSoldUrlTemplate || null},
+        ${body.platformType || 'marketplace'},
+        ${body.isAcquisitionPlatform ?? true},
         ${body.isResearchSite || false},
+        ${body.canResearchPrices || false},
         ${body.requiresSubscription || false},
         ${body.username || null},
         ${body.password || null},
@@ -216,8 +257,11 @@ export async function PUT(request: NextRequest) {
         name = ${body.name},
         url = ${body.url || null},
         search_url_template = ${body.searchUrlTemplate || null},
-        is_acquisition_platform = ${body.isAcquisitionPlatform || false},
+        search_sold_url_template = ${body.searchSoldUrlTemplate || null},
+        platform_type = ${body.platformType || 'marketplace'},
+        is_acquisition_platform = ${body.isAcquisitionPlatform ?? true},
         is_research_site = ${body.isResearchSite || false},
+        can_research_prices = ${body.canResearchPrices || false},
         requires_subscription = ${body.requiresSubscription || false},
         username = ${body.username || null},
         password = ${body.password || null},

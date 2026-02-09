@@ -48,18 +48,24 @@ export interface ResearchSite {
   createdAt: Date;
 }
 
-// Unified Platform - consolidates acquisition platforms and research sites
+// Platform type - WHERE you can buy
+export type PlatformType = 'marketplace' | 'venue' | 'aggregator' | 'direct';
+
+// Unified Platform - WHERE you buy (marketplaces, venues, aggregators)
 export interface Platform {
   id: number;
-  name: string;                        // Platform name (eBay, Invaluable, WorthPoint, etc.)
+  name: string;                        // Platform name (eBay, Invaluable, Rose Bowl, etc.)
   url?: string | null;                 // Main platform URL
   searchUrlTemplate?: string | null;   // Search URL with {search} placeholder
+  searchSoldUrlTemplate?: string | null; // Sold items search URL for price research
+  platformType: PlatformType;          // marketplace, venue, aggregator, or direct
   isAcquisitionPlatform: boolean;      // Used for buying (syncs to Shopify)
-  isResearchSite: boolean;             // Used for price research (shows in research buttons)
+  isResearchSite: boolean;             // Legacy: use canResearchPrices instead
+  canResearchPrices: boolean;          // Can be used for price/valuation research
   requiresSubscription: boolean;       // Requires paid subscription
-  username?: string | null;            // Login credentials
+  username?: string | null;            // Login credentials for research access
   password?: string | null;
-  displayOrder: number;                // Order for research buttons
+  displayOrder: number;                // Order for display
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -269,12 +275,14 @@ export interface PlatformResearchData {
 }
 
 // Private Seller - actual person/business in seller directory
-export type SellerType = 'individual' | 'dealer' | 'auction_house' | 'gallery' | 'bookstore' | 'other';
+// Note: SellerType is now imported from types/seller.ts for the new architecture
+// This local type is kept for backward compatibility with PrivateSeller
+export type PrivateSellerType = 'individual' | 'dealer' | 'auction_house' | 'gallery' | 'bookstore' | 'other';
 
 export interface PrivateSeller {
   id: number;
   name: string;                 // Actual business/person name
-  sellerType: SellerType;
+  sellerType: PrivateSellerType;
   email?: string | null;
   phone?: string | null;
   url?: string | null;
@@ -290,10 +298,12 @@ export interface PrivateSeller {
 // Platform Identity - username on a specific platform, optionally linked to a seller
 export interface PlatformIdentity {
   id: number;
-  platformName: string;         // eBay, Invaluable, etc.
+  platformId?: number | null;   // FK to platforms table (WHERE)
+  platformName: string;         // eBay, Invaluable, etc. (legacy, for backward compat)
   platformUsername: string;     // vintageposterking, jsmith-posters
-  sellerId?: number | null;     // FK to private_sellers (null if unknown)
+  sellerId?: number | null;     // FK to sellers table (WHO)
   seller?: PrivateSeller | null;// Joined seller data for display
+  platform?: Platform | null;   // Joined platform data for display
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -434,8 +444,14 @@ export interface Poster {
   researchImages?: ResearchImage[] | null; // Local research images (signatures, title pages, etc.)
 
   // Acquisition tracking - WHO and WHERE you bought from
-  sourceDealerId?: number | null;         // FK to dealers table (WHO you bought from)
-  acquisitionPlatformId?: number | null;  // FK to platforms table (WHERE you bought)
+  // New fields (preferred)
+  sellerId?: number | null;               // FK to sellers table (WHO you bought from)
+  platformId?: number | null;             // FK to platforms table (WHERE you bought)
+  platformIdentity?: string | null;       // Seller's username on the acquisition platform
+
+  // Legacy fields (for backward compatibility during migration)
+  sourceDealerId?: number | null;         // Legacy: FK to dealers table, use sellerId instead
+  acquisitionPlatformId?: number | null;  // Legacy: FK to platforms table, use platformId instead
   dealerName?: string | null;             // Raw dealer name from Shopify for matching
 }
 
