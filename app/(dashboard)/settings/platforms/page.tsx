@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import type { PlatformType } from '@/types/poster';
 
 interface Platform {
   id: number;
   name: string;
   url: string | null;
   searchUrlTemplate: string | null;
+  searchSoldUrlTemplate: string | null;
+  platformType: PlatformType;
   isAcquisitionPlatform: boolean;
   isResearchSite: boolean;
+  canResearchPrices: boolean;
   requiresSubscription: boolean;
   username: string | null;
   password: string | null;
@@ -19,11 +23,23 @@ interface Platform {
   updatedAt: Date;
 }
 
+const PLATFORM_TYPES: { value: PlatformType; label: string; description: string }[] = [
+  { value: 'marketplace', label: 'Marketplace', description: 'Online platforms connecting buyers/sellers (eBay, Invaluable)' },
+  { value: 'venue', label: 'Venue', description: 'Physical locations (Rose Bowl, flea markets, antique malls)' },
+  { value: 'aggregator', label: 'Aggregator', description: 'Price databases and archives (WorthPoint)' },
+  { value: 'direct', label: 'Direct', description: 'Bought directly from seller, no platform' },
+];
+
 export default function PlatformsPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Filter state
+  const [filterType, setFilterType] = useState<PlatformType | ''>('');
+  const [showAcquisitionOnly, setShowAcquisitionOnly] = useState(false);
+  const [showResearchOnly, setShowResearchOnly] = useState(false);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -32,8 +48,11 @@ export default function PlatformsPage() {
     name: '',
     url: '',
     searchUrlTemplate: '',
-    isAcquisitionPlatform: false,
+    searchSoldUrlTemplate: '',
+    platformType: 'marketplace' as PlatformType,
+    isAcquisitionPlatform: true,
     isResearchSite: false,
+    canResearchPrices: false,
     requiresSubscription: false,
     username: '',
     password: '',
@@ -68,8 +87,11 @@ export default function PlatformsPage() {
       name: '',
       url: '',
       searchUrlTemplate: '',
-      isAcquisitionPlatform: false,
+      searchSoldUrlTemplate: '',
+      platformType: 'marketplace',
+      isAcquisitionPlatform: true,
       isResearchSite: false,
+      canResearchPrices: false,
       requiresSubscription: false,
       username: '',
       password: '',
@@ -86,8 +108,11 @@ export default function PlatformsPage() {
       name: platform.name,
       url: platform.url || '',
       searchUrlTemplate: platform.searchUrlTemplate || '',
+      searchSoldUrlTemplate: platform.searchSoldUrlTemplate || '',
+      platformType: platform.platformType || 'marketplace',
       isAcquisitionPlatform: platform.isAcquisitionPlatform,
       isResearchSite: platform.isResearchSite,
+      canResearchPrices: platform.canResearchPrices,
       requiresSubscription: platform.requiresSubscription,
       username: platform.username || '',
       password: platform.password || '',
@@ -110,8 +135,11 @@ export default function PlatformsPage() {
         name: formData.name.trim(),
         url: formData.url.trim() || null,
         searchUrlTemplate: formData.searchUrlTemplate.trim() || null,
+        searchSoldUrlTemplate: formData.searchSoldUrlTemplate.trim() || null,
+        platformType: formData.platformType,
         isAcquisitionPlatform: formData.isAcquisitionPlatform,
         isResearchSite: formData.isResearchSite,
+        canResearchPrices: formData.canResearchPrices,
         requiresSubscription: formData.requiresSubscription,
         username: formData.username.trim() || null,
         password: formData.password || null,
@@ -178,6 +206,24 @@ export default function PlatformsPage() {
     }
   }
 
+  // Filter platforms
+  const filteredPlatforms = platforms.filter(p => {
+    if (filterType && p.platformType !== filterType) return false;
+    if (showAcquisitionOnly && !p.isAcquisitionPlatform) return false;
+    if (showResearchOnly && !p.canResearchPrices) return false;
+    return true;
+  });
+
+  const getPlatformTypeBadgeColor = (type: PlatformType) => {
+    switch (type) {
+      case 'marketplace': return 'bg-blue-100 text-blue-700';
+      case 'venue': return 'bg-amber-100 text-amber-700';
+      case 'aggregator': return 'bg-violet-100 text-violet-700';
+      case 'direct': return 'bg-slate-100 text-slate-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -191,9 +237,9 @@ export default function PlatformsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Platforms</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Platform Database</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage acquisition platforms and price research sites. Configure credentials and search URLs.
+            Manage platforms (WHERE you buy) - marketplaces, venues, and aggregators.
           </p>
         </div>
         <Link
@@ -216,6 +262,45 @@ export default function PlatformsPage() {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="bg-white border border-slate-200 rounded-lg p-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as PlatformType | '')}
+              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+            >
+              <option value="">All Types</option>
+              {PLATFORM_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showAcquisitionOnly}
+                onChange={(e) => setShowAcquisitionOnly(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">Acquisition Only</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showResearchOnly}
+                onChange={(e) => setShowResearchOnly(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">Price Research Only</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       {/* Add/Edit Form */}
       <div className="bg-white border border-slate-200 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
@@ -234,7 +319,7 @@ export default function PlatformsPage() {
 
         {showForm && (
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Platform Name *
@@ -243,10 +328,27 @@ export default function PlatformsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Invaluable, eBay, WorthPoint"
+                  placeholder="e.g., eBay, Rose Bowl, WorthPoint"
                   required
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Platform Type *
+                </label>
+                <select
+                  value={formData.platformType}
+                  onChange={(e) => setFormData({ ...formData, platformType: e.target.value as PlatformType })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                >
+                  {PLATFORM_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  {PLATFORM_TYPES.find(t => t.value === formData.platformType)?.description}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -260,7 +362,7 @@ export default function PlatformsPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  Lower numbers appear first in research buttons
+                  Lower numbers appear first
                 </p>
               </div>
             </div>
@@ -274,7 +376,7 @@ export default function PlatformsPage() {
                   type="url"
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder="https://www.invaluable.com"
+                  placeholder="https://www.ebay.com"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
               </div>
@@ -286,13 +388,30 @@ export default function PlatformsPage() {
                   type="text"
                   value={formData.searchUrlTemplate}
                   onChange={(e) => setFormData({ ...formData, searchUrlTemplate: e.target.value })}
-                  placeholder="https://invaluable.com/search?query={search}"
+                  placeholder="https://ebay.com/sch/i.html?_nkw={query}"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  Use {'{search}'} as placeholder for search terms
+                  Use {'{query}'} as placeholder for search terms
                 </p>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Sold/Completed Search URL Template
+                <span className="text-xs text-slate-500 ml-1">(for price research)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.searchSoldUrlTemplate}
+                onChange={(e) => setFormData({ ...formData, searchSoldUrlTemplate: e.target.value })}
+                placeholder="https://ebay.com/sch/i.html?_nkw={query}&LH_Complete=1&LH_Sold=1"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                URL template to search for sold items - used for valuation research
+              </p>
             </div>
 
             {/* Purpose checkboxes */}
@@ -307,7 +426,17 @@ export default function PlatformsPage() {
                     className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm text-slate-700">Acquisition Platform</span>
-                  <span className="text-xs text-slate-500">(syncs to Shopify)</span>
+                  <span className="text-xs text-slate-500">(syncs to Shopify as "Source")</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.canResearchPrices}
+                    onChange={(e) => setFormData({ ...formData, canResearchPrices: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-slate-700">Can Research Prices</span>
+                  <span className="text-xs text-slate-500">(shows in valuation research)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -316,8 +445,7 @@ export default function PlatformsPage() {
                     onChange={(e) => setFormData({ ...formData, isResearchSite: e.target.checked })}
                     className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500"
                   />
-                  <span className="text-sm text-slate-700">Research Site</span>
-                  <span className="text-xs text-slate-500">(shows in research buttons)</span>
+                  <span className="text-sm text-slate-700">Research Site (legacy)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -327,7 +455,6 @@ export default function PlatformsPage() {
                     className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
                   />
                   <span className="text-sm text-slate-700">Requires Subscription</span>
-                  <span className="text-xs text-slate-500">(displayed differently)</span>
                 </label>
               </div>
             </div>
@@ -397,17 +524,23 @@ export default function PlatformsPage() {
       {/* Platforms List */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">All Platforms</h2>
-          <span className="text-sm text-slate-500">{platforms.length} platforms</span>
+          <h2 className="text-lg font-semibold text-slate-900">
+            All Platforms
+            <span className="ml-2 text-sm font-normal text-slate-500">
+              ({filteredPlatforms.length} of {platforms.length})
+            </span>
+          </h2>
         </div>
 
-        {platforms.length === 0 ? (
+        {filteredPlatforms.length === 0 ? (
           <p className="text-slate-500 text-center py-8">
-            No platforms yet. Add your first platform above.
+            {platforms.length === 0
+              ? 'No platforms yet. Add your first platform above.'
+              : 'No platforms match your filters.'}
           </p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {platforms.map((platform) => (
+            {filteredPlatforms.map((platform) => (
               <div
                 key={platform.id}
                 className="px-4 py-3 hover:bg-slate-50 group"
@@ -416,14 +549,17 @@ export default function PlatformsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-slate-900">{platform.name}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${getPlatformTypeBadgeColor(platform.platformType)}`}>
+                        {PLATFORM_TYPES.find(t => t.value === platform.platformType)?.label || platform.platformType}
+                      </span>
                       {platform.isAcquisitionPlatform && (
                         <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
                           Acquisition
                         </span>
                       )}
-                      {platform.isResearchSite && (
-                        <span className="text-xs px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full">
-                          Research
+                      {platform.canResearchPrices && (
+                        <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                          Price Research
                         </span>
                       )}
                       {platform.requiresSubscription && (
@@ -452,6 +588,11 @@ export default function PlatformsPage() {
                         Search: {platform.searchUrlTemplate}
                       </p>
                     )}
+                    {platform.searchSoldUrlTemplate && (
+                      <p className="text-xs text-emerald-500 font-mono mt-0.5 truncate">
+                        Sold: {platform.searchSoldUrlTemplate}
+                      </p>
+                    )}
                     {platform.notes && (
                       <p className="text-sm text-slate-500 mt-0.5">{platform.notes}</p>
                     )}
@@ -462,7 +603,7 @@ export default function PlatformsPage() {
                         onClick={() => setShowCredentials(showCredentials === platform.id ? null : platform.id)}
                         className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded transition"
                       >
-                        {showCredentials === platform.id ? 'Hide' : 'Show'} Credentials
+                        {showCredentials === platform.id ? 'Hide' : 'Show'}
                       </button>
                     )}
                     <button
@@ -516,12 +657,16 @@ export default function PlatformsPage() {
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-800 mb-2">About Platforms</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">About the Platform Database</h3>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li><strong>Acquisition Platform</strong> - Where you buy posters (eBay, Invaluable, Rose Bowl). Syncs to Shopify as "Source".</li>
-          <li><strong>Research Site</strong> - Used for price research. Shows as buttons on poster detail page.</li>
-          <li><strong>Requires Subscription</strong> - Paid sites like WorthPoint. Displayed with different styling.</li>
-          <li><strong>Search URL Template</strong> - Use {'{search}'} placeholder. Clicking research button opens this URL with poster title.</li>
+          <li>- <strong>Platforms</strong> = WHERE you buy (marketplaces, venues, aggregators)</li>
+          <li>- <strong>Marketplace</strong>: Online platforms like eBay, Invaluable, Live Auctioneers</li>
+          <li>- <strong>Venue</strong>: Physical locations like Rose Bowl, flea markets, antique malls</li>
+          <li>- <strong>Aggregator</strong>: Price databases like WorthPoint</li>
+          <li>- <strong>Direct</strong>: Bought directly from seller, no platform intermediary</li>
+          <li>- <strong>Acquisition Platform</strong>: Syncs to Shopify as "Source" dropdown</li>
+          <li>- <strong>Can Research Prices</strong>: Shows in valuation research for pricing</li>
+          <li>- <strong>Sold Search URL</strong>: Template for searching completed/sold listings</li>
         </ul>
       </div>
     </div>
