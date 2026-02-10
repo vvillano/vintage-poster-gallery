@@ -188,9 +188,27 @@ function buildMarketplaceQuery(poster: Poster): string {
   return parts.join(' ');
 }
 
-// Format currency value
+// Format currency value - handles both simple values and Shopify money JSON objects
 function formatCurrency(value: string | null | undefined): string | null {
   if (!value) return null;
+
+  // Check if it's a JSON object (Shopify money format: {"amount":"188.63","currency_code":"USD"})
+  if (value.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed.amount) {
+        const num = parseFloat(parsed.amount);
+        const currency = parsed.currency_code || 'USD';
+        if (!isNaN(num)) {
+          return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
+        }
+      }
+    } catch {
+      // Not valid JSON, fall through to simple parsing
+    }
+  }
+
+  // Simple numeric value
   const num = parseFloat(value);
   if (isNaN(num)) return value;
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
