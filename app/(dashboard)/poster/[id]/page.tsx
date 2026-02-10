@@ -2247,7 +2247,7 @@ export default function PosterDetailPage() {
                   const shopifyIdent = poster.shopifyData as ShopifyData | null;
                   const shopifyArtist = getMetafield(shopifyIdent, 'jadepuma.artist');
                   // Note: Shopify title is synced to poster.title, not stored separately
-                  const shopifyDate = getMetafield(shopifyIdent, 'jadepuma.published_date');
+                  const shopifyYear = getMetafield(shopifyIdent, 'specs.year'); // Product year, not purchase date
                   const shopifyHeight = getMetafield(shopifyIdent, 'specs.height');
                   const shopifyWidth = getMetafield(shopifyIdent, 'specs.width');
                   const shopifyDimensions = shopifyHeight && shopifyWidth
@@ -2472,29 +2472,41 @@ export default function PosterDetailPage() {
                     )}
                   </div>
 
-                  {/* Title - from Shopify (synced to poster.title) */}
+                  {/* Title - Show Shopify and AI suggested */}
                   <div className="border-b border-slate-100 pb-3">
                     <label className="text-sm font-medium text-slate-700 mb-2 block">Title</label>
 
-                    {poster.shopifyProductId ? (
-                      <div className="flex items-start gap-2">
+                    {/* Shopify Title (if linked) */}
+                    {poster.shopifyProductId && (
+                      <div className="flex items-start gap-2 mb-2">
                         <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
                         <p className="text-slate-900">{poster.title || <span className="text-slate-400 italic">Not set</span>}</p>
                       </div>
-                    ) : (
+                    )}
+
+                    {/* AI Suggested Title - show if analysis completed */}
+                    {poster.analysisCompleted && (poster.rawAiResponse as any)?.identification?.title && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded shrink-0 mt-0.5">AI</span>
+                        <p className="text-slate-900">{(poster.rawAiResponse as any).identification.title}</p>
+                      </div>
+                    )}
+
+                    {/* If not linked to Shopify and no AI, show title directly */}
+                    {!poster.shopifyProductId && !poster.analysisCompleted && (
                       <p className="text-slate-900">{poster.title || 'Untitled'}</p>
                     )}
                   </div>
 
-                  {/* Date - Show both Shopify and AI estimated */}
+                  {/* Date - Show both Shopify year and AI estimated */}
                   <div className="border-b border-slate-100 pb-3">
                     <label className="text-sm font-medium text-slate-700 mb-2 block">Date</label>
 
-                    {/* Shopify Date (if linked) */}
+                    {/* Shopify Year (if linked) - from specs.year metafield */}
                     {poster.shopifyProductId && (
                       <div className="flex items-start gap-2 mb-2">
                         <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
-                        <p className="text-slate-900">{shopifyDate || <span className="text-slate-400 italic">Not set</span>}</p>
+                        <p className="text-slate-900">{shopifyYear || <span className="text-slate-400 italic">Not set</span>}</p>
                       </div>
                     )}
 
