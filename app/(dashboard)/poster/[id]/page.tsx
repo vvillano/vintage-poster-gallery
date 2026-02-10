@@ -2183,13 +2183,16 @@ export default function PosterDetailPage() {
 
                     {/* Text Context */}
                     <div className="mb-4">
-                      <label className="text-sm font-medium text-slate-700 mb-2 block">
+                      <label className="text-sm font-medium text-slate-700 mb-1 block">
                         Additional Context (optional)
                       </label>
+                      <p className="text-xs text-slate-500 mb-2">
+                        Provide facts, pose questions, or guide the analysis direction.
+                      </p>
                       <textarea
                         value={additionalContext}
                         onChange={(e) => setAdditionalContext(e.target.value)}
-                        placeholder="E.g., The artist signature reads 'Yvan Petiteau'. This is from a 1946 issue of Formes et Couleurs magazine."
+                        placeholder="Examples: 'The signature reads Yvan Petiteau' or 'Could this pattern also represent a face?' or 'Please focus on identifying the printing technique'"
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none resize-none"
                         rows={3}
                       />
