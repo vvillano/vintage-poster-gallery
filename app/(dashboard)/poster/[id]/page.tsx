@@ -2220,6 +2220,19 @@ export default function PosterDetailPage() {
                 <h3 className="text-xl font-bold text-slate-900 mb-4">
                   Identification
                 </h3>
+                {(() => {
+                  // Extract Shopify identification values
+                  const shopifyIdent = poster.shopifyData as ShopifyData | null;
+                  const shopifyArtist = getMetafield(shopifyIdent, 'jadepuma.artist');
+                  // Note: Shopify title is synced to poster.title, not stored separately
+                  const shopifyDate = getMetafield(shopifyIdent, 'jadepuma.published_date');
+                  const shopifyHeight = getMetafield(shopifyIdent, 'specs.height');
+                  const shopifyWidth = getMetafield(shopifyIdent, 'specs.width');
+                  const shopifyDimensions = shopifyHeight && shopifyWidth
+                    ? `${shopifyHeight}" H x ${shopifyWidth}" W`
+                    : null;
+
+                  return (
                 <div className="space-y-4">
                   {/* Product Type */}
                   {poster.productType && (
@@ -2229,43 +2242,54 @@ export default function PosterDetailPage() {
                     </div>
                   )}
 
-                  {/* Artist with confidence and linked profile */}
+                  {/* Artist - Show both Shopify and AI sources */}
                   <div className="border-b border-slate-100 pb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm font-medium text-slate-700">Artist</label>
-                      {poster.artistConfidence && (
-                        <button
-                          onClick={() => setShowVerificationDetails(!showVerificationDetails)}
-                          className={`text-xs px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition flex items-center gap-1 ${
-                            poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                            poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {poster.artistConfidence}
-                          {poster.artistConfidenceScore && (
-                            <span className="opacity-70">({poster.artistConfidenceScore}%)</span>
-                          )}
-                          <svg
-                            className={`w-3 h-3 transition-transform ${showVerificationDetails ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Artist</label>
 
-                    {/* Artist Name */}
-                    <p className="text-slate-900 font-medium">{poster.artist || 'Unknown'}</p>
-
-                    {/* Artist Source */}
-                    {poster.artistSource && (
-                      <p className="text-xs text-slate-500 mt-1">Source: {poster.artistSource}</p>
+                    {/* Shopify Artist (if linked) */}
+                    {poster.shopifyProductId && (
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
+                        <p className="text-slate-900">{shopifyArtist || <span className="text-slate-400 italic">Not set</span>}</p>
+                      </div>
                     )}
+
+                    {/* AI Sourced Artist */}
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded shrink-0 mt-0.5">AI</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-slate-900 font-medium">{poster.artist || 'Unknown'}</p>
+                          {poster.artistConfidence && (
+                            <button
+                              onClick={() => setShowVerificationDetails(!showVerificationDetails)}
+                              className={`text-xs px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition flex items-center gap-1 ${
+                                poster.artistConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                poster.artistConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                                poster.artistConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {poster.artistConfidence}
+                              {poster.artistConfidenceScore && (
+                                <span className="opacity-70">({poster.artistConfidenceScore}%)</span>
+                              )}
+                              <svg
+                                className={`w-3 h-3 transition-transform ${showVerificationDetails ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {poster.artistSource && (
+                          <p className="text-xs text-slate-500 mt-1">Source: {poster.artistSource}</p>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Expandable Verification Details */}
                     {showVerificationDetails && poster.artistVerification && (
@@ -2426,41 +2450,70 @@ export default function PosterDetailPage() {
                     )}
                   </div>
 
-                  {/* Title */}
+                  {/* Title - from Shopify (synced to poster.title) */}
                   <div className="border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700">Title</label>
-                    <p className="text-slate-900">{poster.title || 'Untitled'}</p>
-                  </div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Title</label>
 
-                  {/* Date with confidence */}
-                  <div className="border-b border-slate-100 pb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm font-medium text-slate-700">Date</label>
-                      {poster.dateConfidence && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          poster.dateConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          poster.dateConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                          poster.dateConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {poster.dateConfidence}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-slate-900">{poster.estimatedDate || 'Unknown'}</p>
-                    {poster.dateSource && (
-                      <p className="text-xs text-slate-500 mt-1">Source: {poster.dateSource}</p>
+                    {poster.shopifyProductId ? (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
+                        <p className="text-slate-900">{poster.title || <span className="text-slate-400 italic">Not set</span>}</p>
+                      </div>
+                    ) : (
+                      <p className="text-slate-900">{poster.title || 'Untitled'}</p>
                     )}
                   </div>
 
-                  {/* Dimensions */}
+                  {/* Date - Show both Shopify and AI estimated */}
                   <div className="border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700">
-                      Dimensions
-                    </label>
-                    <p className="text-slate-900">
-                      {poster.dimensionsEstimate || 'Unknown'}
-                    </p>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Date</label>
+
+                    {/* Shopify Date (if linked) */}
+                    {poster.shopifyProductId && (
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
+                        <p className="text-slate-900">{shopifyDate || <span className="text-slate-400 italic">Not set</span>}</p>
+                      </div>
+                    )}
+
+                    {/* AI Estimated Date */}
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded shrink-0 mt-0.5">AI</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-slate-900">{poster.estimatedDate || 'Unknown'}</p>
+                          {poster.dateConfidence && (
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              poster.dateConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              poster.dateConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                              poster.dateConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {poster.dateConfidence}
+                            </span>
+                          )}
+                        </div>
+                        {poster.dateSource && (
+                          <p className="text-xs text-slate-500 mt-1">Source: {poster.dateSource}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dimensions - Always from Shopify */}
+                  <div className="border-b border-slate-100 pb-3">
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Dimensions</label>
+                    {poster.shopifyProductId && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
+                        <p className="text-slate-900">
+                          {shopifyDimensions || poster.dimensionsEstimate || <span className="text-slate-400 italic">Not set</span>}
+                        </p>
+                      </div>
+                    )}
+                    {!poster.shopifyProductId && (
+                      <p className="text-slate-900">{poster.dimensionsEstimate || 'Unknown'}</p>
+                    )}
                   </div>
 
                   {/* Publication with Confidence */}
@@ -2652,6 +2705,8 @@ export default function PosterDetailPage() {
                     </div>
                   )}
                 </div>
+                  );
+                })()}
               </div>
 
               {/* Source Citations - moved up for visibility */}
