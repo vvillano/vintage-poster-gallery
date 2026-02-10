@@ -600,6 +600,122 @@ export default function MigratePage() {
           );
         })}
       </div>
+
+      {/* Maintenance Section */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-4">Maintenance</h2>
+        <CleanupExpiredResearch />
+      </div>
+    </div>
+  );
+}
+
+// Component for cleanup expired research records
+function CleanupExpiredResearch() {
+  const [status, setStatus] = useState<'idle' | 'previewing' | 'cleaning' | 'done' | 'error'>('idle');
+  const [preview, setPreview] = useState<{ count: number; records: any[] } | null>(null);
+  const [result, setResult] = useState<{ deletedCount: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePreview() {
+    setStatus('previewing');
+    setError(null);
+    try {
+      const res = await fetch('/api/cleanup/expired-research');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to preview');
+      setPreview({ count: data.count, records: data.records || [] });
+      setStatus('idle');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setStatus('error');
+    }
+  }
+
+  async function handleCleanup() {
+    setStatus('cleaning');
+    setError(null);
+    try {
+      const res = await fetch('/api/cleanup/expired-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to cleanup');
+      setResult({ deletedCount: data.deletedCount });
+      setPreview(null);
+      setStatus('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setStatus('error');
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-semibold text-slate-900 mb-2">Cleanup Expired Research Records</h3>
+      <p className="text-sm text-slate-600 mb-4">
+        Delete research records older than 30 days that are not linked to Shopify.
+        This includes direct uploads and price research records that were never connected to a product.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handlePreview}
+          disabled={status === 'previewing' || status === 'cleaning'}
+          className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 text-sm font-medium"
+        >
+          {status === 'previewing' ? 'Loading...' : 'Preview'}
+        </button>
+        {preview && preview.count > 0 && (
+          <button
+            onClick={handleCleanup}
+            disabled={status === 'cleaning'}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+          >
+            {status === 'cleaning' ? 'Deleting...' : `Delete ${preview.count} Records`}
+          </button>
+        )}
+      </div>
+
+      {preview && (
+        <div className="mt-4">
+          {preview.count === 0 ? (
+            <p className="text-sm text-green-600">No expired research records found.</p>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-amber-800 mb-2">
+                Found {preview.count} expired research record(s):
+              </p>
+              <ul className="text-xs text-amber-700 space-y-1 max-h-40 overflow-y-auto">
+                {preview.records.slice(0, 10).map((r: any) => (
+                  <li key={r.id}>
+                    #{r.id} - {r.fileName} ({r.recordSource || 'unknown'})
+                  </li>
+                ))}
+                {preview.records.length > 10 && (
+                  <li className="text-amber-600">...and {preview.records.length - 10} more</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {status === 'done' && result && (
+        <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3">
+          <p className="text-sm text-green-700">
+            Successfully deleted {result.deletedCount} expired research record(s).
+          </p>
+        </div>
+      )}
+
+      {status === 'error' && error && (
+        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
     </div>
   );
 }
