@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
     // This provides Claude with existing catalog information to verify and build upon
     // When forceReanalyze is true, exclude analysis-derived fields (artist, date, technique, dimensions)
     // to allow fresh analysis without confirmation bias
+    // Get bodyHtml from shopifyData if available
+    const shopifyData = poster.shopifyData as { bodyHtml?: string | null } | null;
+
     const shopifyContext: ShopifyAnalysisContext | undefined = poster.shopifyProductId ? {
       // Only include analysis-derived fields if NOT force re-analyzing
       // This prevents confirmation bias when user wants a fresh look
@@ -83,6 +86,8 @@ export async function POST(request: NextRequest) {
       // This replaces auctionDescription which was used for all internal notes
       itemNotes: poster.itemNotes,
       // userNotes (internal business notes) are intentionally NOT passed to AI
+      // Product description from Shopify - may contain provenance, book refs, etc.
+      bodyHtml: shopifyData?.bodyHtml,
     } : undefined;
 
     // Analyze with Claude (including reference images from both sources)

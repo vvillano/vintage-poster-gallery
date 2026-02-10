@@ -21,6 +21,9 @@ export interface ShopifyAnalysisContext {
   // Internal business notes (from jadepuma.internal_notes) - NOT passed to AI
   // Kept for backwards compatibility but should not be used for analysis
   auctionDescription?: string | null;  // @deprecated - use itemNotes instead
+  // Product description from Shopify (bodyHtml) - may contain provenance, book references, etc.
+  // Treated as UNVERIFIED context that AI should validate against visual evidence
+  bodyHtml?: string | null;
 }
 
 // Initialize Anthropic client
@@ -168,6 +171,33 @@ For each claim found:
 1. If visual evidence supports it → confirm with high confidence
 2. If visual evidence contradicts it → note the discrepancy in validationNotes
 3. If cannot verify but plausible → accept as likely and note "per research notes"
+`;
+    }
+  }
+
+  // Add product description (bodyHtml) as unverified research context
+  // This often contains provenance claims, book/publication references, attribution info
+  if (context.bodyHtml && context.bodyHtml.length > 20) {
+    // Strip HTML tags for cleaner context
+    const cleanDescription = context.bodyHtml
+      .replace(/<[^>]*>/g, ' ')  // Remove HTML tags
+      .replace(/&nbsp;/g, ' ')   // Replace non-breaking spaces
+      .replace(/&amp;/g, '&')    // Decode ampersand
+      .replace(/&lt;/g, '<')     // Decode less than
+      .replace(/&gt;/g, '>')     // Decode greater than
+      .replace(/\s+/g, ' ')      // Collapse whitespace
+      .trim();
+
+    if (cleanDescription.length > 20) {
+      contextSection += `
+
+PRODUCT DESCRIPTION (from Shopify listing - UNVERIFIED):
+${cleanDescription}
+
+NOTE: This description may contain provenance claims, book/publication references,
+or attribution information. Validate against visual evidence where possible.
+For unverifiable claims that seem plausible, use hedged language in descriptions
+(e.g., "believed to be from...", "attributed to...", "according to catalog notes...").
 `;
     }
   }
