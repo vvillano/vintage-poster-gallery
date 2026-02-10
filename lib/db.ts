@@ -26,7 +26,8 @@ export async function createPoster(
       initial_information,
       product_type,
       supplemental_images,
-      analysis_completed
+      analysis_completed,
+      record_source
     )
     VALUES (
       ${input.imageUrl},
@@ -37,7 +38,8 @@ export async function createPoster(
       ${input.initialInformation || null},
       ${input.productType || null},
       ${input.supplementalImages ? JSON.stringify(input.supplementalImages) : null},
-      false
+      false,
+      ${input.recordSource || 'direct_upload'}
     )
     RETURNING *
   `;

@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       uploadedBy: session.user.name || 'unknown',
       initialInformation: initialInformation || undefined,
       productType: productType || undefined,
+      recordSource: 'direct_upload',
     });
 
     return NextResponse.json({

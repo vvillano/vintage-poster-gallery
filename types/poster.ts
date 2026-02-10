@@ -23,6 +23,23 @@ export interface Tag {
   createdAt: Date;
 }
 
+// Record source - how the item record was created
+export type RecordSource =
+  | 'shopify_import'   // Pulled from existing Shopify product
+  | 'shopify_create'   // Created in PM app, pushed to Research
+  | 'direct_upload'    // Uploaded image directly (research)
+  | 'price_research'   // Created during valuation research
+  | 'unknown';         // Legacy records
+
+// Human-readable labels for record sources
+export const RECORD_SOURCE_LABELS: Record<RecordSource, string> = {
+  shopify_import: 'Imported from Shopify',
+  shopify_create: 'Created in PM App',
+  direct_upload: 'Direct Upload',
+  price_research: 'Price Research',
+  unknown: 'Unknown',
+};
+
 // Comparable sale record for market research
 export interface ComparableSale {
   id: string;           // UUID for unique identification
@@ -453,6 +470,10 @@ export interface Poster {
   sourceDealerId?: number | null;         // Legacy: FK to dealers table, use sellerId instead
   acquisitionPlatformId?: number | null;  // Legacy: FK to platforms table, use platformId instead
   dealerName?: string | null;             // Raw dealer name from Shopify for matching
+
+  // Record source tracking
+  recordSource?: RecordSource | null;     // How this record was created
+  expiresAt?: Date | null;                // For auto-cleanup of unlinked research records
 }
 
 // Product type classifications from Product Classification Guide - 2025
@@ -651,6 +672,7 @@ export interface CreatePosterInput {
   initialInformation?: string;
   productType?: string;
   supplementalImages?: SupplementalImage[];
+  recordSource?: RecordSource;
 }
 
 export interface UpdatePosterInput {

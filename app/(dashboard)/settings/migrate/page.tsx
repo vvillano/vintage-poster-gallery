@@ -35,6 +35,12 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'record-source',
+    name: 'Record Source Tracking',
+    description: 'Add record_source and expires_at columns for tracking where records come from (Shopify import, direct upload, price research). Enables 30-day auto-cleanup of unlinked research records.',
+    endpoint: '/api/migrate/record-source',
+  },
+  {
     id: 'platforms-sellers',
     name: 'Platforms & Sellers Refactoring',
     description: 'Implements the new acquisition tracking model: Platforms = WHERE you buy (marketplaces, venues, aggregators), Sellers = WHO you buy from (auction houses, dealers, individuals). Adds canResearchPrices to platforms, canResearchAt to sellers, renames dealers to sellers, and seeds common platforms.',

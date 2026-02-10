@@ -150,7 +150,8 @@ export async function POST(request: NextRequest) {
             condition_details,
             user_notes,
             printing_technique,
-            dealer_name
+            dealer_name,
+            record_source
           )
           VALUES (
             ${blob.url},
@@ -173,7 +174,8 @@ export async function POST(request: NextRequest) {
             ${mappedFields.conditionDetails || null},
             ${mappedFields.userNotes || null},
             ${mappedFields.printingTechnique || null},
-            ${mappedFields.dealerName || null}
+            ${mappedFields.dealerName || null},
+            'shopify_import'
           )
           RETURNING id
         `;

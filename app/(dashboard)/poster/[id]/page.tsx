@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType } from '@/types/poster';
+import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType, ShopifyData, RECORD_SOURCE_LABELS, RecordSource } from '@/types/poster';
+import { SELLER_TYPE_LABELS, SellerType } from '@/types/seller';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
@@ -185,6 +186,34 @@ function buildMarketplaceQuery(poster: Poster): string {
   }
 
   return parts.join(' ');
+}
+
+// Format currency value
+function formatCurrency(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+}
+
+// Get metafield value from shopifyData
+function getMetafield(shopifyData: ShopifyData | null | undefined, namespaceKey: string): string | null {
+  if (!shopifyData?.metafields) return null;
+  const [namespace, key] = namespaceKey.split('.');
+  const mf = shopifyData.metafields.find(m => m.namespace === namespace && m.key === key);
+  return mf?.value || null;
+}
+
+// Format date for display (mm/dd/yyyy)
+function formatDisplayDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 export default function PosterDetailPage() {
@@ -2948,6 +2977,119 @@ export default function PosterDetailPage() {
                     {poster.valueInsights}
                   </p>
                 </div>
+              )}
+
+              {/* Acquisition - consolidated purchase/source data */}
+              {poster.shopifyProductId && (
+                (() => {
+                  const shopifyData = poster.shopifyData as ShopifyData | null;
+                  const metafields = {
+                    sourcePlatform: getMetafield(shopifyData, 'jadepuma.source_platform'),
+                    dealerName: getMetafield(shopifyData, 'jadepuma.dealer'),
+                    privateSellerName: getMetafield(shopifyData, 'jadepuma.private_seller_name'),
+                    privateSellerEmail: getMetafield(shopifyData, 'jadepuma.private_seller_email'),
+                    purchaseDate: getMetafield(shopifyData, 'jadepuma.date'),
+                    purchasePrice: getMetafield(shopifyData, 'jadepuma.purchase_price'),
+                    shippingCost: getMetafield(shopifyData, 'jadepuma.avp_shipping'),
+                    restorationCost: getMetafield(shopifyData, 'jadepuma.avp_restoration'),
+                  };
+
+                  // Check if we have any acquisition data to display
+                  const hasAcquisitionData = metafields.sourcePlatform || metafields.dealerName ||
+                    metafields.privateSellerName || metafields.purchaseDate || metafields.purchasePrice ||
+                    metafields.shippingCost || metafields.restorationCost ||
+                    shopifyData?.cost || shopifyData?.price || poster.platformIdentity;
+
+                  if (!hasAcquisitionData) return null;
+
+                  return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                      <h3 className="text-xl font-bold text-slate-900 mb-4">Acquisition</h3>
+
+                      {/* Source Row: Platform + Seller + Identity */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                          <p className="text-sm text-slate-500 font-medium mb-1">Platform</p>
+                          <p className="text-slate-900 font-medium">{metafields.sourcePlatform || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-slate-500 font-medium mb-1">Seller</p>
+                          <p className="text-slate-900 font-medium">{metafields.dealerName || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-slate-500 font-medium mb-1">Username</p>
+                          <p className="text-slate-900 font-mono">{poster.platformIdentity || '—'}</p>
+                        </div>
+                      </div>
+
+                      {/* Private Seller (if applicable) */}
+                      {(metafields.privateSellerName || metafields.privateSellerEmail) && (
+                        <div className="mb-6 p-3 bg-slate-50 rounded">
+                          <p className="text-sm text-slate-500 font-medium mb-1">Private Seller</p>
+                          <p className="text-slate-900">{metafields.privateSellerName}</p>
+                          {metafields.privateSellerEmail && (
+                            <p className="text-sm text-slate-600">{metafields.privateSellerEmail}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Cost Breakdown */}
+                      <div className="border-t border-slate-200 pt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Cost Breakdown</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs text-slate-500">Purchase Date</p>
+                            <p className="text-slate-900 font-medium">{formatDisplayDate(metafields.purchaseDate) || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Purchase Price</p>
+                            <p className="text-slate-900 font-medium">{formatCurrency(metafields.purchasePrice) || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Shipping</p>
+                            <p className="text-slate-900 font-medium">{formatCurrency(metafields.shippingCost) || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Restoration</p>
+                            <p className="text-slate-900 font-medium">{formatCurrency(metafields.restorationCost) || '—'}</p>
+                          </div>
+                        </div>
+
+                        {/* COGS Summary */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
+                          <span className="text-sm font-medium text-slate-700">Total COGS</span>
+                          <span className="text-lg font-bold text-slate-900">{formatCurrency(shopifyData?.cost) || '—'}</span>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="border-t border-slate-200 pt-4 mt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Pricing</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-slate-500">List Price</p>
+                            <p className="text-xl font-bold text-green-700">{formatCurrency(shopifyData?.price) || '—'}</p>
+                          </div>
+                          {shopifyData?.compareAtPrice && (
+                            <div>
+                              <p className="text-xs text-slate-500">Compare At</p>
+                              <p className="text-lg text-slate-500 line-through">{formatCurrency(shopifyData.compareAtPrice)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Record source badge */}
+                      {poster.recordSource && poster.recordSource !== 'unknown' && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <span className="text-xs text-slate-500">
+                            Source: {RECORD_SOURCE_LABELS[poster.recordSource as RecordSource]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               )}
 
               {/* Shopify Integration */}
