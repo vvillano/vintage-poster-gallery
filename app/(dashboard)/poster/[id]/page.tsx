@@ -2055,9 +2055,17 @@ export default function PosterDetailPage() {
                 </div>
                 {showReanalyze && (
                   <div className="mt-4">
-                    <p className="text-sm text-slate-600 mb-4">
-                      Add reference images and/or text context, then click Re-analyze to run a fresh analysis.
-                    </p>
+                    {/* How Re-analysis Works */}
+                    <div className="text-sm text-slate-600 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                      <p>
+                        <strong>Normal mode:</strong> Uses current Shopify data (title, description, metafields) plus any
+                        reference images or additional context you provide below.
+                      </p>
+                      <p>
+                        <strong>Skeptical mode:</strong> Ignores ALL Shopify data and analyzes the image as if it were
+                        completely unknown. Only uses the image itself plus any context you explicitly provide.
+                      </p>
+                    </div>
 
                     {/* Reference Images Section */}
                     <div className="mb-4 p-3 bg-white rounded-lg border border-slate-200">
@@ -2099,19 +2107,26 @@ export default function PosterDetailPage() {
 
                       {/* Add new image */}
                       {(!poster.supplementalImages || poster.supplementalImages.length < 5) && (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={supplementalDescription}
-                            onChange={(e) => setSupplementalDescription(e.target.value)}
-                            placeholder="Describe this image (e.g., 'Close-up of signature')"
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                          />
+                        <div className="space-y-3">
+                          {/* Step 1: Optional description */}
+                          <div>
+                            <label className="text-xs text-slate-500 mb-1 block">
+                              Description for next image (optional):
+                            </label>
+                            <input
+                              type="text"
+                              value={supplementalDescription}
+                              onChange={(e) => setSupplementalDescription(e.target.value)}
+                              placeholder="e.g., 'Close-up of signature', 'Back of print'"
+                              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+                            />
+                          </div>
+                          {/* Step 2: Load image */}
                           <div className="flex gap-2">
-                            <label className={`flex-1 px-3 py-2 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
+                            <label className={`flex-1 px-3 py-2.5 text-sm text-center border-2 border-dashed rounded cursor-pointer transition ${
                               uploadingSupplemental || compressingSupplemental
                                 ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
-                                : 'border-slate-300 hover:border-amber-400 hover:bg-amber-50 text-slate-600'
+                                : 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium'
                             }`}>
                               <input
                                 type="file"
@@ -2122,6 +2137,7 @@ export default function PosterDetailPage() {
                                   if (file) {
                                     uploadSupplementalImage(file, supplementalDescription || undefined);
                                     e.target.value = '';
+                                    setSupplementalDescription(''); // Clear for next image
                                   }
                                 }}
                                 className="hidden"
@@ -2130,7 +2146,7 @@ export default function PosterDetailPage() {
                                 ? 'Compressing...'
                                 : uploadingSupplemental
                                 ? 'Uploading...'
-                                : 'Browse...'}
+                                : 'Browse for Image'}
                             </label>
                             <button
                               type="button"
@@ -2144,6 +2160,7 @@ export default function PosterDetailPage() {
                                       const blob = await item.getType(imageType);
                                       const file = new File([blob], `pasted-${Date.now()}.png`, { type: imageType });
                                       uploadSupplementalImage(file, supplementalDescription || undefined);
+                                      setSupplementalDescription(''); // Clear for next image
                                       break;
                                     }
                                   }
@@ -2151,10 +2168,10 @@ export default function PosterDetailPage() {
                                   setError('Could not read clipboard. Try Ctrl+V in the description field.');
                                 }
                               }}
-                              className={`px-3 py-2 text-sm border-2 border-dashed rounded transition ${
+                              className={`px-4 py-2.5 text-sm border-2 border-dashed rounded transition ${
                                 uploadingSupplemental || compressingSupplemental
                                   ? 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed'
-                                  : 'border-slate-300 hover:border-amber-400 hover:bg-amber-50 text-slate-600 cursor-pointer'
+                                  : 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium cursor-pointer'
                               }`}
                             >
                               Paste
@@ -2186,18 +2203,21 @@ export default function PosterDetailPage() {
                     )}
 
                     {/* Skeptical Mode Option */}
-                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className={`mb-4 p-3 rounded-lg border ${skepticalMode ? 'bg-orange-50 border-orange-300' : 'bg-amber-50 border-amber-200'}`}>
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={skepticalMode}
                           onChange={(e) => setSkepticalMode(e.target.checked)}
-                          className="mt-1 h-4 w-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                          className="mt-1 h-4 w-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
                         />
                         <div>
-                          <span className="font-medium text-slate-800">Skeptical Mode</span>
+                          <span className={`font-medium ${skepticalMode ? 'text-orange-800' : 'text-slate-800'}`}>
+                            Skeptical Mode {skepticalMode && '(Active)'}
+                          </span>
                           <p className="text-xs text-slate-600 mt-0.5">
-                            Challenge previous attributions. Excludes auction descriptions and prior analysis to allow fresh evaluation.
+                            Ignore ALL Shopify data (title, description, metafields). Analyze as if this were a brand new,
+                            unknown image. Only uses the primary image plus any reference images/context you add above.
                           </p>
                         </div>
                       </label>

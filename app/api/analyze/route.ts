@@ -52,48 +52,62 @@ export async function POST(request: NextRequest) {
 
     console.log(`Starting analysis for poster ${posterId}, image URL: ${poster.imageUrl}`);
     if (skepticalMode) {
-      console.log('SKEPTICAL MODE ENABLED - Previous attributions will be challenged');
+      console.log('SKEPTICAL MODE ENABLED - Ignoring all Shopify data and initial information');
     }
 
     // Combine initial information with any additional context
-    let combinedInfo = poster.initialInformation || '';
-    if (additionalContext) {
-      combinedInfo = combinedInfo
-        ? `${combinedInfo}\n\nADDITIONAL CONTEXT PROVIDED BY USER:\n${additionalContext}`
-        : additionalContext;
+    // In skeptical mode, ONLY use additionalContext (ignore initialInformation from original upload)
+    let combinedInfo = '';
+    if (skepticalMode) {
+      // Only use the additional context explicitly provided for this analysis
+      combinedInfo = additionalContext || '';
+    } else {
+      // Normal mode: use both initial info and additional context
+      combinedInfo = poster.initialInformation || '';
+      if (additionalContext) {
+        combinedInfo = combinedInfo
+          ? `${combinedInfo}\n\nADDITIONAL CONTEXT PROVIDED BY USER:\n${additionalContext}`
+          : additionalContext;
+      }
     }
 
     // Build Shopify context from existing metafield data
     // This provides Claude with existing catalog information to verify and build upon
-    // When forceReanalyze is true, exclude analysis-derived fields (artist, date, technique, dimensions)
-    // to allow fresh analysis without confirmation bias
+    //
+    // SKEPTICAL MODE: Completely ignores all Shopify data - analyzes as if unknown image
+    // NORMAL MODE: Uses Shopify context (title, description, metafields)
+    //   - When forceReanalyze, excludes AI-derived fields to avoid confirmation bias
+    //   - Always includes user/Shopify-provided fields (condition, title, notes)
+    //
     // Get bodyHtml from shopifyData if available
     const shopifyData = poster.shopifyData as { bodyHtml?: string | null } | null;
 
-    const shopifyContext: ShopifyAnalysisContext | undefined = poster.shopifyProductId ? {
-      // Only include analysis-derived fields if NOT force re-analyzing
-      // This prevents confirmation bias when user wants a fresh look
-      artist: forceReanalyze ? undefined : poster.artist,
-      estimatedDate: forceReanalyze ? undefined : poster.estimatedDate,
-      printingTechnique: forceReanalyze ? undefined : poster.printingTechnique,
-      // dimensionsEstimate is AI-derived, so exclude on re-analysis to allow fresh estimation
-      dimensions: forceReanalyze ? undefined : poster.dimensionsEstimate,
-      // Condition is typically user/Shopify provided (not AI), so always include
-      condition: poster.condition,
-      conditionDetails: poster.conditionDetails,
-      title: poster.title,
-      // itemNotes contains research-relevant notes (provenance, auction catalog info)
-      // This replaces auctionDescription which was used for all internal notes
-      itemNotes: poster.itemNotes,
-      // userNotes (internal business notes) are intentionally NOT passed to AI
-      // Product description from Shopify - may contain provenance, book refs, etc.
-      bodyHtml: shopifyData?.bodyHtml,
-    } : undefined;
+    // In Skeptical Mode, don't pass ANY Shopify context - treat as unknown image
+    const shopifyContext: ShopifyAnalysisContext | undefined =
+      (poster.shopifyProductId && !skepticalMode) ? {
+        // Only include analysis-derived fields if NOT force re-analyzing
+        // This prevents confirmation bias when user wants a fresh look
+        artist: forceReanalyze ? undefined : poster.artist,
+        estimatedDate: forceReanalyze ? undefined : poster.estimatedDate,
+        printingTechnique: forceReanalyze ? undefined : poster.printingTechnique,
+        // dimensionsEstimate is AI-derived, so exclude on re-analysis to allow fresh estimation
+        dimensions: forceReanalyze ? undefined : poster.dimensionsEstimate,
+        // Condition is typically user/Shopify provided (not AI), so always include
+        condition: poster.condition,
+        conditionDetails: poster.conditionDetails,
+        title: poster.title,
+        // itemNotes contains research-relevant notes (provenance, auction catalog info)
+        // This replaces auctionDescription which was used for all internal notes
+        itemNotes: poster.itemNotes,
+        // userNotes (internal business notes) are intentionally NOT passed to AI
+        // Product description from Shopify - may contain provenance, book refs, etc.
+        bodyHtml: shopifyData?.bodyHtml,
+      } : undefined;
 
     // Analyze with Claude (including reference images from both sources)
     // - supplementalImages: uploaded in Research App
-    // - shopifyReferenceImages: imported from Shopify jadepuma.reference_images metafield
-    // skepticalMode removes previous attributions from context to allow fresh analysis
+    // - shopifyReferenceImages: imported from Shopify jadepuma.reference_images metafield (kept even in skeptical mode)
+    // Note: In skeptical mode, shopifyContext is undefined but reference images are still used
     const analysis = await analyzePoster(
       poster.imageUrl,
       combinedInfo || undefined,
