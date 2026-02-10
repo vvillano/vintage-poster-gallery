@@ -1246,12 +1246,34 @@ export default function PosterDetailPage() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex justify-between items-center">
-        <Link
-          href="/dashboard"
-          className="text-slate-600 hover:text-slate-900 flex items-center"
-        >
-          ← Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/dashboard"
+            className="text-slate-600 hover:text-slate-900 flex items-center"
+          >
+            ← Back to Dashboard
+          </Link>
+          {/* PM App link - only shows when linked to Shopify */}
+          {poster.shopifyProductId && (() => {
+            // Extract numeric ID from GID format: gid://shopify/Product/8168953938035 → 8168953938035
+            const numericId = poster.shopifyProductId.split('/').pop();
+            return (
+              <a
+                href={`https://admin.shopify.com/store/authentic-vintage-posters/apps/avp-product-management/products/${numericId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition flex items-center gap-1.5 text-sm font-medium"
+                title="Open in PM App"
+              >
+                <span>🛒</span>
+                <span>PM App</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            );
+          })()}
+        </div>
         <div className="flex gap-2">
           {/* Reverse Image Search - uses actual image + title only (not artist/date which may be wrong) */}
           {poster?.imageUrl && (
