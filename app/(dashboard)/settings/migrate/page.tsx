@@ -561,14 +561,25 @@ export default function MigratePage() {
                       </ul>
                     </div>
                   )}
-                  {migration.successLink && (
-                    <Link
-                      href={migration.successLink.href}
-                      className="text-amber-600 hover:text-amber-700 font-medium text-sm"
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setStates(prev => ({
+                        ...prev,
+                        [migration.id]: { status: 'idle', results: [], error: '' }
+                      }))}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm"
                     >
-                      {migration.successLink.label} →
-                    </Link>
-                  )}
+                      Run Again
+                    </button>
+                    {migration.successLink && (
+                      <Link
+                        href={migration.successLink.href}
+                        className="text-amber-600 hover:text-amber-700 font-medium text-sm"
+                      >
+                        {migration.successLink.label} →
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
 
