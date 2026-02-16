@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import {
   getAllSellers,
   getSellerById,
+  getSellerByIdWithPlatform,
+  getSellersWithPlatforms,
   createSeller,
   updateSeller,
   deleteSeller,
@@ -24,6 +26,8 @@ import type { SellerType, SellerRegion, SellerSpecialization } from '@/types/sel
  * - search: Search by name or notes
  * - canResearchAt: Filter by research capability (has searchable archives)
  * - isActive: Filter by active status
+ * - platformId: Filter by platform ID (for individual sellers on a specific platform)
+ * - includePlatform: Include joined platform data (true/false)
  * - limit: Pagination limit (default 100)
  * - offset: Pagination offset (default 0)
  */
@@ -36,10 +40,13 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
+    const includePlatform = searchParams.get('includePlatform') === 'true';
 
     // If fetching single seller by ID
     if (id) {
-      const seller = await getSellerById(parseInt(id));
+      const seller = includePlatform
+        ? await getSellerByIdWithPlatform(parseInt(id))
+        : await getSellerById(parseInt(id));
       if (!seller) {
         return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
       }
@@ -47,30 +54,57 @@ export async function GET(request: NextRequest) {
     }
 
     // Build filter options
+    const type = searchParams.get('type') as SellerType | null;
+    const region = searchParams.get('region') as SellerRegion | null;
+    const specialization = searchParams.get('specialization') as SellerSpecialization | null;
+    const search = searchParams.get('search');
+    const canResearchAt = searchParams.get('canResearchAt');
+    const isActive = searchParams.get('isActive');
+    const platformId = searchParams.get('platformId');
+    const limit = searchParams.get('limit');
+    const offset = searchParams.get('offset');
+
+    // Use the joined query if we need platform data or filtering by platformId
+    if (includePlatform || platformId) {
+      const options: Parameters<typeof getSellersWithPlatforms>[0] = {};
+
+      if (type) options.type = type;
+      if (search) options.search = search;
+      if (isActive !== null) options.isActive = isActive === 'true';
+      if (platformId) options.platformId = parseInt(platformId);
+      if (limit) options.limit = parseInt(limit);
+      if (offset) options.offset = parseInt(offset);
+
+      const sellers = await getSellersWithPlatforms(options);
+      const total = await getSellerCount(options.isActive);
+
+      // Apply specialization filter client-side (complex array contains)
+      let filteredSellers = sellers;
+      if (specialization) {
+        filteredSellers = sellers.filter(s => s.specializations.includes(specialization));
+      }
+      if (canResearchAt !== null) {
+        filteredSellers = filteredSellers.filter(s => s.canResearchAt === (canResearchAt === 'true'));
+      }
+
+      return NextResponse.json({
+        items: filteredSellers,
+        total,
+        limit: options.limit || 100,
+        offset: options.offset || 0,
+      });
+    }
+
+    // Standard query without platform joins
     const options: Parameters<typeof getAllSellers>[0] = {};
 
-    const type = searchParams.get('type');
-    if (type) options.type = type as SellerType;
-
-    const region = searchParams.get('region');
-    if (region) options.region = region as SellerRegion;
-
-    const specialization = searchParams.get('specialization');
-    if (specialization) options.specialization = specialization as SellerSpecialization;
-
-    const search = searchParams.get('search');
+    if (type) options.type = type;
+    if (region) options.region = region;
+    if (specialization) options.specialization = specialization;
     if (search) options.search = search;
-
-    const canResearchAt = searchParams.get('canResearchAt');
     if (canResearchAt !== null) options.canResearchAt = canResearchAt === 'true';
-
-    const isActive = searchParams.get('isActive');
     if (isActive !== null) options.isActive = isActive === 'true';
-
-    const limit = searchParams.get('limit');
     if (limit) options.limit = parseInt(limit);
-
-    const offset = searchParams.get('offset');
     if (offset) options.offset = parseInt(offset);
 
     const sellers = await getAllSellers(options);
@@ -128,6 +162,8 @@ export async function POST(request: NextRequest) {
       name: body.name,
       type: body.type,
       website: body.website,
+      platformId: body.platformId,
+      linkedSellerId: body.linkedSellerId,
       country: body.country,
       city: body.city,
       region: body.region,
@@ -144,6 +180,7 @@ export async function POST(request: NextRequest) {
       password: body.password,
       notes: body.notes,
       isActive: body.isActive,
+      shopifyMetaobjectId: body.shopifyMetaobjectId,
     });
 
     return NextResponse.json({ item: seller }, { status: 201 });
@@ -180,6 +217,8 @@ export async function PUT(request: NextRequest) {
       name: body.name,
       type: body.type,
       website: body.website,
+      platformId: body.platformId,
+      linkedSellerId: body.linkedSellerId,
       country: body.country,
       city: body.city,
       region: body.region,
@@ -196,6 +235,7 @@ export async function PUT(request: NextRequest) {
       password: body.password,
       notes: body.notes,
       isActive: body.isActive,
+      shopifyMetaobjectId: body.shopifyMetaobjectId,
     });
 
     return NextResponse.json({ item: seller });

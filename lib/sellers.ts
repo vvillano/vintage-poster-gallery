@@ -14,12 +14,14 @@ import { generateSellerSlug } from '@/types/seller';
  */
 function dbRowToSeller(row: Record<string, unknown>): Seller {
   const type = row.type as SellerType;
-  return {
+  const seller: Seller = {
     id: row.id as number,
     name: row.name as string,
     slug: row.slug as string,
     type,
     website: row.website as string | null,
+    platformId: row.platform_id as number | null,
+    linkedSellerId: row.linked_seller_id as number | null,
     country: row.country as string | null,
     city: row.city as string | null,
     region: row.region as SellerRegion | null,
@@ -44,7 +46,28 @@ function dbRowToSeller(row: Record<string, unknown>): Seller {
     isActive: row.is_active as boolean,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
+    shopifyMetaobjectId: row.shopify_metaobject_id as string | null,
   };
+
+  // Add joined platform data if present (from JOIN queries)
+  if (row.platform_name !== undefined) {
+    seller.platform = row.platform_name ? {
+      id: row.platform_id as number,
+      name: row.platform_name as string,
+      platformType: row.platform_type as string | undefined,
+    } : null;
+  }
+
+  // Add joined linked seller data if present
+  if (row.linked_seller_name !== undefined) {
+    seller.linkedSeller = row.linked_seller_name ? {
+      id: row.linked_seller_id as number,
+      name: row.linked_seller_name as string,
+      type: row.linked_seller_type as SellerType,
+    } : null;
+  }
+
+  return seller;
 }
 
 /**
@@ -59,6 +82,8 @@ export async function createSeller(input: CreateSellerInput): Promise<Seller> {
       slug,
       type,
       website,
+      platform_id,
+      linked_seller_id,
       country,
       city,
       region,
@@ -74,13 +99,16 @@ export async function createSeller(input: CreateSellerInput): Promise<Seller> {
       username,
       password,
       notes,
-      is_active
+      is_active,
+      shopify_metaobject_id
     )
     VALUES (
       ${input.name},
       ${slug},
       ${input.type},
       ${input.website || null},
+      ${input.platformId || null},
+      ${input.linkedSellerId || null},
       ${input.country || null},
       ${input.city || null},
       ${input.region || null},
@@ -96,7 +124,8 @@ export async function createSeller(input: CreateSellerInput): Promise<Seller> {
       ${input.username || null},
       ${input.password || null},
       ${input.notes || null},
-      ${input.isActive ?? true}
+      ${input.isActive ?? true},
+      ${input.shopifyMetaobjectId || null}
     )
     RETURNING *
   `;
@@ -248,6 +277,8 @@ export async function updateSeller(input: UpdateSellerInput): Promise<Seller> {
       slug = ${slug},
       type = ${updates.type ?? current.type},
       website = ${updates.website !== undefined ? updates.website : current.website},
+      platform_id = ${updates.platformId !== undefined ? updates.platformId : current.platformId},
+      linked_seller_id = ${updates.linkedSellerId !== undefined ? updates.linkedSellerId : current.linkedSellerId},
       country = ${updates.country !== undefined ? updates.country : current.country},
       city = ${updates.city !== undefined ? updates.city : current.city},
       region = ${updates.region !== undefined ? updates.region : current.region},
@@ -264,6 +295,7 @@ export async function updateSeller(input: UpdateSellerInput): Promise<Seller> {
       password = ${updates.password !== undefined ? updates.password : current.password},
       notes = ${updates.notes !== undefined ? updates.notes : current.notes},
       is_active = ${updates.isActive ?? current.isActive},
+      shopify_metaobject_id = ${updates.shopifyMetaobjectId !== undefined ? updates.shopifyMetaobjectId : current.shopifyMetaobjectId},
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *
@@ -409,4 +441,117 @@ export async function getHighReliabilitySellers(): Promise<Seller[]> {
  */
 export async function getAuctionHouses(): Promise<Seller[]> {
   return getAllSellers({ type: 'auction_house', isActive: true });
+}
+
+/**
+ * Get all sellers with platform and linked seller data joined
+ * Used for display in the UI where we need platform context
+ */
+export async function getSellersWithPlatforms(options?: {
+  type?: SellerType;
+  isActive?: boolean;
+  platformId?: number;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<Seller[]> {
+  const {
+    type,
+    isActive,
+    platformId,
+    search,
+    limit = 100,
+    offset = 0,
+  } = options || {};
+
+  let result;
+
+  if (search) {
+    const searchPattern = `%${search}%`;
+    result = await sql`
+      SELECT
+        s.*,
+        p.name as platform_name,
+        p.platform_type as platform_type,
+        ls.name as linked_seller_name,
+        ls.type as linked_seller_type
+      FROM sellers s
+      LEFT JOIN platforms p ON s.platform_id = p.id
+      LEFT JOIN sellers ls ON s.linked_seller_id = ls.id
+      WHERE (s.name ILIKE ${searchPattern} OR s.notes ILIKE ${searchPattern})
+      AND (${isActive === undefined} OR s.is_active = ${isActive ?? true})
+      AND (${type === undefined} OR s.type = ${type})
+      AND (${platformId === undefined} OR s.platform_id = ${platformId})
+      ORDER BY s.reliability_tier ASC, s.name ASC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+  } else {
+    result = await sql`
+      SELECT
+        s.*,
+        p.name as platform_name,
+        p.platform_type as platform_type,
+        ls.name as linked_seller_name,
+        ls.type as linked_seller_type
+      FROM sellers s
+      LEFT JOIN platforms p ON s.platform_id = p.id
+      LEFT JOIN sellers ls ON s.linked_seller_id = ls.id
+      WHERE (${isActive === undefined} OR s.is_active = ${isActive ?? true})
+      AND (${type === undefined} OR s.type = ${type})
+      AND (${platformId === undefined} OR s.platform_id = ${platformId})
+      ORDER BY s.reliability_tier ASC, s.name ASC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+  }
+
+  return result.rows.map(dbRowToSeller);
+}
+
+/**
+ * Get a single seller with platform data joined
+ */
+export async function getSellerByIdWithPlatform(id: number): Promise<Seller | null> {
+  const result = await sql`
+    SELECT
+      s.*,
+      p.name as platform_name,
+      p.platform_type as platform_type,
+      ls.name as linked_seller_name,
+      ls.type as linked_seller_type
+    FROM sellers s
+    LEFT JOIN platforms p ON s.platform_id = p.id
+    LEFT JOIN sellers ls ON s.linked_seller_id = ls.id
+    WHERE s.id = ${id}
+  `;
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return dbRowToSeller(result.rows[0]);
+}
+
+/**
+ * Get sellers that are platform users (type='individual' with platform_id)
+ * These are sellers identified by their username on a specific platform
+ */
+export async function getPlatformUsers(platformId?: number): Promise<Seller[]> {
+  const result = await sql`
+    SELECT
+      s.*,
+      p.name as platform_name,
+      p.platform_type as platform_type,
+      ls.name as linked_seller_name,
+      ls.type as linked_seller_type
+    FROM sellers s
+    LEFT JOIN platforms p ON s.platform_id = p.id
+    LEFT JOIN sellers ls ON s.linked_seller_id = ls.id
+    WHERE s.type = 'individual'
+    AND s.platform_id IS NOT NULL
+    AND (${platformId === undefined} OR s.platform_id = ${platformId})
+    AND s.is_active = true
+    ORDER BY p.name ASC, s.name ASC
+  `;
+
+  return result.rows.map(dbRowToSeller);
 }

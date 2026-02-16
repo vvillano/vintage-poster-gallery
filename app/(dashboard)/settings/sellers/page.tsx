@@ -17,6 +17,7 @@ import {
   getSellerTierBadgeColor,
 } from '@/types/seller';
 import type { PlatformIdentity } from '@/types/poster';
+import type { Platform } from '@/types/platform';
 
 const SELLER_TYPES: { value: SellerType; label: string }[] = [
   { value: 'auction_house', label: 'Auction House' },
@@ -47,6 +48,10 @@ export default function SellerDatabasePage() {
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loadingSellers, setLoadingSellers] = useState(true);
 
+  // Platforms state (for linking individual sellers)
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [loadingPlatforms, setLoadingPlatforms] = useState(true);
+
   // Platform Identities state
   const [identities, setIdentities] = useState<PlatformIdentity[]>([]);
   const [loadingIdentities, setLoadingIdentities] = useState(true);
@@ -71,6 +76,8 @@ export default function SellerDatabasePage() {
     name: '',
     type: 'dealer' as SellerType,
     website: '',
+    platformId: null as number | null,
+    linkedSellerId: null as number | null,
     country: '',
     city: '',
     region: '' as SellerRegion | '',
@@ -104,6 +111,7 @@ export default function SellerDatabasePage() {
   useEffect(() => {
     fetchSellers();
     fetchIdentities();
+    fetchPlatforms();
   }, []);
 
   // Re-fetch sellers when filters change
@@ -115,6 +123,7 @@ export default function SellerDatabasePage() {
   async function fetchSellers() {
     try {
       const params = new URLSearchParams();
+      params.append('includePlatform', 'true'); // Include platform join data
       if (filterType) params.append('type', filterType);
       if (filterRegion) params.append('region', filterRegion);
       if (searchTerm) params.append('search', searchTerm);
@@ -145,12 +154,27 @@ export default function SellerDatabasePage() {
     }
   }
 
+  async function fetchPlatforms() {
+    try {
+      const res = await fetch('/api/platforms?isActive=true');
+      if (!res.ok) throw new Error('Failed to fetch platforms');
+      const data = await res.json();
+      setPlatforms(data.items || []);
+    } catch (err) {
+      console.error('Failed to load platforms:', err);
+    } finally {
+      setLoadingPlatforms(false);
+    }
+  }
+
   // Seller form handlers
   function resetSellerForm() {
     setSellerFormData({
       name: '',
       type: 'dealer',
       website: '',
+      platformId: null,
+      linkedSellerId: null,
       country: '',
       city: '',
       region: '',
@@ -178,6 +202,8 @@ export default function SellerDatabasePage() {
       name: seller.name,
       type: seller.type,
       website: seller.website || '',
+      platformId: seller.platformId || null,
+      linkedSellerId: seller.linkedSellerId || null,
       country: seller.country || '',
       city: seller.city || '',
       region: seller.region || '',
@@ -237,6 +263,8 @@ export default function SellerDatabasePage() {
         name: sellerFormData.name.trim(),
         type: sellerFormData.type,
         website: sellerFormData.website.trim() || null,
+        platformId: sellerFormData.platformId,
+        linkedSellerId: sellerFormData.linkedSellerId,
         country: sellerFormData.country.trim() || null,
         city: sellerFormData.city.trim() || null,
         region: sellerFormData.region || null,
@@ -634,6 +662,56 @@ export default function SellerDatabasePage() {
                   </div>
                 </div>
 
+                {/* Platform Link (especially useful for individual sellers) */}
+                {(sellerFormData.type === 'individual' || sellerFormData.platformId) && (
+                  <div className="grid gap-4 md:grid-cols-2 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Platform
+                        <span className="text-xs text-slate-500 ml-1">(where they sell)</span>
+                      </label>
+                      <select
+                        value={sellerFormData.platformId || ''}
+                        onChange={(e) => setSellerFormData({
+                          ...sellerFormData,
+                          platformId: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none bg-white"
+                      >
+                        <option value="">-- No platform --</option>
+                        {platforms.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Which platform does this seller primarily operate on?
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Linked Seller
+                        <span className="text-xs text-slate-500 ml-1">(if known dealer)</span>
+                      </label>
+                      <select
+                        value={sellerFormData.linkedSellerId || ''}
+                        onChange={(e) => setSellerFormData({
+                          ...sellerFormData,
+                          linkedSellerId: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none bg-white"
+                      >
+                        <option value="">-- Not linked --</option>
+                        {sellers.filter(s => s.id !== editingSeller?.id && s.type !== 'individual').map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Link to their main seller record if this is a known dealer's platform username
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Location */}
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
@@ -928,6 +1006,16 @@ export default function SellerDatabasePage() {
                           <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
                             {SELLER_TYPE_LABELS[seller.type]}
                           </span>
+                          {seller.platformId && (
+                            <span className="text-xs px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded">
+                              on {seller.platform?.name || platforms.find(p => p.id === seller.platformId)?.name || 'Platform'}
+                            </span>
+                          )}
+                          {seller.linkedSellerId && (
+                            <span className="text-xs px-2 py-0.5 bg-violet-100 text-violet-700 rounded">
+                              → {seller.linkedSeller?.name || sellers.find(s => s.id === seller.linkedSellerId)?.name || 'Linked'}
+                            </span>
+                          )}
                           {seller.region && (
                             <span className="text-xs text-slate-500">{seller.region}</span>
                           )}

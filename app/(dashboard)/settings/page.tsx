@@ -19,18 +19,11 @@ export default function SettingsPage() {
       color: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
     },
     {
-      title: 'Seller Directory',
-      description: 'Manage private sellers and link platform usernames to real identities. Track contact info and credentials.',
+      title: 'Sellers',
+      description: 'Manage sellers (WHO you buy from) - auction houses, dealers, galleries, and platform users. Track reliability, specializations, and credentials.',
       href: '/settings/sellers',
       icon: '👥',
       color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
-    },
-    {
-      title: 'Dealer Database',
-      description: 'Manage auction houses, galleries, and dealers worldwide. Track reliability tiers, specializations, and research capabilities.',
-      href: '/settings/dealers',
-      icon: '🏛️',
-      color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',
     },
     {
       title: 'Shopify Integration',

@@ -251,6 +251,12 @@ export interface Seller {
   type: SellerType;
   website?: string | null;
 
+  // Platform link (for individual/platform users)
+  // Which platform does this seller operate on? (eBay, LiveAuctioneers, etc.)
+  platformId?: number | null;
+  // If this platform user is actually a known dealer, link to their main seller record
+  linkedSellerId?: number | null;
+
   // Location
   country?: string | null;
   city?: string | null;
@@ -291,6 +297,21 @@ export interface Seller {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+
+  // Shopify sync
+  shopifyMetaobjectId?: string | null;
+
+  // Joined data (populated when fetching with joins)
+  platform?: {
+    id: number;
+    name: string;
+    platformType?: string;
+  } | null;
+  linkedSeller?: {
+    id: number;
+    name: string;
+    type: SellerType;
+  } | null;
 }
 
 // For creating a new seller
@@ -298,6 +319,8 @@ export interface CreateSellerInput {
   name: string;
   type: SellerType;
   website?: string | null;
+  platformId?: number | null;
+  linkedSellerId?: number | null;
   country?: string | null;
   city?: string | null;
   region?: SellerRegion | null;
@@ -314,6 +337,7 @@ export interface CreateSellerInput {
   password?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  shopifyMetaobjectId?: string | null;
 }
 
 // For updating a seller

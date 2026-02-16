@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'resource-consolidation',
+    name: 'Resource Partner Consolidation',
+    description: 'Consolidates resource partner entities: adds platform_id and linked_seller_id to sellers table, migrates research_sites to platforms, migrates platform_identities to sellers as type="individual", and adds generic platform categories (Estate Sale, Flea Market, etc.).',
+    endpoint: '/api/migrate/resource-consolidation',
+    successLink: { href: '/settings/sellers', label: 'Manage Sellers' },
+  },
+  {
     id: 'record-source',
     name: 'Record Source Tracking',
     description: 'Add record_source and expires_at columns for tracking where records come from (Shopify import, direct upload, price research). Enables 30-day auto-cleanup of unlinked research records.',

@@ -160,16 +160,6 @@ const LIST_CONFIGS: ListConfig[] = [
     ],
   },
   {
-    key: 'source-platforms',
-    label: 'Source Platforms',
-    description: 'Where items are acquired (eBay, Heritage Auctions, etc.)',
-    fields: [
-      { key: 'name', label: 'Name', type: 'text', required: true },
-      { key: 'urlTemplate', label: 'URL Template', type: 'text' },
-      { key: 'displayOrder', label: 'Display Order', type: 'number' },
-    ],
-  },
-  {
     key: 'locations',
     label: 'Locations',
     description: 'Physical storage locations',
