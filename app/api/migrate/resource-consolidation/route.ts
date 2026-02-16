@@ -272,7 +272,7 @@ export async function GET() {
       status.sellerLinkedSellerIdExists &&
       status.sellerShopifyIdExists &&
       status.platformShopifyIdExists &&
-      status.genericPlatformCount >= 4;
+      (status.genericPlatformCount as number) >= 4;
 
     return NextResponse.json({
       status,
