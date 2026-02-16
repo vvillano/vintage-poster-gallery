@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getShopifyConfig, shopifyAdminFetch } from '@/lib/shopify';
+import { getShopifyConfig } from '@/lib/shopify';
 import { sql } from '@vercel/postgres';
+
+/**
+ * Helper to make GraphQL calls to Shopify Admin API
+ */
+async function shopifyGraphQL(
+  config: { shopDomain: string; accessToken: string; apiVersion: string },
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<any> {
+  const url = `https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': config.accessToken,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Shopify GraphQL error: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+}
 
 /**
  * POST /api/shopify/sync-managed-lists
@@ -94,10 +121,11 @@ export async function POST(request: NextRequest) {
               ],
             };
 
-            const response = await shopifyAdminFetch(config, {
-              query: CREATE_METAOBJECT_MUTATION,
-              variables: { metaobject: metaobjectInput },
-            });
+            const response = await shopifyGraphQL(
+              config,
+              CREATE_METAOBJECT_MUTATION,
+              { metaobject: metaobjectInput }
+            );
 
             if (response.data?.metaobjectCreate?.metaobject?.id) {
               const shopifyId = response.data.metaobjectCreate.metaobject.id;
@@ -147,10 +175,11 @@ export async function POST(request: NextRequest) {
               ],
             };
 
-            const response = await shopifyAdminFetch(config, {
-              query: CREATE_METAOBJECT_MUTATION,
-              variables: { metaobject: metaobjectInput },
-            });
+            const response = await shopifyGraphQL(
+              config,
+              CREATE_METAOBJECT_MUTATION,
+              { metaobject: metaobjectInput }
+            );
 
             if (response.data?.metaobjectCreate?.metaobject?.id) {
               const shopifyId = response.data.metaobjectCreate.metaobject.id;
@@ -182,10 +211,11 @@ export async function POST(request: NextRequest) {
       if (type === 'platforms') {
         try {
           // Fetch all source platform metaobjects from Shopify
-          const response = await shopifyAdminFetch(config, {
-            query: GET_METAOBJECTS_QUERY,
-            variables: { type: 'jadepuma_source_platform', first: 250 },
-          });
+          const response = await shopifyGraphQL(
+            config,
+            GET_METAOBJECTS_QUERY,
+            { type: 'jadepuma_source_platform', first: 250 }
+          );
 
           const metaobjects = response.data?.metaobjects?.edges || [];
 
@@ -245,10 +275,11 @@ export async function POST(request: NextRequest) {
       if (type === 'sellers') {
         try {
           // Fetch all seller metaobjects from Shopify
-          const response = await shopifyAdminFetch(config, {
-            query: GET_METAOBJECTS_QUERY,
-            variables: { type: 'jadepuma_seller', first: 250 },
-          });
+          const response = await shopifyGraphQL(
+            config,
+            GET_METAOBJECTS_QUERY,
+            { type: 'jadepuma_seller', first: 250 }
+          );
 
           const metaobjects = response.data?.metaobjects?.edges || [];
 

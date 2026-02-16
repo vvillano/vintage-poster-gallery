@@ -16,8 +16,7 @@ import {
   getDefaultsForSellerType,
   getSellerTierBadgeColor,
 } from '@/types/seller';
-import type { PlatformIdentity } from '@/types/poster';
-import type { Platform } from '@/types/platform';
+import type { PlatformIdentity, Platform } from '@/types/poster';
 
 const SELLER_TYPES: { value: SellerType; label: string }[] = [
   { value: 'auction_house', label: 'Auction House' },
