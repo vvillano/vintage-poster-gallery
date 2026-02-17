@@ -168,9 +168,10 @@ async function pullSources(
     }
 
     try {
+      // Don't include is_active - it may not exist and defaults to true anyway
       await sql`
-        INSERT INTO platforms (name, platform_type, is_acquisition_platform, is_active, display_order)
-        VALUES (${name}, 'marketplace', true, true, 100)
+        INSERT INTO platforms (name, platform_type, is_acquisition_platform, display_order)
+        VALUES (${name}, 'marketplace', true, 100)
         ON CONFLICT (name) DO NOTHING
       `;
       result.created++;
