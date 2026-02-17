@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface ListStatus {
@@ -10,6 +10,8 @@ interface ListStatus {
   onlyInLocal: number;
   inBoth: number;
   lastSynced: string | null;
+  onlyInPMAppItems?: string[];
+  onlyInLocalItems?: string[];
 }
 
 interface SyncStatus {
@@ -62,6 +64,19 @@ export default function PMSyncPage() {
   const [pulling, setPulling] = useState<string | null>(null);
   const [pullResults, setPullResults] = useState<PullResult[] | null>(null);
   const [error, setError] = useState('');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  function toggleRow(listType: string) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(listType)) {
+        next.delete(listType);
+      } else {
+        next.add(listType);
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     fetchStatus();
@@ -269,48 +284,126 @@ export default function PMSyncPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {Object.entries(status.lists).map(([listType, listStatus]) => (
-                  <tr key={listType} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-slate-900">
-                        {LIST_TYPE_LABELS[listType] || listType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className="text-sm text-slate-700">{listStatus.pmAppCount}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className="text-sm text-slate-700">{listStatus.localCount}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {listStatus.onlyInPMApp > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          +{listStatus.onlyInPMApp}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
+                {Object.entries(status.lists).map(([listType, listStatus]) => {
+                  const isExpanded = expandedRows.has(listType);
+                  const hasDifferences = listStatus.onlyInPMApp > 0 || listStatus.onlyInLocal > 0;
+
+                  return (
+                    <React.Fragment key={listType}>
+                      <tr className="hover:bg-slate-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {hasDifferences && (
+                              <button
+                                onClick={() => toggleRow(listType)}
+                                className="text-slate-400 hover:text-slate-600"
+                              >
+                                {isExpanded ? '▼' : '▶'}
+                              </button>
+                            )}
+                            <span className="text-sm font-medium text-slate-900">
+                              {LIST_TYPE_LABELS[listType] || listType}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm text-slate-700">{listStatus.pmAppCount}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm text-slate-700">{listStatus.localCount}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {listStatus.onlyInPMApp > 0 ? (
+                            <button
+                              onClick={() => toggleRow(listType)}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                            >
+                              +{listStatus.onlyInPMApp}
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {listStatus.onlyInLocal > 0 ? (
+                            <button
+                              onClick={() => toggleRow(listType)}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200"
+                            >
+                              +{listStatus.onlyInLocal}
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => handlePull(listType)}
+                            disabled={pulling !== null || listStatus.onlyInPMApp === 0}
+                            className="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-slate-400 disabled:cursor-not-allowed"
+                          >
+                            {pulling === listType ? 'Pulling...' : 'Pull'}
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Expanded details row */}
+                      {isExpanded && hasDifferences && (
+                        <tr className="bg-slate-50">
+                          <td colSpan={6} className="px-6 py-4">
+                            <div className="grid grid-cols-2 gap-6">
+                              {/* Items to Pull (only in PM App) */}
+                              <div>
+                                <h4 className="text-sm font-medium text-blue-800 mb-2">
+                                  To Pull (in PM App, not local): {listStatus.onlyInPMApp}
+                                </h4>
+                                {listStatus.onlyInPMAppItems && listStatus.onlyInPMAppItems.length > 0 ? (
+                                  <ul className="text-sm text-slate-600 space-y-1 max-h-48 overflow-y-auto">
+                                    {listStatus.onlyInPMAppItems.map((item, i) => (
+                                      <li key={i} className="flex items-center gap-2">
+                                        <span className="text-blue-500">+</span>
+                                        {item}
+                                      </li>
+                                    ))}
+                                    {listStatus.onlyInPMApp > 50 && (
+                                      <li className="text-slate-400 italic">
+                                        ...and {listStatus.onlyInPMApp - 50} more
+                                      </li>
+                                    )}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-slate-400">None</p>
+                                )}
+                              </div>
+                              {/* Items to Push (only in Local) */}
+                              <div>
+                                <h4 className="text-sm font-medium text-amber-800 mb-2">
+                                  To Push (in local, not PM App): {listStatus.onlyInLocal}
+                                </h4>
+                                {listStatus.onlyInLocalItems && listStatus.onlyInLocalItems.length > 0 ? (
+                                  <ul className="text-sm text-slate-600 space-y-1 max-h-48 overflow-y-auto">
+                                    {listStatus.onlyInLocalItems.map((item, i) => (
+                                      <li key={i} className="flex items-center gap-2">
+                                        <span className="text-amber-500">→</span>
+                                        {item}
+                                      </li>
+                                    ))}
+                                    {listStatus.onlyInLocal > 50 && (
+                                      <li className="text-slate-400 italic">
+                                        ...and {listStatus.onlyInLocal - 50} more
+                                      </li>
+                                    )}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-slate-400">None</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {listStatus.onlyInLocal > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                          +{listStatus.onlyInLocal}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <button
-                        onClick={() => handlePull(listType)}
-                        disabled={pulling !== null || listStatus.onlyInPMApp === 0}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-slate-400 disabled:cursor-not-allowed"
-                      >
-                        {pulling === listType ? 'Pulling...' : 'Pull'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

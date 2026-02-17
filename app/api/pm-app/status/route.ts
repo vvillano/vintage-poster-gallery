@@ -60,6 +60,9 @@ export async function GET() {
         onlyInLocal: number;
         inBoth: number;
         lastSynced: string | null;
+        // Include actual items for differences (limit to first 50 for performance)
+        onlyInPMAppItems: string[];
+        onlyInLocalItems: string[];
       }
     > = {};
 
@@ -76,7 +79,9 @@ export async function GET() {
       onlyInPMApp: sourcesComparison.onlyInPMApp.length,
       onlyInLocal: sourcesComparison.onlyInLocal.length,
       inBoth: sourcesComparison.inBoth.length,
-      lastSynced: null, // TODO: Track this
+      lastSynced: null,
+      onlyInPMAppItems: sourcesComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: sourcesComparison.onlyInLocal.slice(0, 50),
     };
 
     // Artists
@@ -90,6 +95,8 @@ export async function GET() {
       onlyInLocal: artistsComparison.onlyInLocal.length,
       inBoth: artistsComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: artistsComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: artistsComparison.onlyInLocal.slice(0, 50),
     };
 
     // Medium -> Media Types
@@ -103,6 +110,8 @@ export async function GET() {
       onlyInLocal: mediumComparison.onlyInLocal.length,
       inBoth: mediumComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: mediumComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: mediumComparison.onlyInLocal.slice(0, 50),
     };
 
     // Colors
@@ -124,6 +133,8 @@ export async function GET() {
       onlyInLocal: colorsComparison.onlyInLocal.length,
       inBoth: colorsComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: colorsComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: colorsComparison.onlyInLocal.slice(0, 50),
     };
 
     // Internal Tags
@@ -140,6 +151,8 @@ export async function GET() {
       onlyInLocal: internalTagsComparison.onlyInLocal.length,
       inBoth: internalTagsComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: internalTagsComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: internalTagsComparison.onlyInLocal.slice(0, 50),
     };
 
     // Locations
@@ -153,6 +166,8 @@ export async function GET() {
       onlyInLocal: locationsComparison.onlyInLocal.length,
       inBoth: locationsComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: locationsComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: locationsComparison.onlyInLocal.slice(0, 50),
     };
 
     // Countries
@@ -166,6 +181,8 @@ export async function GET() {
       onlyInLocal: countriesComparison.onlyInLocal.length,
       inBoth: countriesComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: countriesComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: countriesComparison.onlyInLocal.slice(0, 50),
     };
 
     // Other Tags -> Tags
@@ -179,6 +196,8 @@ export async function GET() {
       onlyInLocal: otherTagsComparison.onlyInLocal.length,
       inBoth: otherTagsComparison.inBoth.length,
       lastSynced: null,
+      onlyInPMAppItems: otherTagsComparison.onlyInPMApp.slice(0, 50),
+      onlyInLocalItems: otherTagsComparison.onlyInLocal.slice(0, 50),
     };
 
     // Calculate totals
