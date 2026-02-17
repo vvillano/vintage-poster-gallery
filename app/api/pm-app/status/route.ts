@@ -10,6 +10,9 @@ import {
   compareLists,
 } from '@/lib/pm-app';
 
+// Force dynamic to read env vars at runtime
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/pm-app/status
  *
