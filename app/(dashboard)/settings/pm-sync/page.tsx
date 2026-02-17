@@ -53,7 +53,7 @@ const LIST_TYPE_LABELS: Record<string, string> = {
   internalTags: 'Internal Tags',
   locations: 'Locations',
   countries: 'Countries',
-  otherTags: 'Other Tags → Tags',
+  otherTags: 'Available Tags',
 };
 
 export default function PMSyncPage() {
