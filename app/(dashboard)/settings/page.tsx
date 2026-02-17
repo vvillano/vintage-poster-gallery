@@ -33,6 +33,13 @@ export default function SettingsPage() {
       color: 'bg-green-50 border-green-200 hover:bg-green-100',
     },
     {
+      title: 'PM App Sync',
+      description: 'Sync managed lists between Research App and PM App. Pull artists, sources, tags, and more.',
+      href: '/settings/pm-sync',
+      icon: '🔄',
+      color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100',
+    },
+    {
       title: 'Database Migrations',
       description: 'Run database schema updates. Required after deploying new features that add tables or columns.',
       href: '/settings/migrate',
