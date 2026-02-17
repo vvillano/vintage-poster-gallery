@@ -231,7 +231,11 @@ export function normalizeForComparison(name: string): string {
     .trim()
     .replace(/\s+/g, ' ')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    // Normalize quotes and apostrophes to standard ASCII
+    .replace(/[\u2018\u2019\u201A\u201B\u0060\u00B4]/g, "'") // Various apostrophes → '
+    .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"') // Various quotes → "
+    .replace(/[\u2013\u2014]/g, '-'); // En-dash, em-dash → hyphen
 }
 
 /**
