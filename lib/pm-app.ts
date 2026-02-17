@@ -8,11 +8,16 @@
  * API is READ-ONLY - to push data, we create Shopify metaobjects that PM App reads.
  */
 
-const PM_APP_BASE_URL =
-  process.env.PM_APP_BASE_URL ||
-  'https://avp-product-management-6ded0b52f729.herokuapp.com';
-const PM_APP_API_KEY = process.env.PM_APP_API_KEY;
 const PM_APP_SHOP = 'authentic-vintage-posters.myshopify.com';
+
+// Read env vars at runtime, not module load time (important for serverless)
+function getPMAppBaseUrl(): string {
+  return process.env.PM_APP_BASE_URL || 'https://avp-product-management-6ded0b52f729.herokuapp.com';
+}
+
+function getPMAppApiKey(): string | undefined {
+  return process.env.PM_APP_API_KEY;
+}
 
 /**
  * PM App Managed Lists Response
@@ -74,7 +79,7 @@ export interface PMAppError {
  * Check if PM App API is configured
  */
 export function isPMAppConfigured(): boolean {
-  return !!PM_APP_API_KEY;
+  return !!getPMAppApiKey();
 }
 
 /**
@@ -82,7 +87,7 @@ export function isPMAppConfigured(): boolean {
  */
 export function getPMAppConfig(): { baseUrl: string; shop: string; configured: boolean } {
   return {
-    baseUrl: PM_APP_BASE_URL,
+    baseUrl: getPMAppBaseUrl(),
     shop: PM_APP_SHOP,
     configured: isPMAppConfigured(),
   };
@@ -92,16 +97,17 @@ export function getPMAppConfig(): { baseUrl: string; shop: string; configured: b
  * Fetch all managed lists from PM App
  */
 export async function fetchPMAppManagedLists(): Promise<PMAppManagedLists> {
-  if (!PM_APP_API_KEY) {
+  const apiKey = getPMAppApiKey();
+  if (!apiKey) {
     throw new Error('PM_APP_API_KEY is not configured');
   }
 
-  const url = `${PM_APP_BASE_URL}/managed-lists?shop=${encodeURIComponent(PM_APP_SHOP)}`;
+  const url = `${getPMAppBaseUrl()}/managed-lists?shop=${encodeURIComponent(PM_APP_SHOP)}`;
 
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'x-api-key': PM_APP_API_KEY,
+      'x-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     // Cache for 5 minutes as recommended in API docs
@@ -128,16 +134,17 @@ export async function fetchPMAppManagedLists(): Promise<PMAppManagedLists> {
  * Fetch PM App schema (field definitions)
  */
 export async function fetchPMAppSchema(): Promise<PMAppSchema> {
-  if (!PM_APP_API_KEY) {
+  const apiKey = getPMAppApiKey();
+  if (!apiKey) {
     throw new Error('PM_APP_API_KEY is not configured');
   }
 
-  const url = `${PM_APP_BASE_URL}/managed-lists/schema`;
+  const url = `${getPMAppBaseUrl()}/managed-lists/schema`;
 
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'x-api-key': PM_APP_API_KEY,
+      'x-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     next: { revalidate: 3600 }, // Cache schema for 1 hour
