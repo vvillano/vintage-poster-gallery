@@ -34,13 +34,6 @@ export async function GET() {
         configured: false,
         error: 'PM App API key not configured',
         config,
-        // Debug info - remove after fixing
-        debug: {
-          hasApiKey: !!process.env.PM_APP_API_KEY,
-          apiKeyLength: process.env.PM_APP_API_KEY?.length || 0,
-          hasBaseUrl: !!process.env.PM_APP_BASE_URL,
-          pmEnvKeys: Object.keys(process.env).filter(k => k.includes('PM_')).length,
-        },
       });
     }
 
