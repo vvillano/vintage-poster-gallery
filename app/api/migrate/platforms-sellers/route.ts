@@ -14,6 +14,17 @@ async function runPlatformsSellersMigration(): Promise<string[]> {
   // STEP 1: Update PLATFORMS table
   // =====================================================
 
+  // Add is_active column
+  try {
+    await sql`
+      ALTER TABLE platforms
+      ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true
+    `;
+    results.push('Added is_active column to platforms');
+  } catch (err) {
+    results.push(`Note: ${err instanceof Error ? err.message : 'is_active may already exist'}`);
+  }
+
   // Add can_research_prices column
   try {
     await sql`

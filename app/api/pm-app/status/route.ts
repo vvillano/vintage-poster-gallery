@@ -34,6 +34,13 @@ export async function GET() {
         configured: false,
         error: 'PM App API key not configured',
         config,
+        // Debug info - remove after fixing
+        debug: {
+          hasApiKey: !!process.env.PM_APP_API_KEY,
+          apiKeyLength: process.env.PM_APP_API_KEY?.length || 0,
+          hasBaseUrl: !!process.env.PM_APP_BASE_URL,
+          pmEnvKeys: Object.keys(process.env).filter(k => k.includes('PM_')).length,
+        },
       });
     }
 
@@ -64,8 +71,9 @@ export async function GET() {
     > = {};
 
     // Sources -> Platforms
+    // Note: is_active column may not exist on all deployments yet
     const platformsResult = await sql`
-      SELECT name FROM platforms WHERE is_acquisition_platform = true AND is_active = true
+      SELECT name FROM platforms WHERE is_acquisition_platform = true
     `;
     const platformNames = platformsResult.rows.map((r) => r.name);
     const sourcesComparison = compareLists(pmAppData.managedLists.sources, platformNames);
@@ -213,6 +221,7 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
+        configured: isPMAppConfigured(), // Include this so UI shows error, not "Not Configured"
         error: 'Failed to get PM App status',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
