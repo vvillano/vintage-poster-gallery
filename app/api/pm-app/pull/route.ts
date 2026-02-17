@@ -22,6 +22,7 @@ type ListType =
 interface PullResult {
   listType: string;
   created: number;
+  updated: number;
   skipped: number;
   failed: number;
   errors: string[];
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     const totalCreated = results.reduce((sum, r) => sum + r.created, 0);
+    const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
     const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
     const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
 
@@ -121,6 +123,7 @@ export async function POST(request: NextRequest) {
       results,
       summary: {
         totalCreated,
+        totalUpdated,
         totalSkipped,
         totalFailed,
       },
@@ -149,33 +152,47 @@ async function pullSources(
     created: 0,
     skipped: 0,
     failed: 0,
+    updated: 0,
     errors: [],
   };
 
-  // Get existing platforms
+  // Get ALL existing platforms (not just acquisition ones) to check for name conflicts
   const existing = await sql`
-    SELECT name FROM platforms WHERE is_acquisition_platform = true
+    SELECT name, is_acquisition_platform FROM platforms
   `;
-  const existingNames = new Set(
-    existing.rows.map((r) => normalizeForComparison(r.name))
-  );
+  const existingPlatforms = new Map<string, boolean>();
+  for (const row of existing.rows) {
+    existingPlatforms.set(normalizeForComparison(row.name), row.is_acquisition_platform);
+  }
 
   for (const name of items) {
     const normalized = normalizeForComparison(name);
-    if (existingNames.has(normalized)) {
+    const existingIsAcquisition = existingPlatforms.get(normalized);
+
+    // If it already exists as an acquisition platform, skip
+    if (existingIsAcquisition === true) {
       result.skipped++;
       continue;
     }
 
     try {
-      // Don't include is_active - it may not exist and defaults to true anyway
-      await sql`
+      // Use ON CONFLICT DO UPDATE to handle cases where:
+      // - Platform exists but is_acquisition_platform = false (update it)
+      // - Platform doesn't exist (insert it)
+      const insertResult = await sql`
         INSERT INTO platforms (name, platform_type, is_acquisition_platform, display_order)
         VALUES (${name}, 'marketplace', true, 100)
-        ON CONFLICT (name) DO NOTHING
+        ON CONFLICT (name) DO UPDATE SET is_acquisition_platform = true
+        RETURNING (xmax = 0) AS inserted
       `;
-      result.created++;
-      existingNames.add(normalized);
+
+      // xmax = 0 means it was an INSERT, otherwise it was an UPDATE
+      if (insertResult.rows[0]?.inserted) {
+        result.created++;
+      } else {
+        result.updated++;
+      }
+      existingPlatforms.set(normalized, true);
     } catch (err) {
       result.failed++;
       result.errors.push(`Failed to create platform "${name}": ${err}`);
@@ -195,6 +212,7 @@ async function pullArtists(
   const result: PullResult = {
     listType: 'artists',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -248,6 +266,7 @@ async function pullMediaTypes(
   const result: PullResult = {
     listType: 'medium',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -292,6 +311,7 @@ async function pullColors(
   const result: PullResult = {
     listType: 'colors',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -342,6 +362,7 @@ async function pullInternalTags(
   const result: PullResult = {
     listType: 'internalTags',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -386,6 +407,7 @@ async function pullLocations(
   const result: PullResult = {
     listType: 'locations',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -430,6 +452,7 @@ async function pullCountries(
   const result: PullResult = {
     listType: 'countries',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
@@ -476,6 +499,7 @@ async function pullTags(
   const result: PullResult = {
     listType: 'otherTags',
     created: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
