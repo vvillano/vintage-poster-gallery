@@ -212,6 +212,13 @@ export default function PMSyncPage() {
                 {result.failed > 0 && (
                   <span className="ml-2 text-red-600">{result.failed} failed</span>
                 )}
+                {result.errors && result.errors.length > 0 && (
+                  <div className="mt-1 ml-4 text-xs text-red-500">
+                    {result.errors.map((err, i) => (
+                      <div key={i}>{err}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

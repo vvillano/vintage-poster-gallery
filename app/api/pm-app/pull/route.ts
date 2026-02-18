@@ -572,11 +572,16 @@ async function pullSellers(
     }
 
     try {
-      // Generate slug from name
-      const slug = name
+      // Generate slug from name, with suffix if slug already exists
+      let slug = name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
+
+      const slugCheck = await sql`SELECT 1 FROM sellers WHERE slug = ${slug} LIMIT 1`;
+      if (slugCheck.rows.length > 0) {
+        slug = `${slug}-${Date.now()}`;
+      }
 
       await sql`
         INSERT INTO sellers (name, slug, type, reliability_tier, attribution_weight, pricing_weight, is_active, created_at, updated_at)
