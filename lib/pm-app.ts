@@ -34,6 +34,7 @@ export interface PMAppManagedLists {
     medium: string[];
     colors: string[];
     sources: string[];
+    sellers: string[];
     otherTags: string[];
     locations: string[];
     countries: string[];

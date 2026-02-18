@@ -112,15 +112,10 @@ export async function POST(request: NextRequest) {
       results.push(result);
     }
 
-    // Pull Sellers (from custom managed list)
+    // Pull Sellers
     if (shouldPull('sellers')) {
-      const sellersCustomList = pmAppData.managedLists.customManagedLists.find(
-        (cl) => cl.title.toLowerCase() === 'sellers'
-      );
-      if (sellersCustomList) {
-        const result = await pullSellers(sellersCustomList.values, mode);
-        results.push(result);
-      }
+      const result = await pullSellers(pmAppData.managedLists.sellers, mode);
+      results.push(result);
     }
 
     // Calculate totals
@@ -547,7 +542,7 @@ async function pullTags(
 }
 
 /**
- * Pull sellers from PM App custom managed list into sellers table
+ * Pull sellers into sellers table
  * Since sellers have rich fields locally (type, reliability, etc.),
  * we create with sensible defaults - user can edit details later.
  */
