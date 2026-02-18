@@ -56,6 +56,7 @@ const LIST_TYPE_LABELS: Record<string, string> = {
   locations: 'Locations',
   countries: 'Countries',
   otherTags: 'Available Tags',
+  sellers: 'Sellers',
 };
 
 export default function PMSyncPage() {

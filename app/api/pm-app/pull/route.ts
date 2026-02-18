@@ -17,6 +17,7 @@ type ListType =
   | 'locations'
   | 'countries'
   | 'otherTags'
+  | 'sellers'
   | 'all';
 
 interface PullResult {
@@ -109,6 +110,17 @@ export async function POST(request: NextRequest) {
     if (shouldPull('otherTags')) {
       const result = await pullTags(pmAppData.managedLists.otherTags, mode);
       results.push(result);
+    }
+
+    // Pull Sellers (from custom managed list)
+    if (shouldPull('sellers')) {
+      const sellersCustomList = pmAppData.managedLists.customManagedLists.find(
+        (cl) => cl.title.toLowerCase() === 'sellers'
+      );
+      if (sellersCustomList) {
+        const result = await pullSellers(sellersCustomList.values, mode);
+        results.push(result);
+      }
     }
 
     // Calculate totals
@@ -528,6 +540,58 @@ async function pullTags(
     } catch (err) {
       result.failed++;
       result.errors.push(`Failed to create tag "${name}": ${err}`);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Pull sellers from PM App custom managed list into sellers table
+ * Since sellers have rich fields locally (type, reliability, etc.),
+ * we create with sensible defaults - user can edit details later.
+ */
+async function pullSellers(
+  items: string[],
+  _mode: 'add-only' | 'merge'
+): Promise<PullResult> {
+  const result: PullResult = {
+    listType: 'sellers',
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  const existing = await sql`SELECT name FROM sellers`;
+  const existingNames = new Set(
+    existing.rows.map((r) => normalizeForComparison(r.name))
+  );
+
+  for (const name of items) {
+    const normalized = normalizeForComparison(name);
+    if (existingNames.has(normalized)) {
+      result.skipped++;
+      continue;
+    }
+
+    try {
+      // Generate slug from name
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      await sql`
+        INSERT INTO sellers (name, slug, type, reliability_tier, attribution_weight, pricing_weight, is_active, created_at, updated_at)
+        VALUES (${name}, ${slug}, 'other', 3, 0.7, 0.7, true, NOW(), NOW())
+      `;
+      result.created++;
+      existingNames.add(normalized);
+    } catch (err) {
+      result.failed++;
+      result.errors.push(`Failed to create seller "${name}": ${err}`);
     }
   }
 

@@ -220,6 +220,12 @@ export const PM_APP_FIELD_MAPPINGS: Record<
     nameField: 'name',
     canPush: true,
   },
+  sellers: {
+    researchAppTable: 'sellers',
+    description: 'WHO you buy from (auction houses, dealers, individuals)',
+    nameField: 'name',
+    canPush: true,
+  },
 };
 
 /**

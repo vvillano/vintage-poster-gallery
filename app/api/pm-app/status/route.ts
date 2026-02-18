@@ -200,6 +200,26 @@ export async function GET() {
       onlyInLocalItems: otherTagsComparison.onlyInLocal.slice(0, 50),
     };
 
+    // Sellers (custom managed list in PM App -> sellers table locally)
+    const sellersCustomList = pmAppData.managedLists.customManagedLists.find(
+      (cl) => cl.title.toLowerCase() === 'sellers'
+    );
+    if (sellersCustomList) {
+      const sellersResult = await sql`SELECT name FROM sellers WHERE is_active = true OR is_active IS NULL`;
+      const sellerNames = sellersResult.rows.map((r) => r.name);
+      const sellersComparison = compareLists(sellersCustomList.values, sellerNames);
+      listStatus.sellers = {
+        pmAppCount: sellersCustomList.values.length,
+        localCount: sellerNames.length,
+        onlyInPMApp: sellersComparison.onlyInPMApp.length,
+        onlyInLocal: sellersComparison.onlyInLocal.length,
+        inBoth: sellersComparison.inBoth.length,
+        lastSynced: null,
+        onlyInPMAppItems: sellersComparison.onlyInPMApp.slice(0, 50),
+        onlyInLocalItems: sellersComparison.onlyInLocal.slice(0, 50),
+      };
+    }
+
     // Calculate totals
     const totalPMApp = Object.values(listStatus).reduce((sum, s) => sum + s.pmAppCount, 0);
     const totalLocal = Object.values(listStatus).reduce((sum, s) => sum + s.localCount, 0);
