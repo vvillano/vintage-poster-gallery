@@ -84,10 +84,19 @@ export async function GET() {
       onlyInLocalItems: sourcesComparison.onlyInLocal.slice(0, 50),
     };
 
-    // Artists
-    const artistsResult = await sql`SELECT name FROM artists WHERE verified = true OR verified IS NULL`;
+    // Artists (count all, not just verified — pull also checks all)
+    // Include aliases in comparison since pull deduplicates against aliases too
+    const artistsResult = await sql`SELECT name, aliases FROM artists`;
     const artistNames = artistsResult.rows.map((r) => r.name);
-    const artistsComparison = compareLists(pmAppData.managedLists.artists, artistNames);
+    const artistAliases: string[] = [];
+    for (const row of artistsResult.rows) {
+      if (row.aliases) {
+        for (const alias of row.aliases) {
+          artistAliases.push(alias);
+        }
+      }
+    }
+    const artistsComparison = compareLists(pmAppData.managedLists.artists, [...artistNames, ...artistAliases]);
     listStatus.artists = {
       pmAppCount: pmAppData.managedLists.artists.length,
       localCount: artistNames.length,
