@@ -353,7 +353,7 @@ export default function PMSyncPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <button
                             onClick={() => handlePull(listType)}
-                            disabled={pulling !== null || listStatus.onlyInPMApp === 0}
+                            disabled={pulling !== null}
                             className="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-slate-400 disabled:cursor-not-allowed"
                           >
                             {pulling === listType ? 'Pulling...' : 'Pull'}
