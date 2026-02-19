@@ -146,7 +146,7 @@ export interface MultiStageSearchOptions {
   // Visual verification
   enableVisualVerification?: boolean; // Enable Claude Vision comparison
   maxVisualVerifications?: number;    // Max results to verify (default: 10)
-  visualVerificationThreshold?: number; // Min visual match to include (default: 0 = include all)
+  visualVerificationThreshold?: number; // Min visual match to include (default: 30 = filter clearly different)
 
   // Filtering
   dealerIds?: number[];
@@ -158,7 +158,9 @@ export interface MultiStageSearchOptions {
 async function buildDealerDomainMap(
   dealerIds?: number[]
 ): Promise<Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>> {
-  const dealers = await getAllDealers({ isActive: true, limit: 10000 });
+  // Fetch ALL dealers (including inactive) so we can recognize their domains
+  // even if they're excluded or inactive - prevents them showing as "unknown"
+  const dealers = await getAllDealers({ limit: 10000 });
   const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>();
 
   const filteredDealers = dealerIds?.length
@@ -172,8 +174,8 @@ async function buildDealerDomainMap(
         id: dealer.id,
         name: dealer.name,
         reliabilityTier: dealer.reliabilityTier,
-        // Exclude reproduction-only sites from results
-        isExcluded: dealer.type === 'reproduction',
+        // Exclude reproduction-only sites and inactive dealers from results
+        isExcluded: dealer.excludeFromResults || !dealer.isActive,
       });
     }
   }
@@ -565,7 +567,7 @@ export async function multiStageSearch(
     includeWebSearch = true,
     enableVisualVerification = false,
     maxVisualVerifications = 10,
-    visualVerificationThreshold = 0,
+    visualVerificationThreshold = 30,
     dealerIds,
   } = options;
 
