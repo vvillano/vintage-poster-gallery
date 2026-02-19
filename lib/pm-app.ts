@@ -177,7 +177,7 @@ export const PM_APP_FIELD_MAPPINGS: Record<
     researchAppTable: 'platforms',
     description: 'Acquisition sources (WHERE you buy)',
     nameField: 'name',
-    canPush: true,
+    canPush: false, // PM App is source of truth for platforms
   },
   artists: {
     researchAppTable: 'artists',
@@ -225,7 +225,7 @@ export const PM_APP_FIELD_MAPPINGS: Record<
     researchAppTable: 'sellers',
     description: 'WHO you buy from (auction houses, dealers, individuals)',
     nameField: 'name',
-    canPush: true,
+    canPush: false, // PM App is source of truth for sellers
   },
 };
 

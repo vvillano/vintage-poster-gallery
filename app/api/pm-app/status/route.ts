@@ -219,7 +219,11 @@ export async function GET() {
     const totalPMApp = Object.values(listStatus).reduce((sum, s) => sum + s.pmAppCount, 0);
     const totalLocal = Object.values(listStatus).reduce((sum, s) => sum + s.localCount, 0);
     const totalOnlyInPMApp = Object.values(listStatus).reduce((sum, s) => sum + s.onlyInPMApp, 0);
-    const totalOnlyInLocal = Object.values(listStatus).reduce((sum, s) => sum + s.onlyInLocal, 0);
+    // Only count pushable lists toward the "needs push" total
+    const totalOnlyInLocal = Object.entries(listStatus).reduce((sum, [key, s]) => {
+      const canPush = PM_APP_FIELD_MAPPINGS[key]?.canPush !== false;
+      return sum + (canPush ? s.onlyInLocal : 0);
+    }, 0);
 
     return NextResponse.json({
       ok: true,

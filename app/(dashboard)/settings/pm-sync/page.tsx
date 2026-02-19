@@ -23,6 +23,7 @@ interface SyncStatus {
   };
   error?: string;
   lists?: Record<string, ListStatus>;
+  fieldMappings?: Record<string, { canPush: boolean; description: string }>;
   summary?: {
     totalPMApp: number;
     totalLocal: number;
@@ -295,6 +296,7 @@ export default function PMSyncPage() {
                 {Object.entries(status.lists).map(([listType, listStatus]) => {
                   const isExpanded = expandedRows.has(listType);
                   const hasDifferences = listStatus.onlyInPMApp > 0 || listStatus.onlyInLocal > 0;
+                  const canPush = status.fieldMappings?.[listType]?.canPush !== false;
 
                   return (
                     <React.Fragment key={listType}>
@@ -336,9 +338,13 @@ export default function PMSyncPage() {
                           {listStatus.onlyInLocal > 0 ? (
                             <button
                               onClick={() => toggleRow(listType)}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                canPush
+                                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
                             >
-                              +{listStatus.onlyInLocal}
+                              {canPush ? '+' : ''}{listStatus.onlyInLocal}
                             </button>
                           ) : (
                             <span className="text-slate-400">-</span>
@@ -382,16 +388,24 @@ export default function PMSyncPage() {
                                   <p className="text-sm text-slate-400">None</p>
                                 )}
                               </div>
-                              {/* Items to Push (only in Local) */}
+                              {/* Items only in Local */}
                               <div>
-                                <h4 className="text-sm font-medium text-amber-800 mb-2">
-                                  To Push (in local, not PM App): {listStatus.onlyInLocal}
+                                <h4 className={`text-sm font-medium mb-2 ${canPush ? 'text-amber-800' : 'text-slate-600'}`}>
+                                  {canPush
+                                    ? `To Push (in local, not PM App): ${listStatus.onlyInLocal}`
+                                    : `Local Only (not in PM App): ${listStatus.onlyInLocal}`
+                                  }
                                 </h4>
+                                {!canPush && listStatus.onlyInLocal > 0 && (
+                                  <p className="text-xs text-slate-500 mb-2">
+                                    PM App is the source of truth for this list. Local-only items are for research purposes.
+                                  </p>
+                                )}
                                 {listStatus.onlyInLocalItems && listStatus.onlyInLocalItems.length > 0 ? (
                                   <ul className="text-sm text-slate-600 space-y-1 max-h-48 overflow-y-auto">
                                     {listStatus.onlyInLocalItems.map((item, i) => (
                                       <li key={i} className="flex items-center gap-2">
-                                        <span className="text-amber-500">→</span>
+                                        <span className={canPush ? 'text-amber-500' : 'text-slate-400'}>→</span>
                                         {item}
                                       </li>
                                     ))}
