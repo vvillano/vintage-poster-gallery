@@ -65,6 +65,7 @@ export async function generateSearchUrls(
   const allDealers = await getAllDealers({
     canResearch: true,
     isActive: true,
+    limit: 10000,
   });
 
   // Filter by options
@@ -407,6 +408,7 @@ export async function getDealersForResearch(
   const dealers = await getAllDealers({
     canResearch: true,
     isActive: true,
+    limit: 10000,
   });
 
   // Filter by options

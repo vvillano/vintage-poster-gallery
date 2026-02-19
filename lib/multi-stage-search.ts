@@ -158,7 +158,7 @@ export interface MultiStageSearchOptions {
 async function buildDealerDomainMap(
   dealerIds?: number[]
 ): Promise<Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>> {
-  const dealers = await getAllDealers({ isActive: true });
+  const dealers = await getAllDealers({ isActive: true, limit: 10000 });
   const dealerDomainMap = new Map<string, { id: number; name: string; reliabilityTier: number; isExcluded: boolean }>();
 
   const filteredDealers = dealerIds?.length
