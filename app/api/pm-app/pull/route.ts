@@ -250,7 +250,6 @@ async function pullArtists(
       await sql`
         INSERT INTO artists (name, verified, created_at, updated_at)
         VALUES (${name}, false, NOW(), NOW())
-        ON CONFLICT (name) DO NOTHING
       `;
       result.created++;
       existingNames.add(normalized);
