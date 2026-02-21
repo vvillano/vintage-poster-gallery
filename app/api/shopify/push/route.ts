@@ -350,10 +350,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Shopify push error:', error);
+    const details = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
-        error: 'Failed to push data to Shopify',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: `Failed to push to Shopify: ${details}`,
+        details,
       },
       { status: 500 }
     );
