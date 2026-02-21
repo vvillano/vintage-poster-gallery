@@ -355,6 +355,7 @@ export interface ShopifyMetafieldData {
 
 // Shopify data snapshot stored with poster (defined before Poster for reference)
 export interface ShopifyData {
+  title?: string;
   price: string | null;
   compareAtPrice: string | null;
   inventoryQuantity: number | null;

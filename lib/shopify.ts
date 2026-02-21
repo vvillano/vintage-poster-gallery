@@ -403,6 +403,7 @@ export function shopifyProductToData(
   const firstVariant = product.variants[0];
 
   return {
+    title: product.title,
     price: firstVariant?.price || null,
     compareAtPrice: firstVariant?.compareAtPrice || null,
     inventoryQuantity: firstVariant?.inventoryQuantity ?? null,

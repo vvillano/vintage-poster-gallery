@@ -369,6 +369,11 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
         <p className="text-xs text-slate-500 mt-2">
           {isEditing ? 'Edit the text above, then push to Shopify when ready.' : 'Click the description to edit before pushing.'}
         </p>
+        {isLinked && (
+          <p className="text-xs text-slate-400 mt-1">
+            Size, Artist, and Condition are automatically appended below the description when pushed.
+          </p>
+        )}
       </div>
 
       {/* Concise Description Section - Separate */}

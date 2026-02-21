@@ -7,6 +7,7 @@ import {
   updateShopifyProduct,
   setProductMetafield,
   getShopifyProduct,
+  getProductMetafields,
   shopifyProductToData,
 } from '@/lib/shopify';
 
@@ -99,10 +100,53 @@ export async function POST(request: NextRequest) {
 
         if (description) {
           // Convert to HTML paragraphs
-          const htmlDescription = description
+          let htmlDescription = description
             .split('\n\n')
             .map((p: string) => `<p>${p.trim()}</p>`)
             .join('\n');
+
+          // Append Size, Artist, Condition for Facebook Marketplace
+          try {
+            const metafields = await getProductMetafields(item.shopify_product_id);
+            const mfMap = new Map<string, string>();
+            for (const mf of metafields) {
+              mfMap.set(`${mf.namespace}.${mf.key}`, mf.value);
+            }
+
+            const appendParts: string[] = [];
+
+            // Size from Shopify metafields (set by PM App)
+            const height = mfMap.get('specs.height');
+            const width = mfMap.get('specs.width');
+            if (height && width) {
+              appendParts.push(`<p><strong>Size:</strong> ${height}" x ${width}"</p>`);
+            } else if (height) {
+              appendParts.push(`<p><strong>Size:</strong> ${height}" H</p>`);
+            } else if (width) {
+              appendParts.push(`<p><strong>Size:</strong> ${width}" W</p>`);
+            }
+
+            // Artist from local data
+            if (item.artist) {
+              appendParts.push(`<p><strong>Artist:</strong> ${item.artist}</p>`);
+            }
+
+            // Condition from Shopify metafields (set by PM App)
+            const condition = mfMap.get('jadepuma.condition');
+            const conditionDetails = mfMap.get('jadepuma.condition_details');
+            if (condition && conditionDetails) {
+              appendParts.push(`<p><strong>Condition:</strong> ${condition}, ${conditionDetails}</p>`);
+            } else if (condition) {
+              appendParts.push(`<p><strong>Condition:</strong> ${condition}</p>`);
+            }
+
+            if (appendParts.length > 0) {
+              htmlDescription += '\n<br>\n' + appendParts.join('\n');
+            }
+          } catch (appendError) {
+            console.error('Error fetching metafields for description append:', appendError);
+            // Continue without appended fields
+          }
 
           await updateShopifyProduct(item.shopify_product_id, {
             bodyHtml: htmlDescription,
