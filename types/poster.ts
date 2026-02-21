@@ -190,10 +190,10 @@ export interface LinkedPublisher {
   verified: boolean;
 }
 
-// Book (source publication for antique prints/plates)
-export interface Book {
+// Publication (source publication for antique prints/plates and periodicals)
+export interface Publication {
   id: number;
-  title: string;                    // "Birds of Pennsylvania"
+  title: string;                    // "Birds of Pennsylvania" or "Fortune"
   author?: string | null;           // "Dr. B.H. Warren"
   publicationYear?: number | null;  // 1890
   publisherId?: number | null;      // FK to publishers table (publishing house)
@@ -203,15 +203,18 @@ export interface Book {
   volumeInfo?: string | null;       // "Volume II"
   notes?: string | null;            // Research notes
   wikipediaUrl?: string | null;
-  bio?: string | null;              // Description of the book
+  bio?: string | null;              // Description of the publication
   imageUrl?: string | null;         // Cover image
   verified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Linked book data for display in poster detail
-export interface LinkedBook {
+// Backward-compat alias
+export type Book = Publication;
+
+// Linked publication data for display in poster detail
+export interface LinkedPublication {
   id: number;
   title: string;
   author?: string | null;
@@ -226,6 +229,9 @@ export interface LinkedBook {
   imageUrl?: string | null;
   verified: boolean;
 }
+
+// Backward-compat alias
+export type LinkedBook = LinkedPublication;
 
 // Printer verification checklist for rigorous identification
 export interface PrinterVerification {
@@ -425,9 +431,9 @@ export interface Poster {
   publicationConfidence?: string | null;  // confirmed, likely, uncertain, unknown
   publicationSource?: string | null;  // How the publication was identified
 
-  // Book source (for antique prints/plates from books)
-  bookId?: number | null;  // FK to books table
-  linkedBook?: LinkedBook | null;  // Joined book data for display
+  // Publication source (for antique prints/plates from books and periodicals)
+  publicationId?: number | null;  // FK to publications table
+  linkedPublication?: LinkedPublication | null;  // Joined publication data for display
 
   rarityAnalysis?: string | null;
   valueInsights?: string | null;
@@ -436,6 +442,9 @@ export interface Poster {
   productDescriptions?: ProductDescriptions | null;  // All description tones
   sourceCitations?: any | null;  // JSON array of source links with descriptions
   similarProducts?: any | null;  // JSON array of similar products on other sites
+
+  // Country of origin
+  countryOfOrigin?: string | null;
 
   // Condition (from Shopify metafields or manual entry)
   condition?: string | null;
@@ -705,8 +714,8 @@ export interface UpdatePosterInput {
   publication?: string;
   publicationConfidence?: string;
   publicationSource?: string;
-  // Book source fields
-  bookId?: number | null;
+  // Publication source fields
+  publicationId?: number | null;
   rarityAnalysis?: string;
   valueInsights?: string;
   validationNotes?: string;

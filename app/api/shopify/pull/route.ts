@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
             user_notes = COALESCE(${mappedFields.userNotes || null}, user_notes),
             printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
             colors = COALESCE(${colorsLiteral}::TEXT[], colors),
+            country_of_origin = COALESCE(${mappedFields.countryOfOrigin || null}, country_of_origin),
             last_modified = NOW()
           WHERE id = ${row.id}
         `;

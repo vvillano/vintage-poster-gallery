@@ -25,9 +25,12 @@ import {
  * - title: Push the poster title to Shopify product title
  * - research_metafields: Push research findings (jadepuma namespace):
  *   - concise_description: Short description
- *   - book_title_source: Book source for antique prints
+ *   - book_title_source: Publication source for antique prints/periodicals
  *   - publisher: Publisher name from verified entity
  *   - printer: Printer name from verified entity
+ *   - artist_bio: Artist biography from linked artist record
+ *   - country_of_origin: Country of origin
+ *   - medium: Printing technique/medium
  */
 export async function POST(request: NextRequest) {
   try {
@@ -185,10 +188,11 @@ export async function POST(request: NextRequest) {
 
     // Push research metafields (jadepuma namespace)
     if (fields.includes('research_metafields')) {
-      // Get linked entity names for publisher and printer
+      // Get linked entity names for publisher, printer, artist bio
       let publisherName = null;
       let printerName = null;
-      let bookTitle = null;
+      let publicationTitle = null;
+      let artistBio = null;
 
       if (item.publisher_id) {
         try {
@@ -212,17 +216,28 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      if (item.book_id) {
+      if (item.publication_id) {
         try {
-          const bookResult = await sql`SELECT title, author FROM books WHERE id = ${item.book_id}`;
-          if (bookResult.rows.length > 0) {
-            const book = bookResult.rows[0];
-            bookTitle = book.title;
-            if (book.author) bookTitle += ` by ${book.author}`;
-            // Note: Year goes in specs.year field, not here
+          const pubResult = await sql`SELECT title, author FROM publications WHERE id = ${item.publication_id}`;
+          if (pubResult.rows.length > 0) {
+            const pub = pubResult.rows[0];
+            publicationTitle = pub.title;
+            if (pub.author) publicationTitle += ` by ${pub.author}`;
           }
         } catch (err) {
-          console.error('Error fetching book info:', err);
+          console.error('Error fetching publication info:', err);
+        }
+      }
+
+      // Get artist bio from linked artist record
+      if (item.artist_id) {
+        try {
+          const artistResult = await sql`SELECT bio FROM artists WHERE id = ${item.artist_id}`;
+          if (artistResult.rows.length > 0 && artistResult.rows[0].bio) {
+            artistBio = artistResult.rows[0].bio;
+          }
+        } catch (err) {
+          console.error('Error fetching artist bio:', err);
         }
       }
 
@@ -236,10 +251,13 @@ export async function POST(request: NextRequest) {
 
       const researchMetafields = [
         { key: 'concise_description', value: conciseDescription, type: 'multi_line_text_field' as const },
-        { key: 'book_title_source', value: bookTitle, type: 'single_line_text_field' as const },
+        { key: 'book_title_source', value: publicationTitle, type: 'single_line_text_field' as const },
         { key: 'publisher', value: publisherName, type: 'single_line_text_field' as const },
         { key: 'printer', value: printerName || item.printer, type: 'single_line_text_field' as const },
         { key: 'color', value: colorsValue, type: 'single_line_text_field' as const },
+        { key: 'artist_bio', value: artistBio, type: 'multi_line_text_field' as const },
+        { key: 'country_of_origin', value: item.country_of_origin, type: 'single_line_text_field' as const },
+        { key: 'medium', value: item.printing_technique, type: 'single_line_text_field' as const },
       ];
 
       let pushedCount = 0;

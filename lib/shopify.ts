@@ -434,6 +434,7 @@ export interface MappedMetafields {
   itemNotes?: string;           // Research-relevant notes (jadepuma.item_notes) - passed to AI
   printingTechnique?: string;
   colors?: string[];            // Array of color names
+  countryOfOrigin?: string;     // Country of origin (jadepuma.country_of_origin)
   referenceImageUrls?: string[]; // Reference image URLs from Shopify (jadepuma.reference_images)
   dealerName?: string;          // WHO you bought from (jadepuma.dealer) - for acquisition tracking
   sourcePlatform?: string;      // WHERE you bought (jadepuma.source_platform) - for acquisition tracking
@@ -516,6 +517,10 @@ export function mapMetafieldsToPosterFields(
       result.colors = color.split(',').map(c => c.trim()).filter(c => c.length > 0);
     }
   }
+
+  // Map country_of_origin
+  const countryOfOrigin = mfMap.get('jadepuma.country_of_origin');
+  if (countryOfOrigin) result.countryOfOrigin = countryOfOrigin;
 
   // Map item_notes (research-relevant notes) - passed to AI analysis
   // This is separate from internal_notes which is for business/transaction notes

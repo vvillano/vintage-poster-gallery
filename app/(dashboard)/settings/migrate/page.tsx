@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'rename-books-publications',
+    name: 'Rename Books → Publications',
+    description: 'Renames the books table to publications and the book_id column to publication_id on posters. Creates a backward-compat books view. Adds country_of_origin column to posters. Renames indexes.',
+    endpoint: '/api/migrate/rename-books-publications',
+    successLink: { href: '/settings/lists', label: 'Manage Publications' },
+  },
+  {
     id: 'resource-consolidation',
     name: 'Resource Partner Consolidation',
     description: 'Consolidates resource partner entities: adds platform_id and linked_seller_id to sellers table, migrates research_sites to platforms, migrates platform_identities to sellers as type="individual", and adds generic platform categories (Estate Sale, Flea Market, etc.).',
@@ -102,10 +109,10 @@ const MIGRATIONS: MigrationConfig[] = [
   },
   {
     id: 'publication-books',
-    name: 'Publications & Books',
-    description: 'Add publication confidence fields and create books table for antique print sources. Enables tracking book sources (natural history, atlases, etc.) with author and contributor info.',
+    name: 'Publications & Books (Prerequisite)',
+    description: 'Add publication confidence fields and create books table for antique print sources. Prerequisite for "Rename Books → Publications" migration.',
     endpoint: '/api/migrate/publication-books',
-    successLink: { href: '/settings/lists', label: 'Manage Books' },
+    successLink: { href: '/settings/lists', label: 'Manage Publications' },
   },
   {
     id: 'printer-publisher',

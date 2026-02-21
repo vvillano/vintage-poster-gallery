@@ -130,9 +130,9 @@ const LIST_CONFIGS: ListConfig[] = [
     ],
   },
   {
-    key: 'books',
-    label: 'Books',
-    description: 'Book sources for antique prints (natural history, atlases, etc.)',
+    key: 'publications',
+    label: 'Publications',
+    description: 'Publication sources for antique prints and periodicals (books, magazines, etc.)',
     fields: [
       { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'Birds of Pennsylvania' },
       { key: 'author', label: 'Author', type: 'text', placeholder: 'Dr. B.H. Warren' },

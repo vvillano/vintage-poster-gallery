@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedBook, ResearchImage, ResearchImageType, ShopifyData, RECORD_SOURCE_LABELS, RecordSource } from '@/types/poster';
+import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedPublication, ResearchImage, ResearchImageType, ShopifyData, RECORD_SOURCE_LABELS, RecordSource } from '@/types/poster';
 import { SELLER_TYPE_LABELS, SellerType } from '@/types/seller';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
@@ -322,9 +322,9 @@ export default function PosterDetailPage() {
   const [linkedPublisher, setLinkedPublisher] = useState<LinkedPublisher | null>(null);
   const [unlinkingPublisher, setUnlinkingPublisher] = useState(false);
 
-  // Book linking state
-  const [linkedBook, setLinkedBook] = useState<LinkedBook | null>(null);
-  const [unlinkingBook, setUnlinkingBook] = useState(false);
+  // Publication linking state
+  const [linkedPublication, setLinkedPublication] = useState<LinkedPublication | null>(null);
+  const [unlinkingPublication, setUnlinkingPublication] = useState(false);
 
   // Research/Valuation tabs state
   const [activeResearchTab, setActiveResearchTab] = useState<'research' | 'valuation'>('research');
@@ -551,32 +551,32 @@ export default function PosterDetailPage() {
     fetchLinkedPublisher();
   }, [poster?.id, poster?.publisherId]);
 
-  // Fetch linked book when poster loads
+  // Fetch linked publication when poster loads
   useEffect(() => {
-    async function fetchLinkedBook() {
-      if (!poster?.bookId) {
-        setLinkedBook(null);
+    async function fetchLinkedPublication() {
+      if (!poster?.publicationId) {
+        setLinkedPublication(null);
         return;
       }
 
       try {
-        const res = await fetch(`/api/posters/${poster.id}/book-link`);
+        const res = await fetch(`/api/posters/${poster.id}/publication-link`);
         if (res.ok) {
           const data = await res.json();
-          if (data.linked && data.book) {
-            setLinkedBook(data.book);
+          if (data.linked && data.publication) {
+            setLinkedPublication(data.publication);
           } else {
-            setLinkedBook(null);
+            setLinkedPublication(null);
           }
         }
       } catch (err) {
-        console.warn('Failed to fetch linked book:', err);
-        setLinkedBook(null);
+        console.warn('Failed to fetch linked publication:', err);
+        setLinkedPublication(null);
       }
     }
 
-    fetchLinkedBook();
-  }, [poster?.id, poster?.bookId]);
+    fetchLinkedPublication();
+  }, [poster?.id, poster?.publicationId]);
 
   async function fetchPoster() {
     try {
@@ -666,27 +666,27 @@ export default function PosterDetailPage() {
     }
   }
 
-  async function unlinkBook() {
+  async function unlinkPublication() {
     if (!poster) return;
 
     try {
-      setUnlinkingBook(true);
-      const res = await fetch(`/api/posters/${poster.id}/book-link`, {
+      setUnlinkingPublication(true);
+      const res = await fetch(`/api/posters/${poster.id}/publication-link`, {
         method: 'DELETE',
       });
 
       if (!res.ok) {
-        throw new Error('Failed to unlink book');
+        throw new Error('Failed to unlink publication');
       }
 
-      // Update poster to clear bookId
-      setPoster(prev => prev ? { ...prev, bookId: null } : null);
-      setLinkedBook(null);
+      // Update poster to clear publicationId
+      setPoster(prev => prev ? { ...prev, publicationId: null } : null);
+      setLinkedPublication(null);
     } catch (err) {
-      console.error('Failed to unlink book:', err);
-      setError(err instanceof Error ? err.message : 'Failed to unlink book');
+      console.error('Failed to unlink publication:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlink publication');
     } finally {
-      setUnlinkingBook(false);
+      setUnlinkingPublication(false);
     }
   }
 
@@ -2670,12 +2670,12 @@ export default function PosterDetailPage() {
                     </div>
                   )}
 
-                  {/* Book Source (for antique prints/plates) */}
-                  {linkedBook && (
+                  {/* Publication Source (for antique prints/plates and periodicals) */}
+                  {linkedPublication && (
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-sm font-medium text-slate-700">Source Book</label>
-                        {linkedBook.verified && (
+                        <label className="text-sm font-medium text-slate-700">Publication</label>
+                        {linkedPublication.verified && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -2684,56 +2684,56 @@ export default function PosterDetailPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-slate-900 font-medium">{linkedBook.title}</p>
-                      {(linkedBook.author || linkedBook.publicationYear) && (
+                      <p className="text-slate-900 font-medium">{linkedPublication.title}</p>
+                      {(linkedPublication.author || linkedPublication.publicationYear) && (
                         <p className="text-sm text-slate-600">
-                          {linkedBook.author && `by ${linkedBook.author}`}
-                          {linkedBook.author && linkedBook.publicationYear && ' · '}
-                          {linkedBook.publicationYear && `${linkedBook.publicationYear}`}
+                          {linkedPublication.author && `by ${linkedPublication.author}`}
+                          {linkedPublication.author && linkedPublication.publicationYear && ' · '}
+                          {linkedPublication.publicationYear && `${linkedPublication.publicationYear}`}
                         </p>
                       )}
 
-                      {/* Linked Book Card */}
+                      {/* Linked Publication Card */}
                       <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              {linkedBook.wikipediaUrl ? (
+                              {linkedPublication.wikipediaUrl ? (
                                 <a
-                                  href={linkedBook.wikipediaUrl}
+                                  href={linkedPublication.wikipediaUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="font-medium text-amber-900 hover:text-blue-600 hover:underline"
                                 >
-                                  {linkedBook.title}
+                                  {linkedPublication.title}
                                 </a>
                               ) : (
-                                <h4 className="font-medium text-amber-900">{linkedBook.title}</h4>
+                                <h4 className="font-medium text-amber-900">{linkedPublication.title}</h4>
                               )}
                             </div>
-                            {(linkedBook.author || linkedBook.publicationYear || linkedBook.country) && (
+                            {(linkedPublication.author || linkedPublication.publicationYear || linkedPublication.country) && (
                               <p className="text-sm text-amber-800">
-                                {linkedBook.author}
-                                {linkedBook.author && linkedBook.publicationYear && ' · '}
-                                {linkedBook.publicationYear}
-                                {(linkedBook.author || linkedBook.publicationYear) && linkedBook.country && ' · '}
-                                {linkedBook.country}
+                                {linkedPublication.author}
+                                {linkedPublication.author && linkedPublication.publicationYear && ' · '}
+                                {linkedPublication.publicationYear}
+                                {(linkedPublication.author || linkedPublication.publicationYear) && linkedPublication.country && ' · '}
+                                {linkedPublication.country}
                               </p>
                             )}
-                            {linkedBook.contributors && (
+                            {linkedPublication.contributors && (
                               <p className="text-xs text-amber-700 mt-1 italic">
-                                {linkedBook.contributors}
+                                {linkedPublication.contributors}
                               </p>
                             )}
-                            {linkedBook.bio && (
+                            {linkedPublication.bio && (
                               <p className="text-xs text-amber-700 mt-1 line-clamp-2">
-                                {linkedBook.bio}
+                                {linkedPublication.bio}
                               </p>
                             )}
                             <div className="flex items-center gap-3 mt-2">
-                              {linkedBook.wikipediaUrl && (
+                              {linkedPublication.wikipediaUrl && (
                                 <a
-                                  href={linkedBook.wikipediaUrl}
+                                  href={linkedPublication.wikipediaUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
@@ -2742,7 +2742,7 @@ export default function PosterDetailPage() {
                                 </a>
                               )}
                               <Link
-                                href={`/settings/lists?type=books&edit=${linkedBook.id}`}
+                                href={`/settings/lists?type=publications&edit=${linkedPublication.id}`}
                                 className="text-xs text-amber-600 hover:text-amber-800 hover:underline"
                               >
                                 View Profile →
@@ -2750,12 +2750,12 @@ export default function PosterDetailPage() {
                             </div>
                           </div>
                           <button
-                            onClick={unlinkBook}
-                            disabled={unlinkingBook}
+                            onClick={unlinkPublication}
+                            disabled={unlinkingPublication}
                             className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
-                            title="Remove book link"
+                            title="Remove publication link"
                           >
-                            {unlinkingBook ? 'Unlinking...' : 'Unlink'}
+                            {unlinkingPublication ? 'Unlinking...' : 'Unlink'}
                           </button>
                         </div>
                       </div>

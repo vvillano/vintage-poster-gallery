@@ -727,14 +727,15 @@ function dbRowToPoster(row: any): Poster {
     publication: row.publication,
     publicationConfidence: row.publication_confidence,
     publicationSource: row.publication_source,
-    // Book source fields
-    bookId: row.book_id,
+    // Publication source fields
+    publicationId: row.publication_id,
     rarityAnalysis: row.rarity_analysis,
     valueInsights: row.value_insights,
     validationNotes: row.validation_notes,
     productDescription: row.product_description,
     sourceCitations: row.source_citations,
     similarProducts: row.similar_products,
+    countryOfOrigin: row.country_of_origin,
     analysisCompleted: row.analysis_completed,
     analysisDate: row.analysis_date ? new Date(row.analysis_date) : null,
     rawAiResponse: row.raw_ai_response,

@@ -4,10 +4,10 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 
 /**
- * @deprecated Use /api/posters/[id]/publication-link instead.
- * This route is kept for backward compatibility and redirects to the new column names.
+ * POST /api/posters/[id]/publication-link
+ * Link a poster to a publication
+ * Body: { publicationId: number }
  */
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,23 +21,28 @@ export async function POST(
     const { id } = await params;
     const posterId = parseInt(id);
     const body = await request.json();
-    const publicationId = body.publicationId || body.bookId;
+    const { publicationId } = body;
 
     if (!publicationId) {
       return NextResponse.json(
-        { error: 'publicationId (or bookId) is required' },
+        { error: 'publicationId is required' },
         { status: 400 }
       );
     }
 
+    // Verify publication exists
     const pubResult = await sql`
       SELECT id, title, verified FROM publications WHERE id = ${publicationId}
     `;
 
     if (pubResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Publication not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Publication not found' },
+        { status: 404 }
+      );
     }
 
+    // Link poster to publication
     const result = await sql`
       UPDATE posters
       SET publication_id = ${publicationId}, last_modified = NOW()
@@ -46,17 +51,18 @@ export async function POST(
     `;
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Poster not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Poster not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       posterId,
-      bookId: publicationId,
       publicationId,
-      bookTitle: pubResult.rows[0].title,
       publicationTitle: pubResult.rows[0].title,
-      bookVerified: pubResult.rows[0].verified,
+      publicationVerified: pubResult.rows[0].verified,
     });
   } catch (error) {
     console.error('Link publication error:', error);
@@ -67,6 +73,10 @@ export async function POST(
   }
 }
 
+/**
+ * DELETE /api/posters/[id]/publication-link
+ * Unlink a publication from a poster
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,6 +90,7 @@ export async function DELETE(
     const { id } = await params;
     const posterId = parseInt(id);
 
+    // Unlink publication from poster
     const result = await sql`
       UPDATE posters
       SET publication_id = NULL, last_modified = NOW()
@@ -88,7 +99,10 @@ export async function DELETE(
     `;
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Poster not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Poster not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
@@ -105,6 +119,10 @@ export async function DELETE(
   }
 }
 
+/**
+ * GET /api/posters/[id]/publication-link
+ * Get the linked publication for a poster
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -118,6 +136,7 @@ export async function GET(
     const { id } = await params;
     const posterId = parseInt(id);
 
+    // Get poster's linked publication with full details
     const result = await sql`
       SELECT
         p.id as poster_id,
@@ -142,36 +161,39 @@ export async function GET(
     `;
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Poster not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Poster not found' },
+        { status: 404 }
+      );
     }
 
     const row = result.rows[0];
 
     if (!row.publication_id) {
-      return NextResponse.json({ linked: false, book: null, publication: null });
+      return NextResponse.json({
+        linked: false,
+        publication: null,
+      });
     }
-
-    const pub = {
-      id: row.pub_id,
-      title: row.title,
-      author: row.author,
-      publicationYear: row.publication_year,
-      publisherId: row.publisher_id,
-      contributors: row.contributors,
-      country: row.country,
-      edition: row.edition,
-      volumeInfo: row.volume_info,
-      notes: row.notes,
-      wikipediaUrl: row.wikipedia_url,
-      bio: row.bio,
-      imageUrl: row.image_url,
-      verified: row.verified,
-    };
 
     return NextResponse.json({
       linked: true,
-      book: pub,
-      publication: pub,
+      publication: {
+        id: row.pub_id,
+        title: row.title,
+        author: row.author,
+        publicationYear: row.publication_year,
+        publisherId: row.publisher_id,
+        contributors: row.contributors,
+        country: row.country,
+        edition: row.edition,
+        volumeInfo: row.volume_info,
+        notes: row.notes,
+        wikipediaUrl: row.wikipedia_url,
+        bio: row.bio,
+        imageUrl: row.image_url,
+        verified: row.verified,
+      },
     });
   } catch (error) {
     console.error('Get linked publication error:', error);

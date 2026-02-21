@@ -35,8 +35,8 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
     updateColumns: ['name', 'aliases', 'publication_type', 'country', 'founded_year', 'ceased_year', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
   },
-  'books': {
-    table: 'books',
+  'publications': {
+    table: 'publications',
     columns: ['id', 'title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'created_at', 'updated_at'],
     insertColumns: ['title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified'],
     updateColumns: ['title', 'author', 'publication_year', 'publisher_id', 'contributors', 'country', 'edition', 'volume_info', 'notes', 'wikipedia_url', 'bio', 'image_url', 'verified', 'updated_at'],
@@ -110,7 +110,7 @@ export async function GET(
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY name ASC`
       );
-    } else if (type === 'books') {
+    } else if (type === 'publications') {
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY title ASC`
       );
@@ -249,9 +249,9 @@ export async function POST(
         `;
         break;
       }
-      case 'books': {
+      case 'publications': {
         result = await sql`
-          INSERT INTO books (title, author, publication_year, publisher_id, contributors, country, edition, volume_info, notes, wikipedia_url, bio, image_url, verified)
+          INSERT INTO publications (title, author, publication_year, publisher_id, contributors, country, edition, volume_info, notes, wikipedia_url, bio, image_url, verified)
           VALUES (
             ${body.title},
             ${body.author || null},
@@ -454,9 +454,9 @@ export async function PUT(
         `;
         break;
       }
-      case 'books': {
+      case 'publications': {
         result = await sql`
-          UPDATE books
+          UPDATE publications
           SET
             title = ${body.title},
             author = ${body.author || null},

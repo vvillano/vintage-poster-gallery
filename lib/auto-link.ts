@@ -1087,23 +1087,23 @@ export async function findOrCreateArtist(
 }
 
 /**
- * Find or create a book record for antique prints/plates
- * Returns the book ID for linking
+ * Find or create a publication record for antique prints/plates and periodicals
+ * Returns the publication ID for linking
  */
-export async function findOrCreateBook(
-  bookTitle: string,
-  bookAuthor?: string,
-  bookYear?: number
-): Promise<{ bookId: number; isNew: boolean } | null> {
-  if (!bookTitle) {
+export async function findOrCreatePublication(
+  pubTitle: string,
+  pubAuthor?: string,
+  pubYear?: number
+): Promise<{ publicationId: number; isNew: boolean } | null> {
+  if (!pubTitle) {
     return null;
   }
 
   try {
-    // First, check if book already exists by title (case-insensitive)
+    // First, check if publication already exists by title (case-insensitive)
     const existingResult = await sql`
-      SELECT id, title, author, publication_year, wikipedia_url, bio FROM books
-      WHERE LOWER(title) = LOWER(${bookTitle})
+      SELECT id, title, author, publication_year, wikipedia_url, bio FROM publications
+      WHERE LOWER(title) = LOWER(${pubTitle})
       LIMIT 1
     `;
 
@@ -1113,56 +1113,59 @@ export async function findOrCreateBook(
       // Check if the existing record is incomplete (no Wikipedia data and missing author/year)
       const isIncomplete = !existing.wikipedia_url &&
                           !existing.bio &&
-                          (!existing.author && bookAuthor) ||
-                          (!existing.publication_year && bookYear);
+                          (!existing.author && pubAuthor) ||
+                          (!existing.publication_year && pubYear);
 
       if (isIncomplete) {
-        console.log(`Existing book "${bookTitle}" has incomplete data, updating...`);
+        console.log(`Existing publication "${pubTitle}" has incomplete data, updating...`);
 
         // Update with any new data we have
         await sql`
-          UPDATE books SET
-            author = COALESCE(${bookAuthor || null}, author),
-            publication_year = COALESCE(${bookYear || null}, publication_year),
+          UPDATE publications SET
+            author = COALESCE(${pubAuthor || null}, author),
+            publication_year = COALESCE(${pubYear || null}, publication_year),
             updated_at = NOW()
           WHERE id = ${existing.id}
         `;
-        console.log(`Updated book "${bookTitle}" with additional data`);
+        console.log(`Updated publication "${pubTitle}" with additional data`);
       }
 
       return {
-        bookId: existing.id,
+        publicationId: existing.id,
         isNew: false,
       };
     }
 
-    // Not found - create new book
-    console.log(`Creating new book: ${bookTitle}`);
+    // Not found - create new publication
+    console.log(`Creating new publication: ${pubTitle}`);
 
-    // Insert new book with what we have
+    // Insert new publication with what we have
     const insertResult = await sql`
-      INSERT INTO books (title, author, publication_year, verified)
+      INSERT INTO publications (title, author, publication_year, verified)
       VALUES (
-        ${bookTitle},
-        ${bookAuthor || null},
-        ${bookYear || null},
+        ${pubTitle},
+        ${pubAuthor || null},
+        ${pubYear || null},
         false
       )
       RETURNING id
     `;
 
     return {
-      bookId: insertResult.rows[0].id,
+      publicationId: insertResult.rows[0].id,
       isNew: true,
     };
   } catch (error) {
-    console.error('Error finding/creating book:', error);
+    console.error('Error finding/creating publication:', error);
     return null;
   }
 }
 
+// Backward-compat alias
+export const findOrCreateBook = findOrCreatePublication;
+
 /**
- * Auto-link a poster to printer, publisher, artist, and book based on analysis results
+ * Auto-link a poster to printer, publisher, artist, and publication based on analysis results
  * Call this after updatePosterAnalysis to set the foreign key links
  */
 export async function autoLinkPosterEntities(
@@ -1181,13 +1184,13 @@ export async function autoLinkPosterEntities(
   artistLinked?: { id: number; isNew: boolean };
   printerLinked?: { id: number; isNew: boolean };
   publisherLinked?: { id: number; isNew: boolean };
-  bookLinked?: { id: number; isNew: boolean };
+  publicationLinked?: { id: number; isNew: boolean };
 }> {
   const result: {
     artistLinked?: { id: number; isNew: boolean };
     printerLinked?: { id: number; isNew: boolean };
     publisherLinked?: { id: number; isNew: boolean };
-    bookLinked?: { id: number; isNew: boolean };
+    publicationLinked?: { id: number; isNew: boolean };
   } = {};
 
   // Auto-link artist if confirmed
@@ -1226,19 +1229,19 @@ export async function autoLinkPosterEntities(
     }
   }
 
-  // Auto-link book if book title is identified (for antique prints/plates)
+  // Auto-link publication if book title is identified (for antique prints/plates and periodicals)
   if (analysis.bookTitle) {
-    const bookResult = await findOrCreateBook(
+    const pubResult = await findOrCreatePublication(
       analysis.bookTitle,
       analysis.bookAuthor,
       analysis.bookYear
     );
-    if (bookResult) {
+    if (pubResult) {
       await sql`
-        UPDATE posters SET book_id = ${bookResult.bookId}, last_modified = NOW()
+        UPDATE posters SET publication_id = ${pubResult.publicationId}, last_modified = NOW()
         WHERE id = ${posterId}
       `;
-      result.bookLinked = { id: bookResult.bookId, isNew: bookResult.isNew };
+      result.publicationLinked = { id: pubResult.publicationId, isNew: pubResult.isNew };
     }
   }
 

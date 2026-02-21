@@ -16,7 +16,7 @@ interface PosterResearchTabProps {
   linkedArtist: any;
   linkedPrinter: any;
   linkedPublisher: any;
-  linkedBook: any;
+  linkedPublication: any;
 }
 
 // Helper functions for Wikipedia links
@@ -52,7 +52,7 @@ export default function PosterResearchTab({
   linkedArtist,
   linkedPrinter,
   linkedPublisher,
-  linkedBook,
+  linkedPublication,
 }: PosterResearchTabProps) {
   const [showVerificationDetails, setShowVerificationDetails] = useState(false);
   const [showPrinterVerificationDetails, setShowPrinterVerificationDetails] = useState(false);
@@ -267,7 +267,7 @@ export default function PosterResearchTab({
       )}
 
       {/* Printing Information */}
-      {(linkedPrinter || linkedPublisher || linkedBook || poster.rawAiResponse?.printingInfo) && (
+      {(linkedPrinter || linkedPublisher || linkedPublication || poster.rawAiResponse?.printingInfo) && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-bold text-slate-900 mb-4">Printing Information</h3>
           <div className="space-y-4">
@@ -289,11 +289,11 @@ export default function PosterResearchTab({
                 <p className="text-slate-900">{linkedPublisher.name}</p>
               </div>
             )}
-            {linkedBook && (
+            {linkedPublication && (
               <div className="border-b border-slate-100 pb-3">
                 <label className="text-sm font-medium text-slate-700">Source Publication</label>
-                <p className="text-slate-900">{linkedBook.title}</p>
-                {linkedBook.author && <p className="text-xs text-slate-500">by {linkedBook.author}</p>}
+                <p className="text-slate-900">{linkedPublication.title}</p>
+                {linkedPublication.author && <p className="text-xs text-slate-500">by {linkedPublication.author}</p>}
               </div>
             )}
           </div>
