@@ -46,7 +46,7 @@ export async function saveShopifyConfig(config: {
   const result = await sql`
     INSERT INTO shopify_config (shop_domain, access_token, api_version, client_id, client_secret)
     VALUES (
-      ${config.shopDomain},
+      ${config.shopDomain.trim()},
       ${config.accessToken},
       ${config.apiVersion || '2025-01'},
       ${config.clientId || null},
@@ -83,7 +83,7 @@ export async function saveShopifyOAuthCredentials(config: {
   await sql`
     INSERT INTO shopify_config (shop_domain, access_token, api_version, client_id, client_secret)
     VALUES (
-      ${config.shopDomain},
+      ${config.shopDomain.trim()},
       '',
       ${config.apiVersion || '2025-01'},
       ${config.clientId},
@@ -129,7 +129,7 @@ export async function shopifyFetch<T>(
     throw new Error('Shopify not configured');
   }
 
-  const url = `https://${config.shopDomain}/admin/api/${config.apiVersion}${endpoint}`;
+  const url = `https://${config.shopDomain.trim()}/admin/api/${config.apiVersion}${endpoint}`;
 
   const response = await fetch(url, {
     method: options.method || 'GET',
@@ -602,7 +602,7 @@ export function getShopifyOAuthUrl(
     state: state,
   });
 
-  return `https://${shopDomain}/admin/oauth/authorize?${params.toString()}`;
+  return `https://${shopDomain.trim()}/admin/oauth/authorize?${params.toString()}`;
 }
 
 /**
@@ -614,7 +614,7 @@ export async function exchangeCodeForToken(
   clientSecret: string,
   code: string
 ): Promise<{ accessToken: string; scope: string }> {
-  const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
+  const response = await fetch(`https://${shopDomain.trim()}/admin/oauth/access_token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -707,7 +707,7 @@ export async function searchShopifyBySku(
     }
   `;
 
-  const url = `https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`;
+  const url = `https://${config.shopDomain.trim()}/admin/api/${config.apiVersion}/graphql.json`;
 
   const response = await fetch(url, {
     method: 'POST',

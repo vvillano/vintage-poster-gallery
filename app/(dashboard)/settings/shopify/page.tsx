@@ -387,7 +387,14 @@ function ShopifySettingsContent() {
               {typeof window !== 'undefined' ? window.location.origin : ''}/api/shopify/oauth/callback
             </code>
           </li>
-          <li>Under <strong>Admin API access scopes</strong>, enable: <code className="bg-green-100 px-1 rounded">read_products</code></li>
+          <li>Under <strong>Admin API access scopes</strong>, enable:
+            <code className="bg-green-100 px-1 rounded">read_products</code>,{' '}
+            <code className="bg-green-100 px-1 rounded">write_products</code>,{' '}
+            <code className="bg-green-100 px-1 rounded">read_inventory</code>,{' '}
+            <code className="bg-green-100 px-1 rounded">write_inventory</code>,{' '}
+            <code className="bg-green-100 px-1 rounded">read_metaobjects</code>,{' '}
+            <code className="bg-green-100 px-1 rounded">write_metaobjects</code>
+          </li>
           <li>Click <strong>Save and release</strong></li>
           <li>Go to <strong>Settings</strong> in the left sidebar</li>
           <li>Copy the <strong>Client ID</strong> and reveal/copy the <strong>Client Secret</strong></li>
