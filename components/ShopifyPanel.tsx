@@ -7,14 +7,13 @@ import type { Poster, ShopifyData } from '@/types/poster';
 interface ShopifyPanelProps {
   poster: Poster;
   onUpdate: () => void;
-  syncing?: boolean;  // Auto-sync from Shopify in progress
+  syncing?: boolean;
+  queueCount?: number;
 }
 
-export default function ShopifyPanel({ poster, onUpdate, syncing = false }: ShopifyPanelProps) {
+export default function ShopifyPanel({ poster, onUpdate, syncing = false, queueCount = 0 }: ShopifyPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pushing, setPushing] = useState(false);
-  const [pushingField, setPushingField] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -51,7 +50,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
         throw new Error(data.error || 'Failed to refresh from Shopify');
       }
 
-      // Build success message based on what was updated
       let message = 'Refreshed from Shopify.';
       if (data.updated?.primaryImage) message += ' Image updated.';
       if (data.updated?.referenceImages?.added > 0) {
@@ -59,7 +57,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
       }
       if (data.analysisTriggered) {
         message += ` Re-analysis queued (${data.analysisMode} mode).`;
-        // If analysis was triggered, call the analyze endpoint
         try {
           const analyzeRes = await fetch('/api/analyze', {
             method: 'POST',
@@ -90,7 +87,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     }
   }
 
-  // Legacy pull function (simple refresh)
   async function handleQuickRefresh() {
     try {
       setRefreshing(true);
@@ -120,44 +116,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     }
   }
 
-  async function handlePush(fields: string[]) {
-    try {
-      setPushing(true);
-      setPushingField(fields[0]);
-      setError('');
-      setSuccess('');
-
-      const res = await fetch('/api/shopify/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posterId: poster.id, fields }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to push to Shopify');
-      }
-
-      if (data.errors && data.errors.length > 0) {
-        setError(data.errors.join(', '));
-      } else {
-        setSuccess(`Pushed ${data.updated.join(', ')} to Shopify`);
-        onUpdate();
-      }
-
-      setTimeout(() => {
-        setSuccess('');
-        setError('');
-      }, 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to push');
-    } finally {
-      setPushing(false);
-      setPushingField(null);
-    }
-  }
-
   function formatDate(date: Date | string | null | undefined): string {
     if (!date) return 'Never';
     const d = typeof date === 'string' ? new Date(date) : date;
@@ -174,17 +132,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     return d.toLocaleDateString();
   }
 
-  // Shopify description for display
-  const shopifyDescription = shopifyData?.bodyHtml;
-
-  // Compare tags
-  const ourTags = poster.itemTags || [];
-  const shopifyTags = shopifyData?.shopifyTags || [];
-  const tagsMatch =
-    ourTags.length === shopifyTags.length &&
-    ourTags.every((t) => shopifyTags.includes(t));
-
-  // Helper to get metafield value by namespace.key
   function getMetafield(namespaceKey: string): string | null {
     if (!shopifyData?.metafields) return null;
     const [namespace, key] = namespaceKey.split('.');
@@ -192,10 +139,8 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     return mf?.value || null;
   }
 
-  // Helper to clean JSON array brackets from values like ["Belgium"]
   function cleanValue(value: string | null): string | null {
     if (!value) return null;
-    // Remove JSON array brackets if present
     if (value.startsWith('["') && value.endsWith('"]')) {
       return value.slice(2, -2);
     }
@@ -204,13 +149,12 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
         const parsed = JSON.parse(value);
         if (Array.isArray(parsed)) return parsed.join(', ');
       } catch {
-        // Not valid JSON, return as-is
+        // Not valid JSON
       }
     }
     return value;
   }
 
-  // Helper to format date as mm/dd/yyyy
   function formatDisplayDate(dateStr: string | null): string | null {
     if (!dateStr) return null;
     try {
@@ -222,34 +166,26 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
     }
   }
 
-  // Extract specific metafields for display
   const metafieldDisplay = {
-    // Product Details
     artist: getMetafield('jadepuma.artist'),
     medium: getMetafield('jadepuma.medium'),
     countryOfOrigin: cleanValue(getMetafield('jadepuma.country_of_origin')),
-    purchaseDate: getMetafield('jadepuma.date'), // This is purchase date, not product date
+    purchaseDate: getMetafield('jadepuma.date'),
     publishedDate: formatDisplayDate(getMetafield('jadepuma.published_date')),
-    // Dimensions
     height: getMetafield('specs.height'),
     width: getMetafield('specs.width'),
-    // Condition
     condition: getMetafield('jadepuma.condition'),
     conditionDetails: getMetafield('jadepuma.condition_details'),
-    // Source/Acquisition
     sourcePlatform: getMetafield('jadepuma.source_platform'),
     privateSellerName: getMetafield('jadepuma.private_seller_name'),
     privateSellerEmail: getMetafield('jadepuma.private_seller_email'),
-    // Cost breakdown
     purchasePrice: getMetafield('jadepuma.purchase_price'),
     shippingCost: getMetafield('jadepuma.avp_shipping'),
     restorationCost: getMetafield('jadepuma.avp_restoration'),
-    // Internal
     internalTags: cleanValue(getMetafield('jadepuma.internal_tags')),
     internalNotes: getMetafield('jadepuma.internal_notes'),
   };
 
-  // Get COGS from Shopify variant cost field (primary) or purchase_price metafield (fallback)
   const cogs = shopifyData?.cost || getMetafield('jadepuma.purchase_price');
 
   // Not linked state
@@ -312,6 +248,11 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
               Syncing...
             </span>
           )}
+          {queueCount > 0 && (
+            <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+              {queueCount} queued
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -350,7 +291,7 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
         </div>
       </button>
 
-      {/* Content */}
+      {/* Content — read-only Shopify data */}
       {expanded && (
         <div className="p-4 space-y-4">
           {/* Messages */}
@@ -571,7 +512,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                       <div className="col-span-2"><span className="text-slate-500">Email:</span> <span className="font-medium">{metafieldDisplay.privateSellerEmail}</span></div>
                     )}
                   </div>
-                  {/* Cost Breakdown - shows if any breakdown fields exist */}
                   {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) && (
                     <div className="mt-3 pt-2 border-t border-slate-100">
                       <div className="grid grid-cols-3 gap-2 text-sm">
@@ -596,7 +536,6 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                       </div>
                     </div>
                   )}
-                  {/* Total COGS - always show if available (from Variant Cost) */}
                   {cogs && !isNaN(parseFloat(cogs)) && (
                     <div className={`text-sm ${(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? 'mt-2 text-xs text-slate-500' : 'mt-3 pt-2 border-t border-slate-100'}`}>
                       {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? (
@@ -628,249 +567,8 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false }: Shop
                   </div>
                 </div>
               )}
-
-              {/* Shopify Description */}
-              {shopifyDescription && (
-                <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Shopify Description</div>
-                  <div
-                    className="text-sm text-slate-600 [&_p]:mb-3 [&_p:last-child]:mb-0"
-                    dangerouslySetInnerHTML={{ __html: shopifyDescription }}
-                  />
-                </div>
-              )}
             </div>
           )}
-
-          {/* ====== Push to Shopify ====== */}
-          <div className="border-t border-slate-200 pt-4">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Push to Shopify</div>
-
-            {/* Title */}
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Title</span>
-                {poster.title === shopifyData?.title ? (
-                  <span className="text-xs text-green-600">&#10003; In sync</span>
-                ) : (
-                  <span className="text-xs text-amber-600">&#9888; Different</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Local</span>
-                  <span className="text-slate-700">{poster.title || <span className="text-slate-400">&mdash;</span>}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Shopify</span>
-                  <span className="text-slate-700">{shopifyData?.title || <span className="text-slate-400">&mdash;</span>}</span>
-                </div>
-              </div>
-              {poster.title && (
-                <button
-                  onClick={() => handlePush(['title'])}
-                  disabled={pushing}
-                  className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
-                >
-                  {pushingField === 'title' ? 'Pushing...' : 'Push Title'}
-                </button>
-              )}
-            </div>
-
-            {/* Description */}
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Description</span>
-                <span className="text-xs text-slate-400">Also editable in Description tab</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Local</span>
-                  <span className="text-slate-700 line-clamp-3">
-                    {(() => {
-                      const desc = poster.rawAiResponse?.productDescriptions?.standard || poster.productDescription || '';
-                      return desc ? (desc.length > 120 ? desc.slice(0, 120) + '...' : desc) : <span className="text-slate-400">&mdash;</span>;
-                    })()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Shopify</span>
-                  <span className="text-slate-700 line-clamp-3">
-                    {shopifyDescription
-                      ? (() => {
-                          const stripped = shopifyDescription.replace(/<[^>]*>/g, '').replace(/\n\s*\n/g, ' ').trim();
-                          return stripped.length > 120 ? stripped.slice(0, 120) + '...' : stripped;
-                        })()
-                      : <span className="text-slate-400">&mdash;</span>
-                    }
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePush(['description'])}
-                  disabled={pushing || (!poster.rawAiResponse?.productDescriptions?.standard && !poster.productDescription)}
-                  className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {pushingField === 'description' ? 'Pushing...' : 'Push Description'}
-                </button>
-                <span className="text-xs text-slate-400">Size, Artist, Condition auto-appended</span>
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Tags</span>
-                {tagsMatch ? (
-                  <span className="text-xs text-green-600">&#10003; In sync</span>
-                ) : (
-                  <span className="text-xs text-amber-600">&#9888; Different</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Local</span>
-                  <span className="text-slate-700">{ourTags.length > 0 ? ourTags.join(', ') : <span className="text-slate-400">&mdash;</span>}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Shopify</span>
-                  <span className="text-slate-700">{shopifyTags.length > 0 ? shopifyTags.join(', ') : <span className="text-slate-400">&mdash;</span>}</span>
-                </div>
-              </div>
-              {ourTags.length > 0 && (
-                <button
-                  onClick={() => handlePush(['tags'])}
-                  disabled={pushing}
-                  className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
-                >
-                  {pushingField === 'tags' ? 'Pushing...' : 'Push Tags'}
-                </button>
-              )}
-            </div>
-
-            {/* Custom Metafields (custom.*) */}
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Custom Metafields</span>
-                <span className="text-xs text-slate-400">custom.* namespace</span>
-              </div>
-              <div className="space-y-1 text-xs mb-2">
-                {[
-                  { label: 'Artist', local: poster.artist, shopify: getMetafield('custom.artist') },
-                  { label: 'Date', local: poster.estimatedDate, shopify: getMetafield('custom.date') },
-                  { label: 'Technique', local: poster.printingTechnique, shopify: getMetafield('custom.technique') },
-                  { label: 'History', local: poster.historicalContext, shopify: getMetafield('custom.history') },
-                ].map((row) => (
-                  <div key={row.label} className="grid grid-cols-[80px_1fr_1fr] gap-2 items-start">
-                    <span className="text-slate-500 font-medium">{row.label}</span>
-                    <span className="text-slate-700 truncate" title={row.local || undefined}>
-                      {row.local || <span className="text-slate-400">&mdash;</span>}
-                    </span>
-                    <span className={`truncate ${row.local && row.shopify && row.local === row.shopify ? 'text-green-600' : row.shopify ? 'text-amber-600' : 'text-slate-400'}`} title={row.shopify || undefined}>
-                      {row.shopify || <span className="text-slate-400">&mdash;</span>}
-                      {row.local && row.shopify && row.local === row.shopify && ' \u2713'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-slate-400 mb-2">
-                <span className="text-slate-500">Local</span>
-                <span className="mx-1">|</span>
-                <span className="text-slate-500">Shopify</span>
-              </div>
-              <button
-                onClick={() => handlePush(['metafields'])}
-                disabled={pushing || (!poster.artist && !poster.estimatedDate && !poster.printingTechnique)}
-                className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {pushingField === 'metafields' ? 'Pushing...' : 'Push Custom Metafields'}
-              </button>
-            </div>
-
-            {/* Research Metafields (jadepuma.*) */}
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">Research Metafields</span>
-                <span className="text-xs text-slate-400">jadepuma.* namespace</span>
-              </div>
-              <div className="space-y-1 text-xs mb-2">
-                {[
-                  {
-                    label: 'Concise Desc.',
-                    local: poster.rawAiResponse?.productDescriptions?.concise || null,
-                    shopify: getMetafield('jadepuma.concise_description'),
-                  },
-                  {
-                    label: 'Publication',
-                    local: poster.publicationId ? '(linked record)' : null,
-                    shopify: getMetafield('jadepuma.book_title_source'),
-                  },
-                  {
-                    label: 'Publisher',
-                    local: poster.publisherId ? '(linked record)' : null,
-                    shopify: getMetafield('jadepuma.publisher'),
-                  },
-                  {
-                    label: 'Printer',
-                    local: poster.printerId ? '(linked record)' : poster.printer || null,
-                    shopify: getMetafield('jadepuma.printer'),
-                  },
-                  {
-                    label: 'Artist Bio',
-                    local: poster.artistId ? '(from artist record)' : null,
-                    shopify: getMetafield('jadepuma.artist_bio'),
-                  },
-                  {
-                    label: 'Origin',
-                    local: poster.countryOfOrigin || null,
-                    shopify: cleanValue(getMetafield('jadepuma.country_of_origin')),
-                  },
-                  {
-                    label: 'Medium',
-                    local: poster.printingTechnique || null,
-                    shopify: getMetafield('jadepuma.medium'),
-                  },
-                  {
-                    label: 'Colors',
-                    local: poster.colors && poster.colors.length > 0 ? poster.colors.join(', ') : null,
-                    shopify: cleanValue(getMetafield('jadepuma.color')),
-                  },
-                ].map((row) => (
-                  <div key={row.label} className="grid grid-cols-[90px_1fr_1fr] gap-2 items-start">
-                    <span className="text-slate-500 font-medium">{row.label}</span>
-                    <span className="text-slate-700 truncate" title={row.local || undefined}>
-                      {row.local || <span className="text-slate-400">&mdash;</span>}
-                    </span>
-                    <span className={`truncate ${row.shopify ? 'text-slate-700' : 'text-slate-400'}`} title={row.shopify || undefined}>
-                      {row.shopify || <span className="text-slate-400">&mdash;</span>}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-slate-400 mb-2">
-                <span className="text-slate-500">Local</span>
-                <span className="mx-1">|</span>
-                <span className="text-slate-500">Shopify</span>
-              </div>
-              <button
-                onClick={() => handlePush(['research_metafields'])}
-                disabled={pushing}
-                className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
-              >
-                {pushingField === 'research_metafields' ? 'Pushing...' : 'Push Research Metafields'}
-              </button>
-            </div>
-
-            {/* Push All */}
-            <button
-              onClick={() => handlePush(['description', 'tags', 'metafields', 'title', 'research_metafields'])}
-              disabled={pushing}
-              className="w-full py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {pushing ? 'Pushing...' : 'Push All to Shopify'}
-            </button>
-          </div>
         </div>
       )}
     </div>

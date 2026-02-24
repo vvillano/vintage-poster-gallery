@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Poster } from '@/types/poster';
+import { Poster, ShopifyData } from '@/types/poster';
 import ImagePreview from '@/components/ImagePreview';
 import ProductDescriptionEditor from '@/components/ProductDescriptionEditor';
+import PushFieldIndicator from '@/components/PushFieldIndicator';
 import { formatDate } from '@/lib/utils';
 
 interface PosterResearchTabProps {
@@ -215,6 +216,13 @@ export default function PosterResearchTab({
                 </a>
               </div>
             )}
+
+            {/* Shopify push for Artist */}
+            {poster.shopifyProductId && poster.artist && (
+              <div className="mt-2">
+                <PushFieldIndicator fieldKey="metafield:custom.artist" showComparison compact={false} />
+              </div>
+            )}
           </div>
 
           {/* Date */}
@@ -222,6 +230,11 @@ export default function PosterResearchTab({
             <div className="border-b border-slate-100 pb-3">
               <label className="text-sm font-medium text-slate-700">Date</label>
               <p className="text-slate-900">{poster.estimatedDate}</p>
+              {poster.shopifyProductId && (
+                <div className="mt-1">
+                  <PushFieldIndicator fieldKey="metafield:custom.date" compact />
+                </div>
+              )}
             </div>
           )}
 
@@ -245,6 +258,12 @@ export default function PosterResearchTab({
               >
                 {poster.printingTechnique}
               </a>
+              {poster.shopifyProductId && (
+                <div className="mt-1 flex items-center gap-3">
+                  <PushFieldIndicator fieldKey="metafield:custom.technique" compact />
+                  <PushFieldIndicator fieldKey="metafield:jadepuma.medium" compact />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -281,12 +300,22 @@ export default function PosterResearchTab({
                     Wikipedia →
                   </a>
                 )}
+                {poster.shopifyProductId && (
+                  <div className="mt-1">
+                    <PushFieldIndicator fieldKey="metafield:jadepuma.printer" compact />
+                  </div>
+                )}
               </div>
             )}
             {linkedPublisher && (
               <div className="border-b border-slate-100 pb-3">
                 <label className="text-sm font-medium text-slate-700">Publisher</label>
                 <p className="text-slate-900">{linkedPublisher.name}</p>
+                {poster.shopifyProductId && (
+                  <div className="mt-1">
+                    <PushFieldIndicator fieldKey="metafield:jadepuma.publisher" compact />
+                  </div>
+                )}
               </div>
             )}
             {linkedPublication && (
@@ -294,6 +323,11 @@ export default function PosterResearchTab({
                 <label className="text-sm font-medium text-slate-700">Source Publication</label>
                 <p className="text-slate-900">{linkedPublication.title}</p>
                 {linkedPublication.author && <p className="text-xs text-slate-500">by {linkedPublication.author}</p>}
+                {poster.shopifyProductId && (
+                  <div className="mt-1">
+                    <PushFieldIndicator fieldKey="metafield:jadepuma.book_title_source" compact />
+                  </div>
+                )}
               </div>
             )}
           </div>

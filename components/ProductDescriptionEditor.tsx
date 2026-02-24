@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { Poster, ShopifyData } from '@/types/poster';
+import { usePushQueue } from '@/components/PushQueueContext';
+import PushFieldIndicator from '@/components/PushFieldIndicator';
 
 const DESCRIPTION_TONES = ['standard', 'scholarly', 'enthusiastic', 'immersive'] as const;
 type DescriptionTone = typeof DESCRIPTION_TONES[number];
@@ -12,6 +14,7 @@ interface ProductDescriptionEditorProps {
 }
 
 export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDescriptionEditorProps) {
+  const pushQueue = usePushQueue();
   const [selectedTone, setSelectedTone] = useState<DescriptionTone>('standard');
   const [editedContent, setEditedContent] = useState<Record<string, string>>({});
   const [editedConcise, setEditedConcise] = useState<string>('');
@@ -345,34 +348,55 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
               Copy
             </button>
             {isLinked && (
-              <button
-                onClick={handlePushDescription}
-                disabled={pushing || !getCurrentDescription()}
-                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition flex items-center gap-1"
-              >
-                {pushing ? (
-                  <>
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Pushing...
-                  </>
-                ) : (
-                  <>Push to Shopify</>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={() => pushQueue.addToQueue(['description'])}
+                  disabled={!getCurrentDescription() || pushQueue.isFieldQueued('description')}
+                  className={`text-xs px-3 py-1.5 rounded transition flex items-center gap-1 ${
+                    pushQueue.isFieldQueued('description')
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+                  } disabled:opacity-50`}
+                >
+                  {pushQueue.isFieldQueued('description') ? '✓ Queued' : '+ Queue'}
+                </button>
+                <button
+                  onClick={handlePushDescription}
+                  disabled={pushing || !getCurrentDescription()}
+                  className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition flex items-center gap-1"
+                >
+                  {pushing ? (
+                    <>
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Pushing...
+                    </>
+                  ) : (
+                    <>Push to Shopify</>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
 
         <p className="text-xs text-slate-500 mt-2">
           {isEditing ? 'Edit the text above, then push to Shopify when ready.' : 'Click the description to edit before pushing.'}
+          {isLinked && (
+            <span className="ml-1 text-blue-600">
+              Will push: <strong className="uppercase">{selectedTone}</strong> tone
+            </span>
+          )}
         </p>
         {isLinked && (
-          <p className="text-xs text-slate-400 mt-1">
-            Size, Artist, and Condition are automatically appended below the description when pushed.
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-slate-400">
+              Size, Artist, and Condition are automatically appended below the description when pushed.
+            </p>
+            <PushFieldIndicator fieldKey="description" compact />
+          </div>
         )}
       </div>
 
@@ -466,26 +490,44 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
               Copy
             </button>
             {isLinked && (
-              <button
-                onClick={handlePushConcise}
-                disabled={pushingConcise || !editedConcise.trim()}
-                className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1"
-              >
-                {pushingConcise ? (
-                  <>
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Pushing...
-                  </>
-                ) : (
-                  <>Push Concise</>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={() => pushQueue.addToQueue(['metafield:jadepuma.concise_description'])}
+                  disabled={!editedConcise.trim() || pushQueue.isFieldQueued('metafield:jadepuma.concise_description')}
+                  className={`text-xs px-3 py-1.5 rounded transition flex items-center gap-1 ${
+                    pushQueue.isFieldQueued('metafield:jadepuma.concise_description')
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+                  } disabled:opacity-50`}
+                >
+                  {pushQueue.isFieldQueued('metafield:jadepuma.concise_description') ? '✓ Queued' : '+ Queue'}
+                </button>
+                <button
+                  onClick={handlePushConcise}
+                  disabled={pushingConcise || !editedConcise.trim()}
+                  className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1"
+                >
+                  {pushingConcise ? (
+                    <>
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Pushing...
+                    </>
+                  ) : (
+                    <>Push Concise</>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
+        {isLinked && (
+          <div className="mt-1 flex justify-end">
+            <PushFieldIndicator fieldKey="metafield:jadepuma.concise_description" compact />
+          </div>
+        )}
       </div>
     </div>
   );

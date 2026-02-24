@@ -4,34 +4,39 @@ import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 import {
   getShopifyConfig,
-  updateShopifyProduct,
-  setProductMetafield,
   getShopifyProduct,
-  getProductMetafields,
   shopifyProductToData,
 } from '@/lib/shopify';
+import {
+  expandFieldKeys,
+  getLocalValueForField,
+  getShopifyValueForField,
+  pushSingleField,
+  recordPushAndCleanQueue,
+  PUSH_FIELD_KEYS,
+  FIELD_LABELS,
+} from '@/lib/push-helpers';
 
 /**
  * POST /api/shopify/push
- * Push data to Shopify
+ * Push data to Shopify with history recording and queue cleanup.
+ *
  * Body: {
  *   posterId: number,
- *   fields: ['description', 'tags', 'metafields', 'title', 'research_metafields']
+ *   fields: string[],  // Accepts both legacy bulk keys and granular field keys
+ *   customConciseDescription?: string  // Optional override for concise description
  * }
  *
- * Field descriptions:
- * - description: Push product description (bodyHtml)
- * - tags: Push item tags
- * - metafields: Push custom metafields (artist, date, technique, history, talking_points)
- * - title: Push the poster title to Shopify product title
- * - research_metafields: Push research findings (jadepuma namespace):
- *   - concise_description: Short description
- *   - book_title_source: Publication source for antique prints/periodicals
- *   - publisher: Publisher name from verified entity
- *   - printer: Printer name from verified entity
- *   - artist_bio: Artist biography from linked artist record
- *   - country_of_origin: Country of origin
- *   - medium: Printing technique/medium
+ * Legacy bulk keys (backward compatible):
+ *   'description', 'tags', 'title', 'metafields', 'research_metafields'
+ *
+ * Granular field keys (new):
+ *   'metafield:custom.artist', 'metafield:jadepuma.medium', etc.
+ *
+ * For each field pushed:
+ *   1. Snapshots the current Shopify value into push_history
+ *   2. Pushes the new value to Shopify
+ *   3. Removes the field from push_queue
  */
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +45,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if Shopify is configured
     const config = await getShopifyConfig();
     if (!config) {
       return NextResponse.json(
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     if (!fields || !Array.isArray(fields) || fields.length === 0) {
       return NextResponse.json(
-        { error: 'fields array is required (e.g., ["description", "tags", "metafields"])' },
+        { error: 'fields array is required' },
         { status: 400 }
       );
     }
@@ -84,258 +88,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const shopifyData = item.shopify_data;
+    const pushedBy = session.user.name || 'unknown';
+
+    // Expand legacy bulk keys into granular field keys
+    const granularFields = expandFieldKeys(fields);
+
     const updates: string[] = [];
     const errors: string[] = [];
 
-    // Push description
-    if (fields.includes('description')) {
+    // Push each field individually with history recording
+    for (const fieldKey of granularFields) {
       try {
-        // Get description from raw_ai_response or product_description
-        let description = '';
-        if (item.raw_ai_response?.productDescriptions?.standard) {
-          description = item.raw_ai_response.productDescriptions.standard;
-        } else if (item.product_description) {
-          description = item.product_description;
+        // Get current values for history
+        const previousValue = getShopifyValueForField(shopifyData, fieldKey);
+        const newValue = await getLocalValueForField(item, fieldKey, { customConciseDescription });
+
+        if (!newValue) {
+          // Skip fields with no local value (don't error, just skip)
+          continue;
         }
 
-        if (description) {
-          // Convert to HTML paragraphs
-          let htmlDescription = description
-            .split('\n\n')
-            .map((p: string) => `<p>${p.trim()}</p>`)
-            .join('\n');
+        // Push to Shopify
+        await pushSingleField(item.shopify_product_id, item, fieldKey, { customConciseDescription });
 
-          // Append Size, Artist, Condition for Facebook Marketplace
-          try {
-            const metafields = await getProductMetafields(item.shopify_product_id);
-            const mfMap = new Map<string, string>();
-            for (const mf of metafields) {
-              mfMap.set(`${mf.namespace}.${mf.key}`, mf.value);
-            }
+        // Record in history and clean queue
+        try {
+          await recordPushAndCleanQueue(posterId, fieldKey, previousValue, newValue, pushedBy);
+        } catch (historyErr) {
+          // History/queue errors are not critical — don't fail the push
+          console.error(`Error recording push history for ${fieldKey}:`, historyErr);
+        }
 
-            const appendParts: string[] = [];
-
-            // Size from Shopify metafields (set by PM App)
-            const height = mfMap.get('specs.height');
-            const width = mfMap.get('specs.width');
-            if (height && width) {
-              appendParts.push(`<p><strong>Size:</strong> ${height}" x ${width}"</p>`);
-            } else if (height) {
-              appendParts.push(`<p><strong>Size:</strong> ${height}" H</p>`);
-            } else if (width) {
-              appendParts.push(`<p><strong>Size:</strong> ${width}" W</p>`);
-            }
-
-            // Artist from local data
-            if (item.artist) {
-              appendParts.push(`<p><strong>Artist:</strong> ${item.artist}</p>`);
-            }
-
-            // Condition from Shopify metafields (set by PM App)
-            const condition = mfMap.get('jadepuma.condition');
-            const conditionDetails = mfMap.get('jadepuma.condition_details');
-            if (condition && conditionDetails) {
-              appendParts.push(`<p><strong>Condition:</strong> ${condition}, ${conditionDetails}</p>`);
-            } else if (condition) {
-              appendParts.push(`<p><strong>Condition:</strong> ${condition}</p>`);
-            }
-
-            if (appendParts.length > 0) {
-              htmlDescription += '\n<br>\n' + appendParts.join('\n');
-            }
-          } catch (appendError) {
-            console.error('Error fetching metafields for description append:', appendError);
-            // Continue without appended fields
-          }
-
-          await updateShopifyProduct(item.shopify_product_id, {
-            bodyHtml: htmlDescription,
-          });
-          updates.push('description');
-        } else {
-          errors.push('No description available to push');
+        const label = FIELD_LABELS[fieldKey] || fieldKey;
+        if (!updates.includes(label)) {
+          updates.push(label);
         }
       } catch (error) {
-        errors.push(`description: ${error instanceof Error ? error.message : 'Failed'}`);
-      }
-    }
-
-    // Push tags
-    if (fields.includes('tags')) {
-      try {
-        // Get tags from item_tags JSONB field
-        const itemTags = item.item_tags || [];
-
-        if (itemTags.length > 0) {
-          await updateShopifyProduct(item.shopify_product_id, {
-            tags: itemTags,
-          });
-          updates.push('tags');
-        } else {
-          errors.push('No tags available to push');
-        }
-      } catch (error) {
-        errors.push(`tags: ${error instanceof Error ? error.message : 'Failed'}`);
-      }
-    }
-
-    // Push metafields
-    if (fields.includes('metafields')) {
-      const metafieldsToSet = [
-        { key: 'artist', value: item.artist },
-        { key: 'date', value: item.estimated_date },
-        { key: 'technique', value: item.printing_technique },
-        { key: 'history', value: item.historical_context },
-      ];
-
-      // Add talking points if available
-      if (item.raw_ai_response?.talkingPoints) {
-        metafieldsToSet.push({
-          key: 'talking_points',
-          value: JSON.stringify(item.raw_ai_response.talkingPoints),
-        });
-      }
-
-      for (const mf of metafieldsToSet) {
-        if (mf.value) {
-          try {
-            await setProductMetafield(item.shopify_product_id, {
-              namespace: 'custom',
-              key: mf.key,
-              value: mf.value,
-              type: mf.key === 'talking_points' ? 'json' : 'multi_line_text_field',
-            });
-          } catch (error) {
-            // Metafield errors are not critical
-            console.error(`Error setting metafield ${mf.key}:`, error);
-          }
-        }
-      }
-      updates.push('metafields');
-    }
-
-    // Push title
-    if (fields.includes('title')) {
-      try {
-        if (item.title) {
-          await updateShopifyProduct(item.shopify_product_id, {
-            title: item.title,
-          });
-          updates.push('title');
-        } else {
-          errors.push('No title available to push');
-        }
-      } catch (error) {
-        errors.push(`title: ${error instanceof Error ? error.message : 'Failed'}`);
-      }
-    }
-
-    // Push research metafields (jadepuma namespace)
-    if (fields.includes('research_metafields')) {
-      // Get linked entity names for publisher, printer, artist bio
-      let publisherName = null;
-      let printerName = null;
-      let publicationTitle = null;
-      let artistBio = null;
-
-      if (item.publisher_id) {
-        try {
-          const pubResult = await sql`SELECT name FROM publishers WHERE id = ${item.publisher_id}`;
-          if (pubResult.rows.length > 0) {
-            publisherName = pubResult.rows[0].name;
-          }
-        } catch (err) {
-          console.error('Error fetching publisher name:', err);
-        }
-      }
-
-      if (item.printer_id) {
-        try {
-          const printerResult = await sql`SELECT name FROM printers WHERE id = ${item.printer_id}`;
-          if (printerResult.rows.length > 0) {
-            printerName = printerResult.rows[0].name;
-          }
-        } catch (err) {
-          console.error('Error fetching printer name:', err);
-        }
-      }
-
-      if (item.publication_id) {
-        try {
-          const pubResult = await sql`SELECT title, author FROM publications WHERE id = ${item.publication_id}`;
-          if (pubResult.rows.length > 0) {
-            const pub = pubResult.rows[0];
-            publicationTitle = pub.title;
-            if (pub.author) publicationTitle += ` by ${pub.author}`;
-          }
-        } catch (err) {
-          console.error('Error fetching publication info:', err);
-        }
-      }
-
-      // Get artist bio from linked artist record
-      if (item.artist_id) {
-        try {
-          const artistResult = await sql`SELECT bio FROM artists WHERE id = ${item.artist_id}`;
-          if (artistResult.rows.length > 0 && artistResult.rows[0].bio) {
-            artistBio = artistResult.rows[0].bio;
-          }
-        } catch (err) {
-          console.error('Error fetching artist bio:', err);
-        }
-      }
-
-      // Get concise description - use custom if provided, otherwise from AI response
-      const conciseDescription = customConciseDescription || item.raw_ai_response?.productDescriptions?.concise || null;
-
-      // Get colors as comma-separated string for Shopify
-      const colorsValue = item.colors && item.colors.length > 0
-        ? item.colors.join(', ')
-        : null;
-
-      const researchMetafields = [
-        { key: 'concise_description', value: conciseDescription, type: 'multi_line_text_field' as const },
-        { key: 'book_title_source', value: publicationTitle, type: 'single_line_text_field' as const },
-        { key: 'publisher', value: publisherName, type: 'single_line_text_field' as const },
-        { key: 'printer', value: printerName || item.printer, type: 'single_line_text_field' as const },
-        { key: 'color', value: colorsValue, type: 'single_line_text_field' as const },
-        { key: 'artist_bio', value: artistBio, type: 'multi_line_text_field' as const },
-        { key: 'country_of_origin', value: item.country_of_origin, type: 'single_line_text_field' as const },
-        { key: 'medium', value: item.printing_technique, type: 'single_line_text_field' as const },
-      ];
-
-      let pushedCount = 0;
-      for (const mf of researchMetafields) {
-        if (mf.value) {
-          try {
-            await setProductMetafield(item.shopify_product_id, {
-              namespace: 'jadepuma',
-              key: mf.key,
-              value: mf.value,
-              type: mf.type,
-            });
-            pushedCount++;
-          } catch (error) {
-            console.error(`Error setting jadepuma.${mf.key}:`, error);
-          }
-        }
-      }
-
-      if (pushedCount > 0) {
-        updates.push('research_metafields');
+        const label = FIELD_LABELS[fieldKey] || fieldKey;
+        errors.push(`${label}: ${error instanceof Error ? error.message : 'Failed'}`);
       }
     }
 
     // Refresh Shopify data after push
     try {
       const product = await getShopifyProduct(item.shopify_product_id);
-      const shopifyData = shopifyProductToData(product);
+      const refreshedData = shopifyProductToData(product);
 
       await sql`
         UPDATE posters
         SET
           shopify_synced_at = NOW(),
-          shopify_data = ${JSON.stringify(shopifyData)},
+          shopify_data = ${JSON.stringify(refreshedData)},
           last_modified = NOW()
         WHERE id = ${posterId}
       `;

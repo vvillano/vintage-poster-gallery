@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Poster, SupplementalImage, ComparableSale, ResearchSite, LinkedArtist, LinkedPrinter, LinkedPublisher, LinkedPublication, ResearchImage, ResearchImageType, ShopifyData, RECORD_SOURCE_LABELS, RecordSource } from '@/types/poster';
 import { SELLER_TYPE_LABELS, SellerType } from '@/types/seller';
@@ -9,6 +9,9 @@ import Link from 'next/link';
 import ImagePreview from '@/components/ImagePreview';
 import ShopifyPanel from '@/components/ShopifyPanel';
 import IdentificationResearchPanel from '@/components/IdentificationResearchPanel';
+import { PushQueueProvider, usePushQueue, type PushQueueActions } from '@/components/PushQueueContext';
+import PushFieldIndicator from '@/components/PushFieldIndicator';
+import PushQueueBar from '@/components/PushQueueBar';
 import ValuationPanel from '@/components/ValuationPanel';
 import ProductDescriptionEditor from '@/components/ProductDescriptionEditor';
 import Twemoji from '@/components/Twemoji';
@@ -234,6 +237,12 @@ function formatDisplayDate(dateStr: string | null): string | null {
   }
 }
 
+// Thin wrapper to pass queue count from context to ShopifyPanel
+function ShopifyPanelWithQueue({ poster, onUpdate, syncing }: { poster: Poster; onUpdate: () => void; syncing: boolean }) {
+  const { queueCount } = usePushQueue();
+  return <ShopifyPanel poster={poster} onUpdate={onUpdate} syncing={syncing} queueCount={queueCount} />;
+}
+
 export default function PosterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -269,6 +278,9 @@ export default function PosterDetailPage() {
   const [availableColors, setAvailableColors] = useState<{name: string, hexCode: string | null}[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [savingColors, setSavingColors] = useState(false);
+
+  // Push queue actions ref (lets save handlers queue changes without consuming context)
+  const pushQueueActionsRef = useRef<PushQueueActions | null>(null);
 
   // Helper to get hex code for a color name
   const getColorHex = (colorName: string): string | null => {
@@ -981,6 +993,10 @@ export default function PosterDetailPage() {
       }
 
       setSelectedTags(newTags);
+      // Queue tags for Shopify push
+      if (poster.shopifyProductId) {
+        pushQueueActionsRef.current?.addToQueue(['tags']);
+      }
     } catch (err) {
       console.error('Failed to save tags:', err);
       // Revert on error
@@ -1025,6 +1041,10 @@ export default function PosterDetailPage() {
       }
 
       setSelectedColors(newColors);
+      // Queue colors for Shopify push
+      if (poster.shopifyProductId) {
+        pushQueueActionsRef.current?.addToQueue(['metafield:jadepuma.color']);
+      }
     } catch (err) {
       console.error('Failed to save colors:', err);
       // Revert on error
@@ -1243,7 +1263,8 @@ export default function PosterDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <PushQueueProvider poster={poster} onUpdate={fetchPoster} actionsRef={pushQueueActionsRef}>
+    <div className="max-w-7xl mx-auto pb-16">
       {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center gap-4">
@@ -1600,6 +1621,44 @@ export default function PosterDetailPage() {
               </div>
               <p className="text-xs text-slate-500 mb-3">Tags for categorization and Shopify integration</p>
 
+              {/* Shopify Tags & Push Status */}
+              {poster.shopifyProductId && (
+                <div className="mb-4 p-2 bg-white/60 rounded-lg border border-emerald-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-slate-600">In Shopify</p>
+                    <PushFieldIndicator fieldKey="tags" compact />
+                  </div>
+                  {(poster.shopifyData as ShopifyData | null)?.shopifyTags && (poster.shopifyData as ShopifyData).shopifyTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {(poster.shopifyData as ShopifyData).shopifyTags.map((tag: string) => (
+                        <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-700">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">No Shopify tags</span>
+                  )}
+                  {/* Show diff summary */}
+                  {(() => {
+                    const shopTags = (poster.shopifyData as ShopifyData | null)?.shopifyTags || [];
+                    const adding = selectedTags.filter(t => !shopTags.includes(t));
+                    const removing = shopTags.filter((t: string) => !selectedTags.includes(t));
+                    if (adding.length === 0 && removing.length === 0) return null;
+                    return (
+                      <div className="mt-1 text-xs space-y-0.5">
+                        {adding.length > 0 && (
+                          <div className="text-green-700">+ Adding: {adding.join(', ')}</div>
+                        )}
+                        {removing.length > 0 && (
+                          <div className="text-red-600">- Removing: {removing.join(', ')}</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* AI Suggested Tags */}
               {poster.rawAiResponse?.suggestedTags && poster.rawAiResponse.suggestedTags.length > 0 && (
                 <div className="mb-4">
@@ -1713,6 +1772,28 @@ export default function PosterDetailPage() {
                 )}
               </div>
               <p className="text-xs text-slate-500 mb-3">Dominant colors identified in the image</p>
+
+              {/* Shopify Colors & Push Status */}
+              {poster.shopifyProductId && (
+                <div className="mb-4 p-2 bg-white/60 rounded-lg border border-slate-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-slate-600">In Shopify</p>
+                    <PushFieldIndicator fieldKey="metafield:jadepuma.color" compact />
+                  </div>
+                  {(() => {
+                    const shopifyData = poster.shopifyData as ShopifyData | null;
+                    const colorMf = shopifyData?.metafields?.find(
+                      (m: any) => m.namespace === 'jadepuma' && m.key === 'color'
+                    );
+                    const shopifyColors = colorMf?.value || null;
+                    return shopifyColors ? (
+                      <span className="text-xs text-slate-600">{shopifyColors}</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">No colors in Shopify</span>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* AI Suggested Colors */}
               {poster.rawAiResponse?.suggestedColors && poster.rawAiResponse.suggestedColors.length > 0 && (
@@ -3223,7 +3304,7 @@ export default function PosterDetailPage() {
               )}
 
               {/* Shopify Integration */}
-              <ShopifyPanel poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
+              <ShopifyPanelWithQueue poster={poster} onUpdate={fetchPoster} syncing={syncingFromShopify} />
 
               {/* Dealer Research for Attribution */}
               <IdentificationResearchPanel poster={poster} onUpdate={fetchPoster} />
@@ -3265,6 +3346,10 @@ export default function PosterDetailPage() {
         </div>
         </div>
       )}
+
+      {/* Push Queue Bar — sticky at bottom */}
+      <PushQueueBar />
     </div>
+    </PushQueueProvider>
   );
 }

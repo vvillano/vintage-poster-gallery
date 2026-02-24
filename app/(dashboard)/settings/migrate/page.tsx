@@ -35,6 +35,12 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'push-queue-history',
+    name: 'Push Queue & History',
+    description: 'Creates push_queue, push_history, and user_settings tables for the Shopify push queue system. Enables per-field push queuing, push history with undo, and per-user auto-push preferences.',
+    endpoint: '/api/migrate/push-queue-history',
+  },
+  {
     id: 'rename-books-publications',
     name: 'Rename Books → Publications',
     description: 'Renames the books table to publications and the book_id column to publication_id on posters. Creates a backward-compat books view. Adds country_of_origin column to posters. Renames indexes.',
