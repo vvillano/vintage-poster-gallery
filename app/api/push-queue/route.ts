@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/push-queue?posterId=N
  * Fetch queued push fields for a poster.

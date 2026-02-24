@@ -109,7 +109,7 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
   const fetchQueue = useCallback(async () => {
     if (!poster.id) return;
     try {
-      const res = await fetch(`/api/push-queue?posterId=${poster.id}`);
+      const res = await fetch(`/api/push-queue?posterId=${poster.id}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const map = new Map<string, PushQueueEntry>();
