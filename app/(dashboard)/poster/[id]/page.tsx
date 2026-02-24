@@ -1639,20 +1639,14 @@ export default function PosterDetailPage() {
                   ) : (
                     <span className="text-xs text-slate-400">No Shopify tags</span>
                   )}
-                  {/* Show diff summary */}
+                  {/* Show what will be added (tags are merged, never removed) */}
                   {(() => {
                     const shopTags = (poster.shopifyData as ShopifyData | null)?.shopifyTags || [];
                     const adding = selectedTags.filter(t => !shopTags.includes(t));
-                    const removing = shopTags.filter((t: string) => !selectedTags.includes(t));
-                    if (adding.length === 0 && removing.length === 0) return null;
+                    if (adding.length === 0) return null;
                     return (
-                      <div className="mt-1 text-xs space-y-0.5">
-                        {adding.length > 0 && (
-                          <div className="text-green-700">+ Adding: {adding.join(', ')}</div>
-                        )}
-                        {removing.length > 0 && (
-                          <div className="text-red-600">- Removing: {removing.join(', ')}</div>
-                        )}
+                      <div className="mt-1 text-xs">
+                        <div className="text-green-700">+ Adding: {adding.join(', ')}</div>
                       </div>
                     );
                   })()}

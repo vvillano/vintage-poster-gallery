@@ -255,11 +255,12 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
     if (!shopifyVal) return 'missing';
     if (!localVal) return 'synced'; // no local value to push
 
-    // For tags, compare as sorted sets
+    // For tags, check if all local tags exist in Shopify (additive merge — Shopify may have extras)
     if (fieldKey === PUSH_FIELD_KEYS.tags) {
-      const shopifyTags = (shopifyData.shopifyTags || []).slice().sort();
-      const localTags = (poster.itemTags || []).slice().sort();
-      return JSON.stringify(shopifyTags) === JSON.stringify(localTags) ? 'synced' : 'different';
+      const shopifyTags = new Set((shopifyData.shopifyTags || []).map((t: string) => t.toLowerCase()));
+      const localTags = poster.itemTags || [];
+      const allPresent = localTags.every((t: string) => shopifyTags.has(t.toLowerCase()));
+      return allPresent ? 'synced' : 'different';
     }
 
     // For linked records, we can't compare exactly on client side

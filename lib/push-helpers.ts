@@ -245,9 +245,13 @@ export async function pushSingleField(
     }
 
     case PUSH_FIELD_KEYS.tags: {
-      const tags = item.item_tags || [];
-      if (tags.length === 0) throw new Error('No tags available to push');
-      await updateShopifyProduct(productId, { tags });
+      const localTags: string[] = item.item_tags || [];
+      if (localTags.length === 0) throw new Error('No tags available to push');
+      // Merge with existing Shopify tags (additive — don't remove existing tags)
+      const shopifyData = item.shopify_data || {};
+      const existingTags: string[] = shopifyData.shopifyTags || [];
+      const merged = Array.from(new Set([...existingTags, ...localTags]));
+      await updateShopifyProduct(productId, { tags: merged });
       break;
     }
 
