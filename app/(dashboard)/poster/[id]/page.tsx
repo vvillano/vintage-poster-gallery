@@ -1779,7 +1779,14 @@ export default function PosterDetailPage() {
                     const colorMf = shopifyData?.metafields?.find(
                       (m: any) => m.namespace === 'jadepuma' && m.key === 'color'
                     );
-                    const shopifyColors = colorMf?.value || null;
+                    const shopifyColorsRaw = colorMf?.value || null;
+                    let shopifyColors: string | null = null;
+                    if (shopifyColorsRaw) {
+                      try {
+                        const parsed = JSON.parse(shopifyColorsRaw);
+                        shopifyColors = Array.isArray(parsed) ? parsed.join(', ') : shopifyColorsRaw;
+                      } catch { shopifyColors = shopifyColorsRaw; }
+                    }
                     return shopifyColors ? (
                       <span className="text-xs text-slate-600">{shopifyColors}</span>
                     ) : (
@@ -2915,7 +2922,12 @@ export default function PosterDetailPage() {
                       {poster.printingTechnique && (
                         <div className="flex items-center gap-2 mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                           <span className="text-xs text-slate-500">AI detected:</span>
-                          <span className="text-sm text-slate-700">{poster.printingTechnique}</span>
+                          <span className="text-sm text-slate-700">{(() => {
+                            try {
+                              const parsed = JSON.parse(poster.printingTechnique);
+                              return Array.isArray(parsed) ? parsed.join(', ') : poster.printingTechnique;
+                            } catch { return poster.printingTechnique; }
+                          })()}</span>
                           <a
                             href={getPrintingWikiUrl(poster.printingTechnique)}
                             target="_blank"

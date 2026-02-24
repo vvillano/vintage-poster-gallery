@@ -199,7 +199,15 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
       default: {
         const match = fieldKey.match(/^metafield:(\w+)\.(.+)$/);
         if (match) {
-          return getMetafieldValue(match[1], match[2]);
+          const raw = getMetafieldValue(match[1], match[2]);
+          // Parse JSON arrays (e.g., list.single_line_text_field) for display
+          if (raw && raw.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) return parsed.join(', ');
+            } catch { /* use raw */ }
+          }
+          return raw;
         }
         return null;
       }
