@@ -121,6 +121,9 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
           });
         }
         setQueuedFields(map);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error('Push queue fetch failed:', res.status, data);
       }
     } catch (err) {
       console.error('Failed to fetch push queue:', err);
@@ -317,14 +320,20 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
     setQueuedFields(newMap);
 
     try {
-      await fetch('/api/push-queue', {
+      const res = await fetch('/api/push-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ posterId: poster.id, fieldKeys, autoEligible }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error('Push queue POST failed:', res.status, data);
+        setError(`Failed to queue: ${data.details || data.error || res.statusText}`);
+        fetchQueue(); // Revert to DB truth
+      }
     } catch (err) {
       console.error('Failed to add to queue:', err);
-      // Revert
+      setError('Failed to queue: network error');
       fetchQueue();
     }
   }
@@ -340,11 +349,16 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
     setQueuedFields(newMap);
 
     try {
-      await fetch('/api/push-queue', {
+      const res = await fetch('/api/push-queue', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ posterId: poster.id, fieldKeys }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error('Push queue DELETE failed:', res.status, data);
+        fetchQueue();
+      }
     } catch (err) {
       console.error('Failed to remove from queue:', err);
       fetchQueue();
