@@ -20,7 +20,7 @@ import { PUSH_FIELD_KEYS } from '@/lib/push-constants';
 /**
  * Metafield type mapping for Shopify API
  */
-function getMetafieldType(fieldKey: string): 'single_line_text_field' | 'multi_line_text_field' | 'json' {
+function getMetafieldType(fieldKey: string): 'single_line_text_field' | 'multi_line_text_field' | 'json' | 'list.single_line_text_field' {
   switch (fieldKey) {
     case PUSH_FIELD_KEYS.customHistory:
     case PUSH_FIELD_KEYS.conciseDescription:
@@ -28,6 +28,8 @@ function getMetafieldType(fieldKey: string): 'single_line_text_field' | 'multi_l
       return 'multi_line_text_field';
     case PUSH_FIELD_KEYS.customTalkingPoints:
       return 'json';
+    case PUSH_FIELD_KEYS.color:
+      return 'list.single_line_text_field';
     default:
       return 'single_line_text_field';
   }
@@ -262,11 +264,18 @@ export async function pushSingleField(
         throw new Error(`Unknown field key: ${fieldKey}`);
       }
       const [, namespace, key] = match;
+      const mfType = getMetafieldType(fieldKey);
+      // List metafields need JSON array format
+      let mfValue = value;
+      if (mfType === 'list.single_line_text_field') {
+        const items = value.split(',').map((s: string) => s.trim()).filter(Boolean);
+        mfValue = JSON.stringify(items);
+      }
       await setProductMetafield(productId, {
         namespace,
         key,
-        value,
-        type: getMetafieldType(fieldKey),
+        value: mfValue,
+        type: mfType,
       });
       break;
     }

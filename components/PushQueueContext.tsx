@@ -400,10 +400,9 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
         fetchHistory();
       }
 
-      setTimeout(() => { setSuccess(''); setError(''); }, 3000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to push');
-      setTimeout(() => setError(''), 5000);
     } finally {
       setIsPushing(false);
       setPushingField(null);
@@ -445,10 +444,9 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
         fetchHistory();
       }
 
-      setTimeout(() => { setSuccess(''); setError(''); }, 3000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to push');
-      setTimeout(() => setError(''), 5000);
     } finally {
       setIsPushing(false);
       setPushingField(null);
@@ -493,10 +491,9 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
       onUpdate();
       fetchHistory();
 
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to undo');
-      setTimeout(() => setError(''), 5000);
     } finally {
       setIsPushing(false);
       setPushingField(null);
