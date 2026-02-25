@@ -20,6 +20,7 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
   const [editedConcise, setEditedConcise] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingConcise, setIsEditingConcise] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [pushingConcise, setPushingConcise] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,6 +69,31 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
   // Check if concise has been edited
   function isConciseEdited(): boolean {
     return editedConcise !== conciseDescription && editedConcise.trim() !== '';
+  }
+
+  // Save all edited descriptions to the database
+  async function saveDescriptionToDb() {
+    setSaving(true);
+    try {
+      const descriptionsToSave = {
+        standard: editedContent['standard'] ?? aiDescriptions['standard'] ?? '',
+        scholarly: editedContent['scholarly'] ?? aiDescriptions['scholarly'] ?? '',
+        enthusiastic: editedContent['enthusiastic'] ?? aiDescriptions['enthusiastic'] ?? '',
+        immersive: editedContent['immersive'] ?? aiDescriptions['immersive'] ?? '',
+        concise: editedConcise || conciseDescription || '',
+      };
+      const res = await fetch(`/api/posters/${poster.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productDescriptions: descriptionsToSave }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save descriptions');
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Push description to Shopify (with optional custom content)
@@ -317,10 +343,11 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
             {isEditing ? (
               <>
                 <button
-                  onClick={() => setIsEditing(false)}
-                  className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition"
+                  onClick={async () => { await saveDescriptionToDb(); setIsEditing(false); }}
+                  disabled={saving}
+                  className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition disabled:opacity-50"
                 >
-                  Done Editing
+                  {saving ? 'Saving...' : 'Done Editing'}
                 </button>
                 <button
                   onClick={() => {
@@ -350,8 +377,8 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
             {isLinked && (
               <>
                 <button
-                  onClick={() => pushQueue.addToQueue(['description'])}
-                  disabled={!getCurrentDescription() || pushQueue.isFieldQueued('description')}
+                  onClick={async () => { await saveDescriptionToDb(); await pushQueue.addToQueue(['description']); }}
+                  disabled={saving || !getCurrentDescription() || pushQueue.isFieldQueued('description')}
                   className={`text-xs px-3 py-1.5 rounded transition flex items-center gap-1 ${
                     pushQueue.isFieldQueued('description')
                       ? 'bg-blue-100 text-blue-700'
@@ -361,7 +388,7 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
                   {pushQueue.isFieldQueued('description') ? '✓ Queued' : '+ Queue'}
                 </button>
                 <button
-                  onClick={handlePushDescription}
+                  onClick={async () => { await saveDescriptionToDb(); await handlePushDescription(); }}
                   disabled={pushing || !getCurrentDescription()}
                   className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition flex items-center gap-1"
                 >
@@ -457,10 +484,11 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
             {isEditingConcise ? (
               <>
                 <button
-                  onClick={() => setIsEditingConcise(false)}
-                  className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition"
+                  onClick={async () => { await saveDescriptionToDb(); setIsEditingConcise(false); }}
+                  disabled={saving}
+                  className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition disabled:opacity-50"
                 >
-                  Done
+                  {saving ? 'Saving...' : 'Done'}
                 </button>
                 <button
                   onClick={() => setEditedConcise(conciseDescription)}
@@ -492,8 +520,8 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
             {isLinked && (
               <>
                 <button
-                  onClick={() => pushQueue.addToQueue(['metafield:jadepuma.concise_description'])}
-                  disabled={!editedConcise.trim() || pushQueue.isFieldQueued('metafield:jadepuma.concise_description')}
+                  onClick={async () => { await saveDescriptionToDb(); await pushQueue.addToQueue(['metafield:jadepuma.concise_description']); }}
+                  disabled={saving || !editedConcise.trim() || pushQueue.isFieldQueued('metafield:jadepuma.concise_description')}
                   className={`text-xs px-3 py-1.5 rounded transition flex items-center gap-1 ${
                     pushQueue.isFieldQueued('metafield:jadepuma.concise_description')
                       ? 'bg-blue-100 text-blue-700'
@@ -503,8 +531,8 @@ export default function ProductDescriptionEditor({ poster, onUpdate }: ProductDe
                   {pushQueue.isFieldQueued('metafield:jadepuma.concise_description') ? '✓ Queued' : '+ Queue'}
                 </button>
                 <button
-                  onClick={handlePushConcise}
-                  disabled={pushingConcise || !editedConcise.trim()}
+                  onClick={async () => { await saveDescriptionToDb(); await handlePushConcise(); }}
+                  disabled={saving || pushingConcise || !editedConcise.trim()}
                   className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1"
                 >
                   {pushingConcise ? (

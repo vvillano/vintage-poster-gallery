@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import {
   getPosterById,
   updatePosterFields,
+  updatePosterDescriptions,
   deletePoster,
 } from '@/lib/db';
 import { deleteImage } from '@/lib/blob';
@@ -75,6 +76,40 @@ export async function PUT(
         error: 'Failed to update poster',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const posterId = parseInt(id);
+    if (isNaN(posterId)) {
+      return NextResponse.json({ error: 'Invalid poster ID' }, { status: 400 });
+    }
+
+    const { productDescriptions } = await request.json();
+
+    if (!productDescriptions) {
+      return NextResponse.json({ error: 'productDescriptions is required' }, { status: 400 });
+    }
+
+    const updatedPoster = await updatePosterDescriptions(posterId, productDescriptions);
+
+    return NextResponse.json({ success: true, poster: updatedPoster });
+  } catch (error) {
+    console.error('Save descriptions error:', error);
+    return NextResponse.json(
+      { error: 'Failed to save descriptions', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
