@@ -1722,7 +1722,6 @@ export default function PosterDetailPage() {
                           !selectedTags.includes(tag) &&
                           tag.toLowerCase().includes(tagSearch.toLowerCase())
                         )
-                        .slice(0, 10)
                         .map((tag) => (
                           <button
                             key={tag}
