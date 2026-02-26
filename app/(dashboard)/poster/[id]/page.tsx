@@ -2377,8 +2377,8 @@ export default function PosterDetailPage() {
                   const shopifyYear = getMetafield(shopifyIdent, 'specs.year'); // Product year, not purchase date
                   const shopifyHeight = getMetafield(shopifyIdent, 'specs.height');
                   const shopifyWidth = getMetafield(shopifyIdent, 'specs.width');
-                  const shopifyDimensions = shopifyHeight && shopifyWidth
-                    ? `${shopifyHeight}" H x ${shopifyWidth}" W`
+                  const shopifyDimensions = shopifyHeight || shopifyWidth
+                    ? [shopifyHeight && `${shopifyHeight}" H`, shopifyWidth && `${shopifyWidth}" W`].filter(Boolean).join(' x ')
                     : null;
 
                   return (
@@ -2675,20 +2675,28 @@ export default function PosterDetailPage() {
                     </div>
                   </div>
 
-                  {/* Dimensions - Always from Shopify */}
+                  {/* Dimensions - informational only, no push (requires physical validation) */}
                   <div className="border-b border-slate-100 pb-3">
                     <label className="text-sm font-medium text-slate-700 mb-2 block">Dimensions</label>
-                    {poster.shopifyProductId && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
-                        <p className="text-slate-900">
-                          {shopifyDimensions || poster.dimensionsEstimate || <span className="text-slate-400 italic">Not set</span>}
-                        </p>
-                      </div>
-                    )}
-                    {!poster.shopifyProductId && (
-                      <p className="text-slate-900">{poster.dimensionsEstimate || 'Unknown'}</p>
-                    )}
+                    <div className="space-y-1">
+                      {poster.shopifyProductId && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
+                          <p className="text-slate-900">
+                            {shopifyDimensions || <span className="text-slate-400 italic">Not set</span>}
+                          </p>
+                        </div>
+                      )}
+                      {poster.dimensionsEstimate && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded shrink-0 mt-0.5">AI</span>
+                          <p className="text-slate-700">{poster.dimensionsEstimate}</p>
+                        </div>
+                      )}
+                      {!poster.shopifyProductId && !poster.dimensionsEstimate && (
+                        <p className="text-slate-400 italic">Unknown</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Publication with Confidence */}
