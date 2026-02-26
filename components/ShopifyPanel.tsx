@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { Poster, ShopifyData } from '@/types/poster';
+import type { Poster, ShopifyData, RecordSource } from '@/types/poster';
+import { RECORD_SOURCE_LABELS } from '@/types/poster';
 
 interface ShopifyPanelProps {
   poster: Poster;
@@ -173,6 +174,7 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false, queueC
     condition: getMetafield('jadepuma.condition'),
     conditionDetails: getMetafield('jadepuma.condition_details'),
     sourcePlatform: getMetafield('jadepuma.source_platform'),
+    dealerName: getMetafield('jadepuma.dealer'),
     privateSellerName: getMetafield('jadepuma.private_seller_name'),
     privateSellerEmail: getMetafield('jadepuma.private_seller_email'),
     purchasePrice: getMetafield('jadepuma.purchase_price'),
@@ -490,55 +492,102 @@ export default function ShopifyPanel({ poster, onUpdate, syncing = false, queueC
                 </div>
               )}
 
-              {/* Source / Acquisition */}
-              {(metafieldDisplay.sourcePlatform || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost || metafieldDisplay.purchaseDate || (cogs && !isNaN(parseFloat(cogs)))) && (
+              {/* Acquisition */}
+              {(metafieldDisplay.sourcePlatform || metafieldDisplay.dealerName || poster.platformIdentity || metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail || metafieldDisplay.purchaseDate || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost || (cogs && !isNaN(parseFloat(cogs))) || shopifyData?.price || shopifyData?.compareAtPrice) && (
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Source / Acquisition</div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                    {metafieldDisplay.sourcePlatform && (
-                      <div><span className="text-slate-500">Source:</span> <span className="font-medium">{metafieldDisplay.sourcePlatform}</span></div>
-                    )}
-                    {metafieldDisplay.purchaseDate && (
-                      <div><span className="text-slate-500">Purchased:</span> <span className="font-medium">{metafieldDisplay.purchaseDate}</span></div>
-                    )}
-                    {metafieldDisplay.privateSellerName && (
-                      <div><span className="text-slate-500">Seller:</span> <span className="font-medium">{metafieldDisplay.privateSellerName}</span></div>
-                    )}
-                    {metafieldDisplay.privateSellerEmail && (
-                      <div className="col-span-2"><span className="text-slate-500">Email:</span> <span className="font-medium">{metafieldDisplay.privateSellerEmail}</span></div>
-                    )}
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Acquisition</div>
+
+                  {/* Source identity: Platform | Seller | Username */}
+                  <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                    <div>
+                      <span className="text-slate-500 text-xs block">Platform</span>
+                      <span className="font-medium">{metafieldDisplay.sourcePlatform || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-xs block">Seller</span>
+                      <span className="font-medium">{metafieldDisplay.dealerName || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-xs block">Username</span>
+                      <span className="font-mono font-medium text-xs">{poster.platformIdentity || '—'}</span>
+                    </div>
                   </div>
-                  {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) && (
-                    <div className="mt-3 pt-2 border-t border-slate-100">
-                      <div className="grid grid-cols-3 gap-2 text-sm">
+
+                  {/* Private Seller */}
+                  {(metafieldDisplay.privateSellerName || metafieldDisplay.privateSellerEmail) && (
+                    <div className="mb-3 p-2 bg-slate-50 rounded text-sm">
+                      <span className="text-slate-500 text-xs block">Private Seller</span>
+                      <span className="font-medium">{metafieldDisplay.privateSellerName}</span>
+                      {metafieldDisplay.privateSellerEmail && (
+                        <div className="text-xs text-slate-600">{metafieldDisplay.privateSellerEmail}</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Purchase date + Cost breakdown */}
+                  {(metafieldDisplay.purchaseDate || metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) && (
+                    <div className="border-t border-slate-100 pt-2 mt-1">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {metafieldDisplay.purchaseDate && (
+                          <div>
+                            <span className="text-slate-500 text-xs block">Purchase Date</span>
+                            <span className="font-medium">{formatDisplayDate(metafieldDisplay.purchaseDate) || metafieldDisplay.purchaseDate}</span>
+                          </div>
+                        )}
                         {metafieldDisplay.purchasePrice && !isNaN(parseFloat(metafieldDisplay.purchasePrice)) && (
                           <div>
-                            <span className="text-slate-500 text-xs block">Cost:</span>
-                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.purchasePrice).toFixed(2)}</span>
+                            <span className="text-slate-500 text-xs block">Purchase Price</span>
+                            <span className="font-medium">${parseFloat(metafieldDisplay.purchasePrice).toFixed(2)}</span>
                           </div>
                         )}
                         {metafieldDisplay.shippingCost && !isNaN(parseFloat(metafieldDisplay.shippingCost)) && (
                           <div>
-                            <span className="text-slate-500 text-xs block">Shipping/Other:</span>
-                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.shippingCost).toFixed(2)}</span>
+                            <span className="text-slate-500 text-xs block">Shipping/Other</span>
+                            <span className="font-medium">${parseFloat(metafieldDisplay.shippingCost).toFixed(2)}</span>
                           </div>
                         )}
                         {metafieldDisplay.restorationCost && !isNaN(parseFloat(metafieldDisplay.restorationCost)) && (
                           <div>
-                            <span className="text-slate-500 text-xs block">Restoration:</span>
-                            <span className="font-medium text-green-700">${parseFloat(metafieldDisplay.restorationCost).toFixed(2)}</span>
+                            <span className="text-slate-500 text-xs block">Restoration</span>
+                            <span className="font-medium">${parseFloat(metafieldDisplay.restorationCost).toFixed(2)}</span>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
+
+                  {/* Total COGS */}
                   {cogs && !isNaN(parseFloat(cogs)) && (
-                    <div className={`text-sm ${(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? 'mt-2 text-xs text-slate-500' : 'mt-3 pt-2 border-t border-slate-100'}`}>
-                      {(metafieldDisplay.purchasePrice || metafieldDisplay.shippingCost || metafieldDisplay.restorationCost) ? (
-                        <>Total COGS: <span className="font-semibold text-slate-700">${parseFloat(cogs).toFixed(2)}</span></>
-                      ) : (
-                        <><span className="text-slate-500">COGS:</span> <span className="font-medium text-green-700">${parseFloat(cogs).toFixed(2)}</span></>
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Total COGS</span>
+                      <span className="font-semibold text-slate-700">${parseFloat(cogs).toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Pricing */}
+                  {(shopifyData?.price || shopifyData?.compareAtPrice) && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-4">
+                      {shopifyData?.price && (
+                        <div>
+                          <span className="text-slate-500 text-xs block">List Price</span>
+                          <span className="text-xl font-bold text-green-700">${parseFloat(shopifyData.price).toFixed(2)}</span>
+                        </div>
                       )}
+                      {shopifyData?.compareAtPrice && (
+                        <div>
+                          <span className="text-slate-500 text-xs block">Compare At</span>
+                          <span className="text-lg text-slate-400 line-through">${parseFloat(shopifyData.compareAtPrice).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Record source */}
+                  {poster.recordSource && poster.recordSource !== 'unknown' && (
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <span className="text-xs text-slate-400">
+                        Record source: {RECORD_SOURCE_LABELS[poster.recordSource as RecordSource]}
+                      </span>
                     </div>
                   )}
                 </div>

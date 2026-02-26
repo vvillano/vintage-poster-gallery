@@ -7,7 +7,6 @@ import {
   getShopifyConfig,
   shopifyProductToData,
   getProductMetafields,
-  mapMetafieldsToPosterFields,
 } from '@/lib/shopify';
 
 /**
@@ -81,21 +80,14 @@ export async function POST(request: NextRequest) {
           console.warn(`Could not fetch metafields for ${row.shopify_product_id}:`, mfErr);
         }
 
-        // Map metafields to poster fields
-        const mappedFields = mapMetafieldsToPosterFields(metafields);
-
         // Prepare shopify data with metafields
         const shopifyData = shopifyProductToData(product, metafields);
         const firstVariant = product.variants[0];
 
-        // Update item in database (including mapped metafield values)
-        // Note: title and product_type are overwritten from Shopify (authoritative source)
-        // shopify_title stores original Shopify title for revert capability
-        // Convert colors array to PostgreSQL array literal
-        const colorsLiteral = mappedFields.colors && mappedFields.colors.length > 0
-          ? `{${mappedFields.colors.map(c => `"${c.replace(/"/g, '\\"')}"`).join(',')}}`
-          : null;
-
+        // Update Shopify-specific metadata only.
+        // Research fields (artist, estimated_date, condition, etc.) are NOT overwritten —
+        // shopify_data captures the full Shopify state for comparison, while local columns
+        // represent the research app's own values (set by AI analysis or manual entry).
         await sql`
           UPDATE posters
           SET
@@ -106,15 +98,6 @@ export async function POST(request: NextRequest) {
             shopify_status = ${product.status},
             shopify_synced_at = NOW(),
             shopify_data = ${JSON.stringify(shopifyData)},
-            artist = COALESCE(${mappedFields.artist || null}, artist),
-            estimated_date = COALESCE(${mappedFields.estimatedDate || null}, estimated_date),
-            dimensions_estimate = COALESCE(${mappedFields.dimensionsEstimate || null}, dimensions_estimate),
-            condition = COALESCE(${mappedFields.condition || null}, condition),
-            condition_details = COALESCE(${mappedFields.conditionDetails || null}, condition_details),
-            user_notes = COALESCE(${mappedFields.userNotes || null}, user_notes),
-            printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
-            colors = COALESCE(${colorsLiteral}::TEXT[], colors),
-            country_of_origin = COALESCE(${mappedFields.countryOfOrigin || null}, country_of_origin),
             last_modified = NOW()
           WHERE id = ${row.id}
         `;
