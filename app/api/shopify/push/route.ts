@@ -5,6 +5,7 @@ import { sql } from '@vercel/postgres';
 import {
   getShopifyConfig,
   getShopifyProduct,
+  getProductMetafields,
   shopifyProductToData,
 } from '@/lib/shopify';
 import {
@@ -130,10 +131,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Refresh Shopify data after push
+    // Refresh Shopify data after push (include metafields so acquisition/COGS data is preserved)
     try {
       const product = await getShopifyProduct(item.shopify_product_id);
-      const refreshedData = shopifyProductToData(product);
+      let refreshedMetafields: Awaited<ReturnType<typeof getProductMetafields>> = [];
+      try {
+        refreshedMetafields = await getProductMetafields(item.shopify_product_id);
+      } catch (mfErr) {
+        console.warn('Could not fetch metafields for post-push refresh:', mfErr);
+      }
+      const refreshedData = shopifyProductToData(product, refreshedMetafields);
 
       await sql`
         UPDATE posters

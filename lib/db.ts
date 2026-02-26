@@ -755,5 +755,6 @@ function dbRowToPoster(row: any): Poster {
     sourceDealerId: row.source_dealer_id,
     acquisitionPlatformId: row.acquisition_platform_id,
     dealerName: row.dealer_name,
+    platformIdentity: row.platform_identity,
   };
 }
