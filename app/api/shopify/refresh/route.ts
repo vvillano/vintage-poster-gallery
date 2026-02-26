@@ -190,7 +190,6 @@ export async function POST(request: NextRequest) {
       SET
         image_url = ${newImageUrl},
         image_blob_id = ${newBlobId},
-        title = ${product.title},
         shopify_title = ${product.title},
         product_type = ${product.productType || null},
         sku = ${firstVariant?.sku || null},
@@ -203,11 +202,11 @@ export async function POST(request: NextRequest) {
         condition = COALESCE(${mappedFields.condition || null}, condition),
         condition_details = COALESCE(${mappedFields.conditionDetails || null}, condition_details),
         user_notes = COALESCE(${mappedFields.userNotes || null}, user_notes),
-        item_notes = ${mappedFields.itemNotes || null},
+        item_notes = COALESCE(${mappedFields.itemNotes || null}, item_notes),
         printing_technique = COALESCE(${mappedFields.printingTechnique || null}, printing_technique),
         colors = COALESCE(${colorsLiteral}::TEXT[], colors),
         shopify_reference_images = ${JSON.stringify(shopifyRefImages)},
-        dealer_name = ${mappedFields.dealerName || null},
+        dealer_name = COALESCE(${mappedFields.dealerName || null}, dealer_name),
         last_modified = NOW()
       WHERE id = ${posterId}
     `;
