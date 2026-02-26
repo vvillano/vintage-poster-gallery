@@ -462,8 +462,10 @@ export default function PosterDetailPage() {
         });
 
         if (res.ok) {
-          // Silently refetch poster data with updated Shopify info
-          const posterRes = await fetch(`/api/posters/${posterId}`);
+          // Silently refetch poster data with updated Shopify info.
+          // cache: 'no-store' ensures the browser does not serve a cached response
+          // from the initial page load, so the updated shopify_data is always reflected.
+          const posterRes = await fetch(`/api/posters/${posterId}`, { cache: 'no-store' });
           if (posterRes.ok) {
             const data = await posterRes.json();
             setPoster(data);
@@ -593,7 +595,7 @@ export default function PosterDetailPage() {
   async function fetchPoster() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/posters/${posterId}`);
+      const res = await fetch(`/api/posters/${posterId}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Failed to fetch poster');
       }

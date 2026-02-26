@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
         const firstVariant = product.variants[0];
 
         // Update Shopify-specific metadata only.
-        // Research fields (artist, estimated_date, condition, etc.) are NOT overwritten —
-        // shopify_data captures the full Shopify state for comparison, while local columns
-        // represent the research app's own values (set by AI analysis or manual entry).
+        // shopify_data is always fully overwritten with the current Shopify state.
+        // shopify_title records the Shopify title at sync time (for reference/undo).
+        // poster.title (the local/research title) is NOT overwritten — it is set at import
+        // and can be updated by AI analysis or manual entry, just like other research fields.
         await sql`
           UPDATE posters
           SET
-            title = ${product.title},
             shopify_title = ${product.title},
             product_type = ${product.productType || null},
             sku = ${firstVariant?.sku || null},
