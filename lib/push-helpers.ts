@@ -61,8 +61,13 @@ export async function getLocalValueForField(
     case PUSH_FIELD_KEYS.customArtist:
       return item.artist || null;
 
-    case PUSH_FIELD_KEYS.customDate:
-      return item.estimated_date || null;
+    case PUSH_FIELD_KEYS.customDate: {
+      const dateStr = item.estimated_date;
+      if (!dateStr) return null;
+      // Push year only — extract 4-digit year from full date string (e.g. "April 18, 1942" → "1942")
+      const yearMatch = dateStr.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/);
+      return yearMatch ? yearMatch[1] : dateStr;
+    }
 
     case PUSH_FIELD_KEYS.customTechnique:
       return item.printing_technique || null;
@@ -75,10 +80,19 @@ export async function getLocalValueForField(
         ? JSON.stringify(item.raw_ai_response.talkingPoints)
         : null;
 
-    case PUSH_FIELD_KEYS.conciseDescription:
-      return options?.customConciseDescription
+    case PUSH_FIELD_KEYS.conciseDescription: {
+      const raw = options?.customConciseDescription
         || item.raw_ai_response?.productDescriptions?.concise
         || null;
+      if (!raw) return null;
+      // Normalize inline bullet structure to newline-separated lines for Shopify multi_line_text_field
+      // e.g. "Intro. • Feature 1. • Feature 2." → "• Intro.\n• Feature 1.\n• Feature 2."
+      if (raw.includes('•')) {
+        const parts = raw.split(/\s*•\s*/).map((s: string) => s.trim()).filter(Boolean);
+        return parts.map((p: string) => `• ${p}`).join('\n');
+      }
+      return raw;
+    }
 
     case PUSH_FIELD_KEYS.bookTitleSource:
       if (item.publication_id) {

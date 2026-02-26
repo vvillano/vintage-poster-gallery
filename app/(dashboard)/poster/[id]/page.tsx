@@ -2370,7 +2370,10 @@ export default function PosterDetailPage() {
 
                   {/* Artist - Show both Shopify and AI sources */}
                   <div className="border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">Artist</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-slate-700">Artist</label>
+                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:custom.artist" compact />}
+                    </div>
 
                     {/* Shopify Artist (if linked) */}
                     {poster.shopifyProductId && (
@@ -2540,9 +2543,14 @@ export default function PosterDetailPage() {
                               </p>
                             )}
                             {linkedArtist.bio && (
-                              <p className="text-xs text-amber-700 mt-1 line-clamp-2">
-                                {linkedArtist.bio}
-                              </p>
+                              <div className="flex items-start gap-2 mt-1">
+                                <p className="text-xs text-amber-700 line-clamp-2 flex-1">
+                                  {linkedArtist.bio}
+                                </p>
+                                {poster.shopifyProductId && (
+                                  <PushFieldIndicator fieldKey="metafield:jadepuma.artist_bio" compact />
+                                )}
+                              </div>
                             )}
                             <div className="flex items-center gap-3 mt-2">
                               {linkedArtist.wikipediaUrl && (
@@ -2578,13 +2586,16 @@ export default function PosterDetailPage() {
 
                   {/* Title - Show Shopify and AI suggested */}
                   <div className="border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">Title</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-slate-700">Title</label>
+                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="title" compact />}
+                    </div>
 
-                    {/* Shopify Title (if linked) */}
+                    {/* Shopify Title (if linked) - read from shopifyData, not poster.title which AI may overwrite */}
                     {poster.shopifyProductId && (
                       <div className="flex items-start gap-2 mb-2">
                         <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded shrink-0 mt-0.5">Shopify</span>
-                        <p className="text-slate-900">{poster.title || <span className="text-slate-400 italic">Not set</span>}</p>
+                        <p className="text-slate-900">{shopifyIdent?.title || <span className="text-slate-400 italic">Not set</span>}</p>
                       </div>
                     )}
 
@@ -2604,7 +2615,10 @@ export default function PosterDetailPage() {
 
                   {/* Date - Show both Shopify year and AI estimated */}
                   <div className="border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">Date</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-slate-700">Date</label>
+                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:custom.date" compact />}
+                    </div>
 
                     {/* Shopify Year (if linked) - from specs.year metafield */}
                     {poster.shopifyProductId && (
@@ -2659,16 +2673,21 @@ export default function PosterDetailPage() {
                     <div className="border-b border-slate-100 pb-3">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-sm font-medium text-slate-700">Publication</label>
-                        {poster.publicationConfidence && (
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            poster.publicationConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            poster.publicationConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
-                            poster.publicationConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {poster.publicationConfidence}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {poster.publicationConfidence && (
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              poster.publicationConfidence === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              poster.publicationConfidence === 'likely' ? 'bg-blue-100 text-blue-800' :
+                              poster.publicationConfidence === 'uncertain' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {poster.publicationConfidence}
+                            </span>
+                          )}
+                          {poster.shopifyProductId && linkedPublisher && (
+                            <PushFieldIndicator fieldKey="metafield:jadepuma.publisher" compact />
+                          )}
+                        </div>
                       </div>
                       <p className="text-slate-900 font-medium">{poster.publication || linkedPublisher?.name}</p>
                       {poster.publicationSource && (
@@ -2755,15 +2774,20 @@ export default function PosterDetailPage() {
                   {linkedPublication && (
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-sm font-medium text-slate-700">Publication</label>
-                        {linkedPublication.verified && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            Verified
-                          </span>
-                        )}
+                        <label className="text-sm font-medium text-slate-700">Publication Source</label>
+                        <div className="flex items-center gap-2">
+                          {poster.shopifyProductId && (
+                            <PushFieldIndicator fieldKey="metafield:jadepuma.book_title_source" compact />
+                          )}
+                          {linkedPublication.verified && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Verified
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="text-slate-900 font-medium">{linkedPublication.title}</p>
                       {(linkedPublication.author || linkedPublication.publicationYear) && (
@@ -2938,33 +2962,43 @@ export default function PosterDetailPage() {
                         </div>
                       )}
 
-                      {/* AI Suggested Techniques */}
-                      {poster.rawAiResponse?.suggestedPrintingTechniques?.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
-                          <div className="flex flex-wrap gap-2">
-                            {poster.rawAiResponse.suggestedPrintingTechniques.map((name: string) => {
-                              const technique = availableTechniques.find(t => t.name === name);
-                              if (!technique) return null;
-                              const isSelected = selectedTechniqueIds.includes(technique.id);
-                              return (
+                      {/* Managed List Suggestions - fuzzy match AI detection + exact AI suggestions */}
+                      {(() => {
+                        const aiDetected: string[] = poster.printingTechnique
+                          ? (() => {
+                              try {
+                                const p = JSON.parse(poster.printingTechnique);
+                                return Array.isArray(p) ? p : [poster.printingTechnique];
+                              } catch { return [poster.printingTechnique]; }
+                            })()
+                          : [];
+                        const aiSuggestedNames: string[] = poster.rawAiResponse?.suggestedPrintingTechniques || [];
+                        const suggestions = availableTechniques.filter(t => {
+                          if (selectedTechniqueIds.includes(t.id)) return false;
+                          if (aiSuggestedNames.includes(t.name)) return true;
+                          return aiDetected.some(detected =>
+                            t.name.toLowerCase().includes(detected.toLowerCase()) ||
+                            detected.toLowerCase().includes(t.name.toLowerCase())
+                          );
+                        });
+                        if (suggestions.length === 0) return null;
+                        return (
+                          <div className="mb-3">
+                            <p className="text-xs font-medium text-slate-600 mb-2">Suggested from your list</p>
+                            <div className="flex flex-wrap gap-2">
+                              {suggestions.map(technique => (
                                 <button
                                   key={technique.id}
                                   onClick={() => toggleTechnique(technique.id)}
-                                  className={`px-3 py-1 rounded-full text-sm transition ${
-                                    isSelected
-                                      ? 'bg-indigo-600 text-white'
-                                      : 'bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200'
-                                  }`}
+                                  className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200 transition"
                                 >
-                                  {name}
-                                  {isSelected && <span className="ml-1">✓</span>}
+                                  {technique.name}
                                 </button>
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Selected Techniques */}
                       {selectedTechniqueIds.length > 0 && (
@@ -3045,30 +3079,35 @@ export default function PosterDetailPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-sm font-medium text-slate-700">Printer</label>
-                        {poster.printerConfidence && (
-                          <button
-                            onClick={() => setShowPrinterVerificationDetails(!showPrinterVerificationDetails)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
-                              poster.printerConfidence === 'confirmed'
-                                ? 'bg-green-100 text-green-700'
-                                : poster.printerConfidence === 'likely'
-                                ? 'bg-blue-100 text-blue-700'
-                                : poster.printerConfidence === 'uncertain'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {poster.printerConfidence}
-                            <svg
-                              className={`w-3 h-3 transition-transform ${showPrinterVerificationDetails ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                        <div className="flex items-center gap-2">
+                          {poster.shopifyProductId && (
+                            <PushFieldIndicator fieldKey="metafield:jadepuma.printer" compact />
+                          )}
+                          {poster.printerConfidence && (
+                            <button
+                              onClick={() => setShowPrinterVerificationDetails(!showPrinterVerificationDetails)}
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
+                                poster.printerConfidence === 'confirmed'
+                                  ? 'bg-green-100 text-green-700'
+                                  : poster.printerConfidence === 'likely'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : poster.printerConfidence === 'uncertain'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        )}
+                              {poster.printerConfidence}
+                              <svg
+                                className={`w-3 h-3 transition-transform ${showPrinterVerificationDetails ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-slate-900 font-medium">{poster.printer}</p>
                       {poster.printerSource && (

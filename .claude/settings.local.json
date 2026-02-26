@@ -22,7 +22,8 @@
       "Bash(find:*)",
       "Bash(curl:*)",
       "Bash(node run-migration.mjs:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(ls \"C:\\\\Users\\\\vinvi\\\\.claude\\\\projects\\\\c--Users-vinvi-vintage-poster-gallery\\\\memory\"\" 2>/dev/null || echo \"Directory does not exist \")"
     ],
     "additionalDirectories": [
       "c:\\Users\\vinvi\\vintage-poster-gallery\\app\\api\\research-sites",

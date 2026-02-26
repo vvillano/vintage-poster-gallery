@@ -226,8 +226,12 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
         return poster.itemTags?.join(', ') || null;
       case PUSH_FIELD_KEYS.customArtist:
         return poster.artist || null;
-      case PUSH_FIELD_KEYS.customDate:
-        return poster.estimatedDate || null;
+      case PUSH_FIELD_KEYS.customDate: {
+        const dateStr = poster.estimatedDate;
+        if (!dateStr) return null;
+        const yearMatch = dateStr.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/);
+        return yearMatch ? yearMatch[1] : dateStr;
+      }
       case PUSH_FIELD_KEYS.customTechnique:
       case PUSH_FIELD_KEYS.medium:
         return poster.printingTechnique || null;
