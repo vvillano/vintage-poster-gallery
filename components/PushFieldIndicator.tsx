@@ -101,22 +101,37 @@ export default function PushFieldIndicator({
     setShowUndo(false);
   };
 
-  // Compact mode: just sync badge + push button
+  // Compact mode: sync badge + push now button + queue button
   if (compact) {
+    const needsAction = (syncStatus === 'different' || syncStatus === 'missing') && !!effectiveLocalValue;
     return (
       <span className={`inline-flex items-center gap-1 ${className}`}>
         <SyncBadge status={syncStatus} />
         {confidence !== undefined && <ConfidenceDot confidence={confidence} />}
-        {syncStatus === 'different' || syncStatus === 'missing' ? (
-          <button
-            onClick={handlePush}
-            disabled={isPushing || !effectiveLocalValue}
-            className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50 transition"
-            title={`Push ${label} to Shopify`}
-          >
-            {pushing ? '...' : '↑'}
-          </button>
-        ) : null}
+        {needsAction && (
+          <>
+            <button
+              onClick={handlePush}
+              disabled={isPushing || !effectiveLocalValue}
+              className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50 transition"
+              title={`Push ${label} to Shopify now`}
+            >
+              {pushing ? '...' : '↑'}
+            </button>
+            <button
+              onClick={handleQueue}
+              disabled={isPushing}
+              className={`text-xs px-1.5 py-0.5 rounded transition ${
+                queued
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              } disabled:opacity-50`}
+              title={queued ? `Remove ${label} from queue` : `Add ${label} to push queue`}
+            >
+              {queued ? '✓' : '+'}
+            </button>
+          </>
+        )}
         {showUndo && canUndo && (
           <button
             onClick={handleUndo}
