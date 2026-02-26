@@ -46,7 +46,7 @@ export async function getLocalValueForField(
 ): Promise<string | null> {
   switch (fieldKey) {
     case PUSH_FIELD_KEYS.title:
-      return item.title || null;
+      return item.raw_ai_response?.identification?.title || item.title || null;
 
     case PUSH_FIELD_KEYS.description:
       return item.raw_ai_response?.productDescriptions?.standard

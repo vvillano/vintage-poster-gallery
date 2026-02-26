@@ -218,7 +218,7 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
   function getLocalValue(fieldKey: string): string | null {
     switch (fieldKey) {
       case PUSH_FIELD_KEYS.title:
-        return poster.title || null;
+        return (poster.rawAiResponse as any)?.identification?.title || poster.title || null;
       case PUSH_FIELD_KEYS.description:
         return poster.rawAiResponse?.productDescriptions?.standard
           || poster.productDescription || null;
