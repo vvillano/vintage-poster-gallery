@@ -1660,20 +1660,41 @@ export default function PosterDetailPage() {
                 <div className="mb-4">
                   <p className="text-xs font-medium text-slate-600 mb-2">AI Suggested</p>
                   <div className="flex flex-wrap gap-2">
-                    {poster.rawAiResponse.suggestedTags.map((tag: string) => (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag)}
-                        className={`px-3 py-1 rounded-full text-sm transition ${
-                          selectedTags.includes(tag)
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                        }`}
-                      >
-                        {tag}
-                        {selectedTags.includes(tag) && <span className="ml-1">✓</span>}
-                      </button>
-                    ))}
+                    {(() => {
+                      const shopTags = (poster.shopifyData as ShopifyData | null)?.shopifyTags || [];
+                      return poster.rawAiResponse.suggestedTags.map((tag: string) => {
+                        const inShopify = shopTags.includes(tag);
+                        const isSelected = selectedTags.includes(tag);
+
+                        if (inShopify) {
+                          return (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-green-100 text-green-700 border border-green-300"
+                              title="Already in Shopify"
+                            >
+                              {tag}
+                              <span className="text-green-600">✓</span>
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() => toggleTag(tag)}
+                            className={`px-3 py-1 rounded-full text-sm transition ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                            }`}
+                          >
+                            {tag}
+                            {isSelected && <span className="ml-1">✓</span>}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}
@@ -2943,6 +2964,29 @@ export default function PosterDetailPage() {
                         </div>
                       </div>
 
+                      {/* In Shopify */}
+                      {poster.shopifyProductId && (
+                        <div className="mb-3 p-2 bg-white/60 rounded-lg border border-indigo-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-medium text-slate-600">In Shopify</p>
+                            <PushFieldIndicator fieldKey="metafield:custom.technique" compact />
+                          </div>
+                          {(() => {
+                            const mf = (poster.shopifyData as ShopifyData | null)?.metafields?.find(
+                              m => m.namespace === 'custom' && m.key === 'technique'
+                            );
+                            const val = mf?.value || null;
+                            if (!val) return <span className="text-xs text-slate-400">No technique in Shopify</span>;
+                            let display = val;
+                            try {
+                              const parsed = JSON.parse(val);
+                              if (Array.isArray(parsed)) display = parsed.join(', ');
+                            } catch {}
+                            return <span className="text-sm text-slate-700">{display}</span>;
+                          })()}
+                        </div>
+                      )}
+
                       {/* AI Original Analysis (display only) */}
                       {poster.printingTechnique && (
                         <div className="flex items-center gap-2 mb-3 p-2 bg-slate-50 rounded border border-slate-200">
@@ -2966,6 +3010,9 @@ export default function PosterDetailPage() {
 
                       {/* Managed List Suggestions - fuzzy match AI detection + exact AI suggestions */}
                       {(() => {
+                        const shopifyTechVal = (poster.shopifyData as ShopifyData | null)?.metafields?.find(
+                          m => m.namespace === 'custom' && m.key === 'technique'
+                        )?.value?.toLowerCase() || '';
                         const aiDetected: string[] = poster.printingTechnique
                           ? (() => {
                               try {
@@ -2988,15 +3035,30 @@ export default function PosterDetailPage() {
                           <div className="mb-3">
                             <p className="text-xs font-medium text-slate-600 mb-2">Suggested from your list</p>
                             <div className="flex flex-wrap gap-2">
-                              {suggestions.map(technique => (
-                                <button
-                                  key={technique.id}
-                                  onClick={() => toggleTechnique(technique.id)}
-                                  className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200 transition"
-                                >
-                                  {technique.name}
-                                </button>
-                              ))}
+                              {suggestions.map(technique => {
+                                const inShopify = !!shopifyTechVal && shopifyTechVal.includes(technique.name.toLowerCase());
+                                if (inShopify) {
+                                  return (
+                                    <span
+                                      key={technique.id}
+                                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-green-100 text-green-700 border border-green-300"
+                                      title="Already in Shopify"
+                                    >
+                                      {technique.name}
+                                      <span className="text-green-600">✓</span>
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={technique.id}
+                                    onClick={() => toggleTechnique(technique.id)}
+                                    className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200 transition"
+                                  >
+                                    {technique.name}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         );
