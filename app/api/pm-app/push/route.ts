@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
-import { getShopifyConfig } from '@/lib/shopify';
 import {
   isPMAppConfigured,
   fetchPMAppManagedLists,
+  pushPMAppValues,
   normalizeForComparison,
+  PM_APP_FIELD_MAPPINGS,
 } from '@/lib/pm-app';
 
-type ListType = 'sources' | 'artists' | 'medium' | 'colors' | 'countries' | 'otherTags';
+type ListType = 'artists' | 'medium' | 'colors' | 'countries' | 'otherTags';
+
+// Fields that can be pushed to PM App (matches PM App writable fields)
+const PUSHABLE_LIST_TYPES: ListType[] = ['artists', 'medium', 'colors', 'countries', 'otherTags'];
 
 interface PushResult {
   listType: string;
@@ -20,46 +24,14 @@ interface PushResult {
 }
 
 /**
- * Helper to make GraphQL calls to Shopify Admin API
- */
-async function shopifyGraphQL(
-  config: { shopDomain: string; accessToken: string; apiVersion: string },
-  query: string,
-  variables?: Record<string, unknown>
-): Promise<any> {
-  const url = `https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': config.accessToken,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Shopify GraphQL error: ${response.status} ${errorText}`);
-  }
-
-  return response.json();
-}
-
-/**
  * POST /api/pm-app/push
  *
- * Push local managed list items to Shopify metaobjects.
- * PM App reads from Shopify, so this effectively syncs to PM App.
+ * Push local managed list items to PM App via POST /managed-lists/values.
+ * Only pushes items that don't already exist in PM App (comparison done locally).
  *
  * Body: {
- *   listTypes: ListType[] - Which lists to push
+ *   listTypes: ListType[]  — which lists to push (omit for all pushable lists)
  * }
- *
- * Note: This is a simplified implementation. Full implementation would need:
- * 1. Create metaobject definitions in Shopify first
- * 2. Handle metaobject creation/updates
- * 3. Track which items have been pushed
  */
 export async function POST(request: NextRequest) {
   try {
@@ -68,64 +40,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check Shopify config
-    const shopifyConfig = await getShopifyConfig();
-    if (!shopifyConfig) {
+    if (!isPMAppConfigured()) {
       return NextResponse.json(
-        { error: 'Shopify not configured' },
+        { error: 'PM App API key not configured' },
         { status: 400 }
       );
     }
 
     const body = await request.json();
-    const listTypes: ListType[] = body.listTypes || [];
+    const requestedTypes: string[] = body.listTypes || [];
+
+    // Determine which list types to push
+    const listTypes: ListType[] =
+      requestedTypes.length === 0 || requestedTypes.includes('all')
+        ? PUSHABLE_LIST_TYPES
+        : (requestedTypes.filter((t) => PUSHABLE_LIST_TYPES.includes(t as ListType)) as ListType[]);
 
     if (listTypes.length === 0) {
       return NextResponse.json(
-        { error: 'No list types specified' },
+        { error: `No valid pushable list types. Allowed: ${PUSHABLE_LIST_TYPES.join(', ')}` },
         { status: 400 }
       );
     }
 
-    // Get PM App data to compare
-    let pmAppNames: Set<string> = new Set();
-    if (isPMAppConfigured()) {
-      try {
-        const pmAppData = await fetchPMAppManagedLists();
-        // Collect all PM App names (normalized) to check what's already there
-        const allPMAppItems = [
-          ...pmAppData.managedLists.sources,
-          ...pmAppData.managedLists.artists,
-          ...pmAppData.managedLists.medium,
-          ...pmAppData.managedLists.colors,
-          ...pmAppData.managedLists.countries,
-          ...pmAppData.managedLists.otherTags,
-        ];
-        pmAppNames = new Set(allPMAppItems.map(normalizeForComparison));
-      } catch (err) {
-        console.warn('Could not fetch PM App data for comparison:', err);
-      }
+    // Fetch current PM App state once for comparison
+    let pmAppData;
+    try {
+      pmAppData = await fetchPMAppManagedLists();
+    } catch (err) {
+      return NextResponse.json(
+        { error: 'Failed to fetch current PM App data', details: err instanceof Error ? err.message : 'Unknown' },
+        { status: 502 }
+      );
     }
 
     const results: PushResult[] = [];
 
-    // Note: For now, we'll just identify what WOULD be pushed
-    // Full implementation requires Shopify metaobject setup
     for (const listType of listTypes) {
-      const result = await identifyPushItems(listType, pmAppNames);
+      const result = await pushListType(listType, pmAppData.managedLists);
       results.push(result);
     }
 
-    const totalToPush = results.reduce((sum, r) => sum + r.pushed, 0);
+    const totalPushed = results.reduce((sum, r) => sum + r.pushed, 0);
+    const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
+    const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
 
     return NextResponse.json({
       ok: true,
-      message:
-        totalToPush > 0
-          ? `Found ${totalToPush} items to push. Shopify metaobject creation not yet implemented.`
-          : 'All items already exist in PM App.',
+      message: `Push complete: ${totalPushed} added, ${totalSkipped} already existed, ${totalFailed} failed`,
       results,
-      note: 'Full push implementation requires Shopify metaobject definitions to be created first.',
     });
   } catch (error) {
     console.error('PM App push error:', error);
@@ -140,79 +103,98 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Identify items that would be pushed (not in PM App yet)
+ * Push a single list type: fetch local items, find new ones, call PM App API.
  */
-async function identifyPushItems(
+async function pushListType(
   listType: ListType,
-  pmAppNames: Set<string>
+  pmAppLists: { [key: string]: string[] | unknown }
 ): Promise<PushResult> {
   const result: PushResult = {
     listType,
-    pushed: 0, // Items that would be pushed
-    skipped: 0, // Already in PM App
+    pushed: 0,
+    skipped: 0,
     failed: 0,
     errors: [],
   };
 
+  // Get local items
   let localItems: string[] = [];
-
   try {
-    switch (listType) {
-      case 'sources': {
-        const data = await sql`
-          SELECT name FROM platforms
-          WHERE is_acquisition_platform = true AND is_active = true
-        `;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-      case 'artists': {
-        const data = await sql`SELECT name FROM artists`;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-      case 'medium': {
-        const data = await sql`SELECT name FROM media_types`;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-      case 'colors': {
-        const data = await sql`SELECT name FROM colors`;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-      case 'countries': {
-        const data = await sql`SELECT name FROM countries`;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-      case 'otherTags': {
-        const data = await sql`SELECT name FROM tags`;
-        localItems = data.rows.map((r) => r.name);
-        break;
-      }
-    }
+    localItems = await getLocalItems(listType);
   } catch (err) {
-    result.errors.push(`Failed to fetch local ${listType}: ${err}`);
+    result.errors.push(`Failed to fetch local ${listType}: ${err instanceof Error ? err.message : String(err)}`);
+    result.failed++;
     return result;
   }
 
-  for (const name of localItems) {
-    const normalized = normalizeForComparison(name);
-    if (pmAppNames.has(normalized)) {
-      result.skipped++;
-    } else {
-      result.pushed++; // Would be pushed
-    }
+  if (localItems.length === 0) {
+    return result;
+  }
+
+  // Find items not already in PM App (case-insensitive)
+  const rawPMAppItems = pmAppLists[listType];
+  const pmAppItems: string[] = Array.isArray(rawPMAppItems) ? rawPMAppItems.filter((v): v is string => typeof v === 'string') : [];
+  const pmAppNormalized = new Set(pmAppItems.map(normalizeForComparison));
+
+  const toAdd = localItems.filter((item) => !pmAppNormalized.has(normalizeForComparison(item)));
+  result.skipped = localItems.length - toAdd.length;
+
+  if (toAdd.length === 0) {
+    return result;
+  }
+
+  // Push to PM App in a single batch
+  try {
+    const response = await pushPMAppValues(listType, toAdd);
+    result.pushed = response.added.length;
+    // Items PM App marked as skipped (already existed by its own dedup check)
+    result.skipped += response.skipped.length;
+  } catch (err) {
+    result.errors.push(`PM App API error: ${err instanceof Error ? err.message : String(err)}`);
+    result.failed = toAdd.length;
   }
 
   return result;
 }
 
 /**
+ * Fetch local items for a list type from the database.
+ */
+async function getLocalItems(listType: ListType): Promise<string[]> {
+  const mapping = PM_APP_FIELD_MAPPINGS[listType];
+  if (!mapping) throw new Error(`No mapping for list type: ${listType}`);
+
+  const table = mapping.researchAppTable;
+
+  switch (listType) {
+    case 'artists': {
+      const data = await sql`SELECT name FROM artists ORDER BY name`;
+      return data.rows.map((r) => r.name).filter(Boolean);
+    }
+    case 'medium': {
+      const data = await sql`SELECT name FROM media_types ORDER BY name`;
+      return data.rows.map((r) => r.name).filter(Boolean);
+    }
+    case 'colors': {
+      const data = await sql`SELECT name FROM colors ORDER BY name`;
+      return data.rows.map((r) => r.name).filter(Boolean);
+    }
+    case 'countries': {
+      const data = await sql`SELECT name FROM countries ORDER BY name`;
+      return data.rows.map((r) => r.name).filter(Boolean);
+    }
+    case 'otherTags': {
+      const data = await sql`SELECT name FROM tags ORDER BY name`;
+      return data.rows.map((r) => r.name).filter(Boolean);
+    }
+    default:
+      throw new Error(`Unhandled list type: ${table}`);
+  }
+}
+
+/**
  * GET /api/pm-app/push
- *
- * Get info about what would be pushed
+ * Returns info about pushable lists and their current status.
  */
 export async function GET() {
   try {
@@ -223,17 +205,13 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      message: 'Use POST to push items. Push creates Shopify metaobjects that PM App can read.',
-      supportedListTypes: ['sources', 'artists', 'medium', 'colors', 'countries', 'otherTags'],
-      note: 'PM App API is read-only. Push works by creating Shopify metaobjects.',
+      pushableListTypes: PUSHABLE_LIST_TYPES,
+      description: 'POST with { listTypes: [...] } to push local items to PM App. Omit listTypes to push all.',
     });
   } catch (error) {
     console.error('PM App push GET error:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to get push info',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to get push info', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

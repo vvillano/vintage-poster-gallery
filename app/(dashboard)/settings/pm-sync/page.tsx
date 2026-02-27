@@ -48,6 +48,14 @@ interface PullResult {
   errors: string[];
 }
 
+interface PushResult {
+  listType: string;
+  pushed: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+}
+
 const LIST_TYPE_LABELS: Record<string, string> = {
   sources: 'Sources → Platforms',
   artists: 'Artists',
@@ -64,7 +72,9 @@ export default function PMSyncPage() {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [pulling, setPulling] = useState<string | null>(null);
+  const [pushing, setPushing] = useState<string | null>(null);
   const [pullResults, setPullResults] = useState<PullResult[] | null>(null);
+  const [pushResults, setPushResults] = useState<PushResult[] | null>(null);
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -127,6 +137,35 @@ export default function PMSyncPage() {
       setError(err instanceof Error ? err.message : 'Failed to pull from PM App');
     } finally {
       setPulling(null);
+    }
+  }
+
+  async function handlePush(listType: string) {
+    setPushing(listType);
+    setPushResults(null);
+    setError('');
+
+    try {
+      const res = await fetch('/api/pm-app/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listTypes: listType === 'all' ? [] : [listType],
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to push');
+      }
+
+      setPushResults(data.results);
+      fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to push to PM App');
+    } finally {
+      setPushing(null);
     }
   }
 
@@ -200,6 +239,38 @@ export default function PMSyncPage() {
         </div>
       )}
 
+      {/* Push Results */}
+      {pushResults && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <h3 className="font-medium text-amber-900 mb-2">Push Results</h3>
+          <div className="space-y-2">
+            {pushResults.map((result) => (
+              <div key={result.listType} className="text-sm">
+                <span className="font-medium">{LIST_TYPE_LABELS[result.listType] || result.listType}:</span>
+                <span className="ml-2 text-green-700">{result.pushed} added to PM App</span>
+                <span className="ml-2 text-slate-500">{result.skipped} already existed</span>
+                {result.failed > 0 && (
+                  <span className="ml-2 text-red-600">{result.failed} failed</span>
+                )}
+                {result.errors && result.errors.length > 0 && (
+                  <div className="mt-1 ml-4 text-xs text-red-500">
+                    {result.errors.map((err, i) => (
+                      <div key={i}>{err}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setPushResults(null)}
+            className="mt-3 text-sm text-amber-600 hover:text-amber-800"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Pull Results */}
       {pullResults && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -236,13 +307,20 @@ export default function PMSyncPage() {
       {status?.configured && !status.error && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Bulk Actions</h2>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <button
               onClick={() => handlePull('all')}
-              disabled={pulling !== null}
+              disabled={pulling !== null || pushing !== null}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pulling === 'all' ? 'Pulling...' : 'Pull All from PM App'}
+            </button>
+            <button
+              onClick={() => handlePush('all')}
+              disabled={pulling !== null || pushing !== null}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {pushing === 'all' ? 'Pushing...' : 'Push All to PM App'}
             </button>
             <button
               onClick={fetchStatus}
@@ -351,13 +429,24 @@ export default function PMSyncPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => handlePull(listType)}
-                            disabled={pulling !== null}
-                            className="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-slate-400 disabled:cursor-not-allowed"
-                          >
-                            {pulling === listType ? 'Pulling...' : 'Pull'}
-                          </button>
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => handlePull(listType)}
+                              disabled={pulling !== null || pushing !== null}
+                              className="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                              {pulling === listType ? 'Pulling...' : 'Pull'}
+                            </button>
+                            {canPush && (
+                              <button
+                                onClick={() => handlePush(listType)}
+                                disabled={pulling !== null || pushing !== null}
+                                className="text-sm text-amber-600 hover:text-amber-800 disabled:text-slate-400 disabled:cursor-not-allowed"
+                              >
+                                {pushing === listType ? 'Pushing...' : 'Push'}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       {/* Expanded details row */}
@@ -470,10 +559,10 @@ export default function PMSyncPage() {
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-indigo-600 mt-0.5">•</span>
+            <span className="text-amber-600 mt-0.5">•</span>
             <span>
-              <strong>Push:</strong> Creates Shopify metaobjects that PM App can read. (Not yet
-              fully implemented)
+              <strong>Push:</strong> Sends local items to PM App via the managed lists API.
+              Only new items are added (duplicates skipped). Pushable lists: Artists, Medium, Colors, Countries, Available Tags.
             </span>
           </li>
           <li className="flex items-start gap-2">

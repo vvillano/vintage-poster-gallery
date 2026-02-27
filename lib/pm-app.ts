@@ -77,6 +77,28 @@ export interface PMAppError {
 }
 
 /**
+ * PM App Push Response (POST /managed-lists/values)
+ */
+export interface PMAppPushResponse {
+  ok: true;
+  field: string;
+  added: string[];
+  skipped: string[];
+  totalValues: number;
+}
+
+/**
+ * PM App Remove Response (DELETE /managed-lists/values)
+ */
+export interface PMAppRemoveResponse {
+  ok: true;
+  field: string;
+  removed: string[];
+  notFound: string[];
+  totalValues: number;
+}
+
+/**
  * Check if PM App API is configured
  */
 export function isPMAppConfigured(): boolean {
@@ -243,6 +265,75 @@ export function normalizeForComparison(name: string): string {
     .replace(/[\u2018\u2019\u201A\u201B\u0060\u00B4]/g, "'") // Various apostrophes → '
     .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"') // Various quotes → "
     .replace(/[\u2013\u2014]/g, '-'); // En-dash, em-dash → hyphen
+}
+
+/**
+ * Push (append) values to a PM App managed list field.
+ * Writable fields: artists, medium, colors, countries, otherTags
+ * Server-side dedup is case-insensitive — safe to call without pre-checking.
+ */
+export async function pushPMAppValues(
+  field: string,
+  values: string[]
+): Promise<PMAppPushResponse> {
+  const apiKey = getPMAppApiKey();
+  if (!apiKey) throw new Error('PM_APP_API_KEY is not configured');
+  if (values.length === 0) throw new Error('No values to push');
+
+  const url = `${getPMAppBaseUrl()}/managed-lists/values`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ shop: PM_APP_SHOP, field, values }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(
+      `PM App push error: ${response.status} - ${data.error || 'Unknown'} (${data.reason || 'no reason'})`
+    );
+  }
+
+  return data as PMAppPushResponse;
+}
+
+/**
+ * Remove values from a PM App managed list field.
+ * Matching is case-insensitive. Removing non-existent values is safe (idempotent).
+ */
+export async function removePMAppValues(
+  field: string,
+  values: string[]
+): Promise<PMAppRemoveResponse> {
+  const apiKey = getPMAppApiKey();
+  if (!apiKey) throw new Error('PM_APP_API_KEY is not configured');
+  if (values.length === 0) throw new Error('No values to remove');
+
+  const url = `${getPMAppBaseUrl()}/managed-lists/values`;
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ shop: PM_APP_SHOP, field, values }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(
+      `PM App remove error: ${response.status} - ${data.error || 'Unknown'} (${data.reason || 'no reason'})`
+    );
+  }
+
+  return data as PMAppRemoveResponse;
 }
 
 /**
