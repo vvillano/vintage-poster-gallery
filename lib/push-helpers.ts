@@ -29,6 +29,7 @@ function getMetafieldType(fieldKey: string): 'single_line_text_field' | 'multi_l
     case PUSH_FIELD_KEYS.customTalkingPoints:
       return 'json';
     case PUSH_FIELD_KEYS.color:
+    case PUSH_FIELD_KEYS.medium:
       return 'list.single_line_text_field';
     default:
       return 'single_line_text_field';
