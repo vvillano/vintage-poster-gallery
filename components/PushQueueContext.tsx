@@ -232,7 +232,6 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
         const yearMatch = dateStr.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/);
         return yearMatch ? yearMatch[1] : dateStr;
       }
-      case PUSH_FIELD_KEYS.customTechnique:
       case PUSH_FIELD_KEYS.medium:
         return poster.printingTechnique || null;
       case PUSH_FIELD_KEYS.customHistory:

@@ -146,9 +146,6 @@ function buildUndoItem(poster: any, fieldKey: string, undoValue: string | null):
     case PUSH_FIELD_KEYS.customDate:
       item.estimated_date = undoValue;
       break;
-    case PUSH_FIELD_KEYS.customTechnique:
-      item.printing_technique = undoValue;
-      break;
     case PUSH_FIELD_KEYS.customHistory:
       item.historical_context = undoValue;
       break;

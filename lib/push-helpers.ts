@@ -69,9 +69,6 @@ export async function getLocalValueForField(
       return yearMatch ? yearMatch[1] : dateStr;
     }
 
-    case PUSH_FIELD_KEYS.customTechnique:
-      return item.printing_technique || null;
-
     case PUSH_FIELD_KEYS.customHistory:
       return item.historical_context || null;
 

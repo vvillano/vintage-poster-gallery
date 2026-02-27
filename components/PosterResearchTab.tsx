@@ -220,7 +220,7 @@ export default function PosterResearchTab({
             {/* Shopify push for Artist */}
             {poster.shopifyProductId && poster.artist && (
               <div className="mt-2">
-                <PushFieldIndicator fieldKey="metafield:custom.artist" showComparison compact={false} />
+                <PushFieldIndicator fieldKey="metafield:jadepuma.artist" showComparison compact={false} />
               </div>
             )}
           </div>
@@ -232,7 +232,7 @@ export default function PosterResearchTab({
               <p className="text-slate-900">{poster.estimatedDate}</p>
               {poster.shopifyProductId && (
                 <div className="mt-1">
-                  <PushFieldIndicator fieldKey="metafield:custom.date" compact />
+                  <PushFieldIndicator fieldKey="metafield:specs.year" compact />
                 </div>
               )}
             </div>
@@ -259,8 +259,7 @@ export default function PosterResearchTab({
                 {poster.printingTechnique}
               </a>
               {poster.shopifyProductId && (
-                <div className="mt-1 flex items-center gap-3">
-                  <PushFieldIndicator fieldKey="metafield:custom.technique" compact />
+                <div className="mt-1">
                   <PushFieldIndicator fieldKey="metafield:jadepuma.medium" compact />
                 </div>
               )}

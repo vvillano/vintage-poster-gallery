@@ -12,13 +12,12 @@ export const PUSH_FIELD_KEYS = {
   title: 'title',
   description: 'description',
   tags: 'tags',
-  // Custom namespace
-  customArtist: 'metafield:custom.artist',
-  customDate: 'metafield:custom.date',
-  customTechnique: 'metafield:custom.technique',
+  // Custom namespace (no existing jadepuma equivalent)
   customHistory: 'metafield:custom.history',
   customTalkingPoints: 'metafield:custom.talking_points',
   // Jadepuma namespace
+  customArtist: 'metafield:jadepuma.artist',
+  customDate: 'metafield:specs.year',
   conciseDescription: 'metafield:jadepuma.concise_description',
   bookTitleSource: 'metafield:jadepuma.book_title_source',
   publisher: 'metafield:jadepuma.publisher',
@@ -37,7 +36,7 @@ export const BULK_FIELD_MAP: Record<string, string[]> = {
   metafields: [
     PUSH_FIELD_KEYS.customArtist,
     PUSH_FIELD_KEYS.customDate,
-    PUSH_FIELD_KEYS.customTechnique,
+    PUSH_FIELD_KEYS.medium,
     PUSH_FIELD_KEYS.customHistory,
     PUSH_FIELD_KEYS.customTalkingPoints,
   ],
@@ -58,9 +57,8 @@ export const FIELD_LABELS: Record<string, string> = {
   title: 'Title',
   description: 'Description',
   tags: 'Tags',
-  'metafield:custom.artist': 'Artist',
-  'metafield:custom.date': 'Date',
-  'metafield:custom.technique': 'Technique',
+  'metafield:jadepuma.artist': 'Artist',
+  'metafield:specs.year': 'Date',
   'metafield:custom.history': 'History',
   'metafield:custom.talking_points': 'Talking Points',
   'metafield:jadepuma.concise_description': 'Concise Description',

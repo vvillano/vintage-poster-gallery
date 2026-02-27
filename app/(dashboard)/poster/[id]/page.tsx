@@ -2372,10 +2372,10 @@ export default function PosterDetailPage() {
                 {(() => {
                   // Extract Shopify identification values
                   const shopifyIdent = poster.shopifyData as ShopifyData | null;
-                  // Use same metafield keys as the push system (custom namespace)
-                  const shopifyArtist = getMetafield(shopifyIdent, 'custom.artist');
+                  // Use same metafield keys as the push system (jadepuma namespace)
+                  const shopifyArtist = getMetafield(shopifyIdent, 'jadepuma.artist');
                   // Note: Shopify title is synced to poster.title, not stored separately
-                  const shopifyYear = getMetafield(shopifyIdent, 'custom.date');
+                  const shopifyYear = getMetafield(shopifyIdent, 'specs.year');
                   const shopifyHeight = getMetafield(shopifyIdent, 'specs.height');
                   const shopifyWidth = getMetafield(shopifyIdent, 'specs.width');
                   const shopifyDimensions = shopifyHeight || shopifyWidth
@@ -2396,7 +2396,7 @@ export default function PosterDetailPage() {
                   <div className="border-b border-slate-100 pb-3">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-slate-700">Artist</label>
-                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:custom.artist" compact />}
+                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:jadepuma.artist" compact />}
                     </div>
 
                     {/* Shopify Artist (if linked) */}
@@ -2641,7 +2641,7 @@ export default function PosterDetailPage() {
                   <div className="border-b border-slate-100 pb-3">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-slate-700">Date</label>
-                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:custom.date" compact />}
+                      {poster.shopifyProductId && <PushFieldIndicator fieldKey="metafield:specs.year" compact />}
                     </div>
 
                     {/* Shopify Year (if linked) - from specs.year metafield */}
@@ -2978,11 +2978,11 @@ export default function PosterDetailPage() {
                         <div className="mb-3 p-2 bg-white/60 rounded-lg border border-indigo-100">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-xs font-medium text-slate-600">In Shopify</p>
-                            <PushFieldIndicator fieldKey="metafield:custom.technique" compact />
+                            <PushFieldIndicator fieldKey="metafield:jadepuma.medium" compact />
                           </div>
                           {(() => {
                             const mf = (poster.shopifyData as ShopifyData | null)?.metafields?.find(
-                              m => m.namespace === 'custom' && m.key === 'technique'
+                              m => m.namespace === 'jadepuma' && m.key === 'medium'
                             );
                             const val = mf?.value || null;
                             if (!val) return <span className="text-xs text-slate-400">No technique in Shopify</span>;
