@@ -2372,9 +2372,10 @@ export default function PosterDetailPage() {
                 {(() => {
                   // Extract Shopify identification values
                   const shopifyIdent = poster.shopifyData as ShopifyData | null;
-                  const shopifyArtist = getMetafield(shopifyIdent, 'jadepuma.artist');
+                  // Use same metafield keys as the push system (custom namespace)
+                  const shopifyArtist = getMetafield(shopifyIdent, 'custom.artist');
                   // Note: Shopify title is synced to poster.title, not stored separately
-                  const shopifyYear = getMetafield(shopifyIdent, 'specs.year'); // Product year, not purchase date
+                  const shopifyYear = getMetafield(shopifyIdent, 'custom.date');
                   const shopifyHeight = getMetafield(shopifyIdent, 'specs.height');
                   const shopifyWidth = getMetafield(shopifyIdent, 'specs.width');
                   const shopifyDimensions = shopifyHeight || shopifyWidth

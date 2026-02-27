@@ -266,7 +266,7 @@ export function PushQueueProvider({ poster, onUpdate, actionsRef, children }: Pu
     const shopifyVal = getShopifyValue(fieldKey);
     const localVal = getLocalValue(fieldKey);
 
-    if (!shopifyVal && !localVal) return 'synced'; // both empty
+    if (!shopifyVal && !localVal) return 'missing'; // nothing set anywhere
     if (!shopifyVal) return 'missing';
     if (!localVal) return 'synced'; // no local value to push
 
