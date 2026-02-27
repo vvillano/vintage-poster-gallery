@@ -2383,7 +2383,7 @@ export default function PosterDetailPage() {
                     : null;
 
                   return (
-                <div className="space-y-4">
+                <div className="space-y-4 text-sm">
                   {/* Product Type */}
                   {poster.productType && (
                     <div className="border-b border-slate-100 pb-3">
