@@ -2366,7 +2366,7 @@ export default function PosterDetailPage() {
 
               {/* Identification */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                <h3 className="text-lg font-bold text-slate-900 mb-3">
                   Identification
                 </h3>
                 {(() => {
@@ -2906,7 +2906,7 @@ export default function PosterDetailPage() {
               {/* Source Citations - moved up for visibility */}
               {poster.sourceCitations && Array.isArray(poster.sourceCitations) && poster.sourceCitations.length > 0 && (
                 <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">
                     Source Citations
                   </h3>
                   <p className="text-sm text-slate-500 mb-4">
@@ -2915,7 +2915,7 @@ export default function PosterDetailPage() {
                   <div className="space-y-3">
                     {poster.sourceCitations.map((citation: any, idx: number) => (
                       <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
-                        <p className="font-medium text-slate-900 mb-1">{citation.claim}</p>
+                        <p className="text-sm font-medium text-slate-900 mb-1">{citation.claim}</p>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 text-sm text-slate-600">
                             <span>{citation.source}</span>
@@ -3286,10 +3286,10 @@ export default function PosterDetailPage() {
               {/* Rarity Analysis */}
               {poster.rarityAnalysis && (
                 <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">
                     Rarity & Comparables
                   </h3>
-                  <p className="text-slate-700 whitespace-pre-wrap">
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">
                     {poster.rarityAnalysis}
                   </p>
                 </div>
@@ -3298,10 +3298,10 @@ export default function PosterDetailPage() {
               {/* Value Insights */}
               {poster.valueInsights && (
                 <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">
                     Value & Market Insights
                   </h3>
-                  <p className="text-slate-700 whitespace-pre-wrap">
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">
                     {poster.valueInsights}
                   </p>
                 </div>
