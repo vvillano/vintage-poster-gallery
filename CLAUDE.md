@@ -56,3 +56,12 @@ Custom: artist, date, technique, history, talking_points
 - `book_id` renamed to `publication_id` on posters table
 - Shopify metafield keys stay unchanged (`jadepuma.book_title_source`) even after local rename
 - Managed lists key: `publications` (not `books`)
+
+## Content & Copywriting Rules
+**No em dashes (—) in any generated text.** This applies to all customer-facing content: product descriptions, concise descriptions, talking points, Time & Place text, and any other text pushed to Shopify or displayed as marketing copy. This is a strict rule with no exceptions.
+
+Replace em dashes with:
+- A comma, colon, or semicolon for mid-sentence asides
+- Parentheses for parenthetical information
+- Two sentences when a pause or shift in thought is needed
+- An en dash (–) sparingly, only for ranges (e.g. date ranges, size ranges)
