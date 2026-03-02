@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Poster } from '@/types/poster';
 import Link from 'next/link';
-import { formatDate } from '@/lib/utils';
 
 // Migration banner component
 function MigrationBanner() {
@@ -71,9 +70,43 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ total: 0, analyzed: 0, pending: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [skuQuery, setSkuQuery] = useState('');
+  const [hoveredPoster, setHoveredPoster] = useState<{ id: number; imageUrl: string; title: string } | null>(null);
+  const [previewTop, setPreviewTop] = useState(0);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchData();
+    return () => {
+      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = useCallback((poster: Poster, e: React.MouseEvent) => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    if (!gridRef.current) return;
+
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const cardRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const previewHeight = 340;
+    let top = cardRect.top - gridRect.top + (cardRect.height / 2) - (previewHeight / 2);
+    top = Math.max(0, Math.min(top, gridRef.current.scrollHeight - previewHeight));
+
+    setHoveredPoster({
+      id: poster.id,
+      imageUrl: poster.imageUrl,
+      title: poster.title || poster.fileName,
+    });
+    setPreviewTop(top);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    leaveTimeoutRef.current = setTimeout(() => {
+      setHoveredPoster(null);
+    }, 50);
   }, []);
 
   async function fetchData() {
@@ -247,44 +280,54 @@ export default function DashboardPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div
+          ref={gridRef}
+          className="relative grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+        >
           {posters.map((poster) => (
             <Link
               key={poster.id}
               href={`/poster/${poster.id}`}
-              className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow overflow-hidden group"
+              className="bg-white rounded-lg shadow-sm hover:shadow-md hover:ring-2 hover:ring-blue-300 transition-all overflow-hidden"
+              onMouseEnter={(e) => handleMouseEnter(poster, e)}
+              onMouseLeave={handleMouseLeave}
             >
               <div className="aspect-[3/4] relative bg-slate-100 overflow-hidden">
                 <img
                   src={poster.imageUrl}
                   alt={poster.title || poster.fileName}
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                  className="object-cover w-full h-full"
+                  loading="lazy"
                 />
               </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+              <div className="p-2">
+                <h3 className="font-semibold text-xs text-slate-900 line-clamp-1">
                   {poster.title || 'Untitled'}
                 </h3>
-                <p className="text-sm text-slate-600 mb-2 line-clamp-1">
+                <p className="text-xs text-slate-500 line-clamp-1">
                   {poster.artist || 'Unknown Artist'}
                 </p>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">
-                    {formatDate(poster.uploadDate)}
-                  </span>
-                  {poster.analysisCompleted ? (
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                      ✓ Analyzed
-                    </span>
-                  ) : (
-                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                      ⏳ Pending
-                    </span>
-                  )}
-                </div>
               </div>
             </Link>
           ))}
+
+          {/* Floating hover preview */}
+          {hoveredPoster && (
+            <div
+              className="absolute right-0 z-50 pointer-events-none"
+              style={{ top: previewTop }}
+            >
+              <div className="w-64 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden ring-1 ring-black/5">
+                <div className="aspect-[3/4]">
+                  <img
+                    src={hoveredPoster.imageUrl}
+                    alt={hoveredPoster.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
