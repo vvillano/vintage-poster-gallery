@@ -497,21 +497,3 @@ export async function serperSearchMultiple(
   };
 }
 
-// Alias exports for compatibility with existing code that uses google-search.ts
-export type { SerperSearchResult as GoogleSearchResult };
-export type { SerperSearchResponse as GoogleSearchResponse };
-export { serperWebSearch as googleSearch, serperSearchMultiple as googleSearchMultiple };
-
-// Re-export the isConfigured check with legacy name for compatibility
-export function isGoogleSearchConfigured(): boolean {
-  return isSerperConfigured();
-}
-
-export function getGoogleSearchStatus() {
-  const status = getSerperStatus();
-  return {
-    configured: status.configured,
-    apiKeySet: status.apiKeySet,
-    searchEngineIdSet: true, // Not needed for Serper
-  };
-}

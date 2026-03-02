@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { googleSearch, isGoogleSearchConfigured, extractDomain } from '@/lib/google-search';
+import { serperWebSearch, isSerperConfigured, extractDomain } from '@/lib/serper';
 import { getAllDealers } from '@/lib/dealers';
 import {
   extractDealersFromSearchResults,
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Google Search is configured
-    if (!isGoogleSearchConfigured()) {
+    // Check if Serper is configured
+    if (!isSerperConfigured()) {
       return NextResponse.json({
         success: false,
         configured: false,
-        error: 'Google Custom Search is not configured. Add GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID to environment variables.',
+        error: 'Serper API is not configured. Add SERPER_API_KEY to environment variables.',
         suggestions: [],
       });
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Perform web search
-    const searchResponse = await googleSearch(query, {
+    const searchResponse = await serperWebSearch(query, {
       maxResults: Math.min(maxResults, 10),
     });
 
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const configured = isGoogleSearchConfigured();
+    const configured = isSerperConfigured();
 
     return NextResponse.json({
       configured,

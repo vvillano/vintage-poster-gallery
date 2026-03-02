@@ -239,9 +239,9 @@ export default function DealerDiscoveryModal({
           {!configured ? (
             <div className="text-center py-8">
               <div className="text-amber-600 text-4xl mb-3">!</div>
-              <p className="text-slate-600 mb-2">Google Custom Search is not configured.</p>
+              <p className="text-slate-600 mb-2">Serper API is not configured.</p>
               <p className="text-sm text-slate-500">
-                Add GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID to your environment variables.
+                Add SERPER_API_KEY to your environment variables.
               </p>
             </div>
           ) : (
