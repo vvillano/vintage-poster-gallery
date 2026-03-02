@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [skuQuery, setSkuQuery] = useState('');
   const [hoveredPoster, setHoveredPoster] = useState<{ id: number; imageUrl: string; title: string } | null>(null);
-  const [previewTop, setPreviewTop] = useState(0);
+  const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
   const gridRef = useRef<HTMLDivElement>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,16 +91,27 @@ export default function DashboardPage() {
 
     const gridRect = gridRef.current.getBoundingClientRect();
     const cardRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const previewHeight = 340;
+    const previewWidth = 384;
+    const previewHeight = 512; // 384 * 4/3
+
+    // Vertical: center on card, clamp to grid bounds
     let top = cardRect.top - gridRect.top + (cardRect.height / 2) - (previewHeight / 2);
     top = Math.max(0, Math.min(top, gridRef.current.scrollHeight - previewHeight));
+
+    // Horizontal: place to the right of the card; flip to left if near right edge
+    const cardLeft = cardRect.left - gridRect.left;
+    const cardRight = cardLeft + cardRect.width;
+    let left = cardRight + 12; // 12px gap from card
+    if (left + previewWidth > gridRect.width) {
+      left = cardLeft - previewWidth - 12; // flip to left side
+    }
 
     setHoveredPoster({
       id: poster.id,
       imageUrl: poster.imageUrl,
       title: poster.title || poster.fileName,
     });
-    setPreviewTop(top);
+    setPreviewPos({ top, left });
   }, []);
 
   const handleMouseLeave = useCallback(() => {
@@ -314,10 +325,10 @@ export default function DashboardPage() {
           {/* Floating hover preview */}
           {hoveredPoster && (
             <div
-              className="absolute right-0 z-50 pointer-events-none"
-              style={{ top: previewTop }}
+              className="absolute z-50 pointer-events-none"
+              style={{ top: previewPos.top, left: previewPos.left }}
             >
-              <div className="w-64 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden ring-1 ring-black/5">
+              <div className="w-96 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden ring-1 ring-black/5">
                 <div className="aspect-[3/4]">
                   <img
                     src={hoveredPoster.imageUrl}
