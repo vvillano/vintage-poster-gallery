@@ -71,8 +71,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [skuQuery, setSkuQuery] = useState('');
   const [hoveredPoster, setHoveredPoster] = useState<{ id: number; imageUrl: string; title: string } | null>(null);
-  const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [previewPos, setPreviewPos] = useState<{ left: number; centerY: number; flipped: boolean } | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -87,23 +86,17 @@ export default function DashboardPage() {
       clearTimeout(leaveTimeoutRef.current);
       leaveTimeoutRef.current = null;
     }
-    if (!gridRef.current) return;
 
-    const gridRect = gridRef.current.getBoundingClientRect();
-    const cardRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const previewWidth = 384;
-    const previewHeight = 512; // 384 * 4/3
+    const centerY = rect.top + rect.height / 2;
 
-    // Vertical: center on card, clamp to grid bounds
-    let top = cardRect.top - gridRect.top + (cardRect.height / 2) - (previewHeight / 2);
-    top = Math.max(0, Math.min(top, gridRef.current.scrollHeight - previewHeight));
-
-    // Horizontal: place to the right of the card; flip to left if near right edge
-    const cardLeft = cardRect.left - gridRect.left;
-    const cardRight = cardLeft + cardRect.width;
-    let left = cardRight + 12; // 12px gap from card
-    if (left + previewWidth > gridRect.width) {
-      left = cardLeft - previewWidth - 12; // flip to left side
+    // Place to the right of the card; flip left if it would overflow viewport
+    let left = rect.right + 10;
+    let flipped = false;
+    if (left + previewWidth > window.innerWidth) {
+      left = rect.left - previewWidth - 10;
+      flipped = true;
     }
 
     setHoveredPoster({
@@ -111,12 +104,17 @@ export default function DashboardPage() {
       imageUrl: poster.imageUrl,
       title: poster.title || poster.fileName,
     });
-    setPreviewPos({ top, left });
+    setPreviewPos({ left, centerY, flipped });
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = useCallback((e: React.MouseEvent) => {
+    const nextEl = e.relatedTarget as Element | null;
+    if (nextEl && typeof nextEl.closest === 'function' && nextEl.closest('.hover-preview')) {
+      return;
+    }
     leaveTimeoutRef.current = setTimeout(() => {
       setHoveredPoster(null);
+      setPreviewPos(null);
     }, 50);
   }, []);
 
@@ -291,10 +289,7 @@ export default function DashboardPage() {
           )}
         </div>
       ) : (
-        <div
-          ref={gridRef}
-          className="relative grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {posters.map((poster) => (
             <Link
               key={poster.id}
@@ -321,26 +316,40 @@ export default function DashboardPage() {
               </div>
             </Link>
           ))}
-
-          {/* Floating hover preview */}
-          {hoveredPoster && (
-            <div
-              className="absolute z-50 pointer-events-none"
-              style={{ top: previewPos.top, left: previewPos.left }}
-            >
-              <div className="w-96 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden ring-1 ring-black/5">
-                <div className="aspect-[3/4]">
-                  <img
-                    src={hoveredPoster.imageUrl}
-                    alt={hoveredPoster.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
+
+      {/* Floating hover preview (fixed positioning, outside grid) */}
+      {hoveredPoster && previewPos && (() => {
+        const previewHeight = 512; // approximate max height for w-96 aspect-[3/4]
+        const margin = 8;
+        const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+        let top = previewPos.centerY - previewHeight / 2;
+        top = Math.max(margin, Math.min(top, viewportH - previewHeight - margin));
+        const pointerY = Math.max(12, Math.min(previewPos.centerY - top, previewHeight - 12));
+
+        return (
+          <div
+            className="hover-preview fixed z-[9999] pointer-events-none"
+            style={{ top, left: previewPos.left }}
+          >
+            {/* Pointer arrow */}
+            <div
+              className={`hover-preview-pointer ${previewPos.flipped ? 'flip' : ''}`}
+              style={{ top: pointerY }}
+            />
+            <div className="w-96 bg-white border border-slate-200 rounded-[5px] shadow-2xl overflow-hidden">
+              <div className="aspect-[3/4]">
+                <img
+                  src={hoveredPoster.imageUrl}
+                  alt={hoveredPoster.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
