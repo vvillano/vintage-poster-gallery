@@ -25,6 +25,7 @@ const EMPTY_FILTERS: FilterState = {
   country: '',
   platform: '',
   tags: '',
+  hasImage: '',
 };
 
 const EMPTY_FILTER_OPTIONS: FilterOptions = {
@@ -83,6 +84,7 @@ function ProductsPageInner() {
     country: searchParams.get('country') || '',
     platform: searchParams.get('platform') || '',
     tags: searchParams.get('tags') || '',
+    hasImage: searchParams.get('has_image') || '',
   });
   const [sort, setSort] = useState<SortState>({
     column: searchParams.get('sort') || DEFAULT_SORT.column,
@@ -135,6 +137,7 @@ function ProductsPageInner() {
       if (opts.filters?.country) params.set('country', opts.filters.country);
       if (opts.filters?.platform) params.set('platform', opts.filters.platform);
       if (opts.filters?.tags) params.set('tags', opts.filters.tags);
+      if (opts.filters?.hasImage) params.set('has_image', opts.filters.hasImage);
       if (opts.sort) {
         params.set('sort', opts.sort.column);
         params.set('order', opts.sort.order);
@@ -161,6 +164,7 @@ function ProductsPageInner() {
       if (opts.filters?.country) urlParams.set('country', opts.filters.country);
       if (opts.filters?.platform) urlParams.set('platform', opts.filters.platform);
       if (opts.filters?.tags) urlParams.set('tags', opts.filters.tags);
+      if (opts.filters?.hasImage) urlParams.set('has_image', opts.filters.hasImage);
       if (opts.sort && opts.sort.column !== DEFAULT_SORT.column) urlParams.set('sort', opts.sort.column);
       if (opts.sort && opts.sort.order !== DEFAULT_SORT.order) urlParams.set('order', opts.sort.order);
       if ((opts.page || 1) > 1) urlParams.set('page', String(opts.page));

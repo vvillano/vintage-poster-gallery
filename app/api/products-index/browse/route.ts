@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       country: searchParams.get('country') || undefined,
       platform: searchParams.get('platform') || undefined,
       tags: searchParams.get('tags') || undefined,
+      hasImage: searchParams.get('has_image') || undefined,
       sort: searchParams.get('sort') || undefined,
       order: searchParams.get('order') || undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined,

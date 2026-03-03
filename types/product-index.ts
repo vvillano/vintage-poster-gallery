@@ -80,6 +80,7 @@ export interface FilterState {
   country: string;
   platform: string;
   tags: string;
+  hasImage: string;
 }
 
 export interface FilterOptions {

@@ -28,6 +28,7 @@ export interface BrowseParams {
   country?: string;
   platform?: string;
   tags?: string;
+  hasImage?: string;
   sort?: string;
   order?: string;
   page?: number;
@@ -113,6 +114,13 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
     conditions.push(`tags ILIKE $${paramIndex}`);
     values.push(`%${params.tags}%`);
     paramIndex++;
+  }
+
+  // Image filter
+  if (params.hasImage === 'yes') {
+    conditions.push(`thumbnail_url IS NOT NULL AND thumbnail_url != ''`);
+  } else if (params.hasImage === 'no') {
+    conditions.push(`(thumbnail_url IS NULL OR thumbnail_url = '')`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

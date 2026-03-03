@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { COLUMNS, type ColumnKey, type IndexProduct, type SortState } from '@/types/product-index';
@@ -17,6 +18,40 @@ const STATUS_COLORS: Record<string, string> = {
   archived: 'text-slate-500 bg-slate-100',
 };
 
+function ThumbnailCell({ url }: { url: string | null }) {
+  const [hover, setHover] = useState(false);
+  const cellRef = useRef<HTMLDivElement>(null);
+
+  if (!url) {
+    return (
+      <div className="w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0">
+        <div className="w-full h-full flex items-center justify-center text-slate-300 text-[9px]">N/A</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className="relative w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <Image src={url} alt="" width={40} height={40} className="object-cover w-full h-full" />
+      {hover && (
+        <div className="fixed z-50 pointer-events-none" style={{
+          left: (cellRef.current?.getBoundingClientRect().right ?? 0) + 8,
+          top: (cellRef.current?.getBoundingClientRect().top ?? 0) - 40,
+        }}>
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-1">
+            <Image src={url} alt="" width={200} height={200} className="rounded object-contain" unoptimized />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatCurrency(value: number | null): string {
   if (value == null) return '';
   return `$${value.toFixed(2)}`;
@@ -30,15 +65,7 @@ function formatDate(dateStr: string): string {
 function getCellValue(product: IndexProduct, key: ColumnKey): React.ReactNode {
   switch (key) {
     case 'thumbnail':
-      return (
-        <div className="w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0">
-          {product.thumbnailUrl ? (
-            <Image src={product.thumbnailUrl} alt="" width={40} height={40} className="object-cover w-full h-full" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-300 text-[9px]">N/A</div>
-          )}
-        </div>
-      );
+      return <ThumbnailCell url={product.thumbnailUrl} />;
     case 'title':
       return (
         <span className="text-sm font-medium text-slate-900 line-clamp-1">{product.title}</span>

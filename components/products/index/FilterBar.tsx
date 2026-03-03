@@ -80,6 +80,17 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
           ))}
         </select>
 
+        {/* Image filter */}
+        <select
+          value={filters.hasImage}
+          onChange={(e) => updateFilter('hasImage', e.target.value)}
+          className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        >
+          <option value="">All Images</option>
+          <option value="yes">With Image</option>
+          <option value="no">Without Image</option>
+        </select>
+
         {/* Expandable filters */}
         {(showMore || hasExpandableActive) && (
           <>
@@ -127,7 +138,7 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
               key={key}
               className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium"
             >
-              {key === 'productType' ? 'Type' : key}: {value}
+              {key === 'productType' ? 'Type' : key === 'hasImage' ? 'Image' : key}: {key === 'hasImage' ? (value === 'yes' ? 'With Image' : 'Without Image') : value}
               <button
                 onClick={() => clearFilter(key as keyof FilterState)}
                 className="hover:text-blue-900"
@@ -139,7 +150,7 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
             </span>
           ))}
           <button
-            onClick={() => onChange({ status: filters.status, productType: '', artist: '', country: '', platform: '', tags: '' })}
+            onClick={() => onChange({ status: filters.status, productType: '', artist: '', country: '', platform: '', tags: '', hasImage: '' })}
             className="text-[11px] text-slate-500 hover:text-slate-700"
           >
             Clear all
