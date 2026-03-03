@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import ProductIndexToolbar from '@/components/products/index/ProductIndexToolbar';
@@ -56,6 +56,21 @@ function saveColumns(columns: Set<ColumnKey>) {
 }
 
 export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-sm text-slate-600">Loading products...</p>
+        </div>
+      </div>
+    }>
+      <ProductsPageInner />
+    </Suspense>
+  );
+}
+
+function ProductsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
