@@ -71,6 +71,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ total: 0, analyzed: 0, pending: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [skuQuery, setSkuQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [isSearching, setIsSearching] = useState(false);
   const [hoveredPoster, setHoveredPoster] = useState<{ id: number; imageUrl: string; title: string } | null>(null);
   const [previewPos, setPreviewPos] = useState<{ left: number; centerY: number; flipped: boolean } | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,11 +132,15 @@ export default function DashboardPage() {
     }, 50);
   }, []);
 
-  async function fetchData() {
+  async function fetchData(pageNum?: number, size?: number) {
+    const currentPage = pageNum ?? page;
+    const currentSize = size ?? pageSize;
+    const offset = (currentPage - 1) * currentSize;
+
     try {
       setLoading(true);
       const [postersRes, statsRes] = await Promise.all([
-        fetch('/api/posters'),
+        fetch(`/api/posters?limit=${currentSize}&offset=${offset}`),
         fetch('/api/posters?stats=true'),
       ]);
 
@@ -146,6 +153,7 @@ export default function DashboardPage() {
 
       setPosters(postersData.posters || []);
       setStats(statsData);
+      setIsSearching(false);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -156,7 +164,8 @@ export default function DashboardPage() {
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchQuery.trim()) {
-      fetchData();
+      setPage(1);
+      fetchData(1);
       return;
     }
 
@@ -167,11 +176,24 @@ export default function DashboardPage() {
 
       const data = await res.json();
       setPosters(data.posters || []);
+      setIsSearching(true);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handlePageChange(newPage: number) {
+    setPage(newPage);
+    fetchData(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handlePageSizeChange(newSize: number) {
+    setPageSize(newSize);
+    setPage(1);
+    fetchData(1, newSize);
   }
 
   function handleSkuLookup(e: React.FormEvent) {
@@ -233,7 +255,8 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => {
                     setSearchQuery('');
-                    fetchData();
+                    setPage(1);
+                    fetchData(1);
                   }}
                   className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg transition"
                 >
@@ -332,6 +355,51 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      {/* Pagination controls */}
+      {posters.length > 0 && !isSearching && (() => {
+        const totalPages = Math.ceil(stats.total / pageSize);
+        const startItem = (page - 1) * pageSize + 1;
+        const endItem = Math.min(page * pageSize, stats.total);
+
+        return (
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-3">
+            <div className="text-sm text-slate-600">
+              Showing {startItem}{'\u2013'}{endItem} of {stats.total} items
+            </div>
+            <div className="flex items-center gap-4">
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-slate-600 min-w-[100px] text-center">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Floating hover preview (fixed positioning, outside grid) */}
       {hoveredPoster && previewPos && (() => {
