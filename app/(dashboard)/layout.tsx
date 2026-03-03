@@ -15,6 +15,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Products', href: '/products', icon: '🏷️' },
     { name: 'Upload', href: '/upload', icon: '📤' },
     { name: 'Import', href: '/import', icon: '📥' },
     { name: 'Settings', href: '/settings', icon: '⚙️' },
@@ -40,7 +41,7 @@ export default function DashboardLayout({
                     href={item.href}
                     className={cn(
                       'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium',
-                      pathname === item.href || (item.href === '/settings' && pathname.startsWith('/settings'))
+                      pathname === item.href || (item.href !== '/dashboard' && item.href !== '/upload' && item.href !== '/import' && pathname.startsWith(item.href))
                         ? 'border-blue-500 text-slate-900'
                         : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     )}

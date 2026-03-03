@@ -149,6 +149,73 @@ export async function shopifyFetch<T>(
 }
 
 /**
+ * Parse Shopify Link header to extract page_info cursors
+ * Format: <url?page_info=abc>; rel="next", <url?page_info=xyz>; rel="previous"
+ */
+export function parseLinkHeader(header: string | null): { next: string | null; previous: string | null } {
+  const result: { next: string | null; previous: string | null } = { next: null, previous: null };
+  if (!header) return result;
+
+  const parts = header.split(',');
+  for (const part of parts) {
+    const match = part.match(/<[^>]*[?&]page_info=([^>&]+)[^>]*>;\s*rel="(next|previous)"/);
+    if (match) {
+      result[match[2] as 'next' | 'previous'] = match[1];
+    }
+  }
+  return result;
+}
+
+/**
+ * Make authenticated Shopify request and return both data and Link header pagination cursors
+ */
+export async function shopifyFetchWithPagination<T>(
+  endpoint: string
+): Promise<{ data: T; cursors: { next: string | null; previous: string | null } }> {
+  const config = await getShopifyConfig();
+
+  if (!config) {
+    throw new Error('Shopify not configured');
+  }
+
+  const url = `https://${config.shopDomain.trim()}/admin/api/${config.apiVersion}${endpoint}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': config.accessToken,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Shopify API error: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  const cursors = parseLinkHeader(response.headers.get('link'));
+
+  return { data, cursors };
+}
+
+/**
+ * Get map of imported Shopify product IDs to local poster IDs
+ */
+export async function getImportedProductMap(): Promise<Map<string, number>> {
+  const result = await sql`
+    SELECT shopify_product_id, id FROM posters
+    WHERE shopify_product_id IS NOT NULL
+  `;
+
+  const map = new Map<string, number>();
+  for (const row of result.rows) {
+    map.set(row.shopify_product_id, row.id);
+  }
+  return map;
+}
+
+/**
  * Test Shopify connection
  */
 export async function testShopifyConnection(): Promise<{
