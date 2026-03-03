@@ -1,5 +1,10 @@
 'use client';
 
+interface InternalTagOption {
+  name: string;
+  color: string;
+}
+
 export default function BasicInfoSection({
   title,
   productType,
@@ -8,6 +13,8 @@ export default function BasicInfoSection({
   sku,
   location,
   internalNotes,
+  tags,
+  internalTagOptions,
   onChange,
 }: {
   title: string;
@@ -17,8 +24,14 @@ export default function BasicInfoSection({
   sku: string;
   location: string | undefined;
   internalNotes: string | undefined;
+  tags: string[];
+  internalTagOptions: InternalTagOption[];
   onChange: (field: string, value: string) => void;
 }) {
+  // Build a map of internal tag names to colors for quick lookup
+  const tagColorMap = new Map(internalTagOptions.map((t) => [t.name.toLowerCase(), t.color]));
+  // Find product tags that match internal tags
+  const matchedInternalTags = tags.filter((t) => tagColorMap.has(t.toLowerCase()));
   return (
     <div className="grid gap-4 pt-4">
       {/* Title */}
@@ -101,8 +114,23 @@ export default function BasicInfoSection({
       {/* Internal Tags */}
       <div>
         <label className="block text-sm font-medium text-slate-500 mb-1">Internal Tags</label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-400 italic">
-          Internal tag management coming soon
+        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
+          {matchedInternalTags.length > 0 ? (
+            matchedInternalTags.map((tag) => {
+              const color = tagColorMap.get(tag.toLowerCase()) || '#6B7280';
+              return (
+                <span
+                  key={tag}
+                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+                  style={{ backgroundColor: color }}
+                >
+                  {tag}
+                </span>
+              );
+            })
+          ) : (
+            <span className="text-sm text-slate-400">No internal tags</span>
+          )}
         </div>
       </div>
 

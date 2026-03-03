@@ -42,6 +42,7 @@ export default function ProductDetailPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [internalTagOptions, setInternalTagOptions] = useState<{ name: string; color: string }[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -86,6 +87,10 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     loadProduct();
+    fetch('/api/managed-lists/internal-tags')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setInternalTagOptions(data.items.map((i: { name: string; color: string }) => ({ name: i.name, color: i.color }))))
+      .catch(() => {});
   }, [loadProduct]);
 
   function handleFieldChange(field: string, value: string) {
@@ -278,6 +283,8 @@ export default function ProductDetailPage() {
             sku={formData.sku}
             location={product.metafields.location}
             internalNotes={product.metafields.internalNotes}
+            tags={formData.tags}
+            internalTagOptions={internalTagOptions}
             onChange={handleFieldChange}
           />
         </ProductDetailSection>
