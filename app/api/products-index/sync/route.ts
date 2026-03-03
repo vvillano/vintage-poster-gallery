@@ -37,7 +37,7 @@ const PRODUCTS_QUERY = `
               }
             }
           }
-          metafields(keys: [
+          metafields(first: 10, keys: [
             "specs.year",
             "jadepuma.artist",
             "jadepuma.country_of_origin",
@@ -48,6 +48,7 @@ const PRODUCTS_QUERY = `
           ]) {
             edges {
               node {
+                namespace
                 key
                 value
               }
@@ -70,7 +71,7 @@ interface GQLProduct {
   updatedAt: string;
   featuredImage: { url: string } | null;
   variants: { edges: { node: { sku: string | null; price: string; compareAtPrice: string | null; inventoryQuantity: number | null } }[] };
-  metafields: { edges: { node: { key: string; value: string } }[] };
+  metafields: { edges: { node: { namespace: string; key: string; value: string } }[] };
 }
 
 function parsePrice(value: string | null | undefined): number | null {
@@ -80,8 +81,8 @@ function parsePrice(value: string | null | undefined): number | null {
   return isNaN(num) ? null : num;
 }
 
-function getMetafieldValue(product: GQLProduct, key: string): string | null {
-  const edge = product.metafields.edges.find((e) => e.node.key === key);
+function getMetafieldValue(product: GQLProduct, namespaceKey: string): string | null {
+  const edge = product.metafields.edges.find((e) => `${e.node.namespace}.${e.node.key}` === namespaceKey);
   return edge?.node.value || null;
 }
 
@@ -145,9 +146,9 @@ export async function POST() {
           for (const p of products) {
             const numericId = p.id.replace('gid://shopify/Product/', '');
             const variant = p.variants.edges[0]?.node;
-            const purchasePrice = parsePrice(getMetafieldValue(p, 'purchase_price'));
-            const shipping = parsePrice(getMetafieldValue(p, 'avp_shipping'));
-            const restoration = parsePrice(getMetafieldValue(p, 'avp_restoration'));
+            const purchasePrice = parsePrice(getMetafieldValue(p, 'jadepuma.purchase_price'));
+            const shipping = parsePrice(getMetafieldValue(p, 'jadepuma.avp_shipping'));
+            const restoration = parsePrice(getMetafieldValue(p, 'jadepuma.avp_restoration'));
             const totalCogs = (purchasePrice || 0) + (shipping || 0) + (restoration || 0);
 
             const placeholders = [];
@@ -169,10 +170,10 @@ export async function POST() {
               parsePrice(variant?.compareAtPrice) ?? null,        // compare_at_price
               variant?.inventoryQuantity ?? null,                 // inventory_quantity
               p.featuredImage?.url || null,                       // thumbnail_url
-              getMetafieldValue(p, 'year') || null,               // year
-              getMetafieldValue(p, 'artist') || null,             // artist
-              getMetafieldValue(p, 'country_of_origin') || null,  // country_of_origin
-              getMetafieldValue(p, 'source_platform') || null,    // source_platform
+              getMetafieldValue(p, 'specs.year') || null,               // year
+              getMetafieldValue(p, 'jadepuma.artist') || null,             // artist
+              getMetafieldValue(p, 'jadepuma.country_of_origin') || null,  // country_of_origin
+              getMetafieldValue(p, 'jadepuma.source_platform') || null,    // source_platform
               purchasePrice,                                      // purchase_price
               shipping,                                           // shipping
               restoration,                                        // restoration

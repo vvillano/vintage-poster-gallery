@@ -58,7 +58,7 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
       )}
       {syncResult && <span className="text-green-600">{syncResult}</span>}
       {syncError && (
-        <span className="text-red-600 max-w-md truncate" title={syncError}>{syncError}</span>
+        <span className="text-red-600 break-all text-xs">{syncError}</span>
       )}
       <button
         onClick={handleSync}
