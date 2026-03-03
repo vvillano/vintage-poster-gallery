@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Poster } from '@/types/poster';
 import Link from 'next/link';
+import Image from 'next/image';
 
 // Migration banner component
 function MigrationBanner() {
@@ -79,6 +80,16 @@ export default function DashboardPage() {
     return () => {
       if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
     };
+  }, []);
+
+  // Dismiss hover preview on scroll
+  useEffect(() => {
+    const dismiss = () => {
+      setHoveredPoster(null);
+      setPreviewPos(null);
+    };
+    window.addEventListener('scroll', dismiss, true);
+    return () => window.removeEventListener('scroll', dismiss, true);
   }, []);
 
   const handleMouseEnter = useCallback((poster: Poster, e: React.MouseEvent) => {
@@ -299,10 +310,13 @@ export default function DashboardPage() {
               onMouseLeave={handleMouseLeave}
             >
               <div className="aspect-[3/4] relative bg-slate-100 overflow-hidden">
-                <img
+                <Image
                   src={poster.imageUrl}
                   alt={poster.title || poster.fileName}
+                  width={200}
+                  height={267}
                   className="object-cover w-full h-full"
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw"
                   loading="lazy"
                 />
               </div>
@@ -344,6 +358,7 @@ export default function DashboardPage() {
                   src={hoveredPoster.imageUrl}
                   alt={hoveredPoster.title}
                   className="w-full h-full object-cover"
+                  decoding="async"
                 />
               </div>
             </div>
