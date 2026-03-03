@@ -213,6 +213,27 @@ export async function POST() {
               shipping, restoration, total_cogs, internal_tags,
               shopify_created_at, shopify_updated_at
             ) VALUES ${valuePlaceholders.join(', ')}
+            ON CONFLICT (shopify_product_id) DO UPDATE SET
+              title = EXCLUDED.title,
+              status = EXCLUDED.status,
+              product_type = EXCLUDED.product_type,
+              tags = EXCLUDED.tags,
+              sku = EXCLUDED.sku,
+              price = EXCLUDED.price,
+              compare_at_price = EXCLUDED.compare_at_price,
+              inventory_quantity = EXCLUDED.inventory_quantity,
+              thumbnail_url = EXCLUDED.thumbnail_url,
+              year = EXCLUDED.year,
+              artist = EXCLUDED.artist,
+              country_of_origin = EXCLUDED.country_of_origin,
+              source_platform = EXCLUDED.source_platform,
+              purchase_price = EXCLUDED.purchase_price,
+              shipping = EXCLUDED.shipping,
+              restoration = EXCLUDED.restoration,
+              total_cogs = EXCLUDED.total_cogs,
+              internal_tags = EXCLUDED.internal_tags,
+              shopify_created_at = EXCLUDED.shopify_created_at,
+              shopify_updated_at = EXCLUDED.shopify_updated_at
           `;
 
           await sql.query(insertQuery, insertValues);
