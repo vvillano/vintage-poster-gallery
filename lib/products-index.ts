@@ -76,11 +76,25 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
     paramIndex++;
   }
 
-  // Status filter
-  if (params.status && params.status !== 'all') {
-    conditions.push(`status = $${paramIndex}`);
-    values.push(params.status);
-    paramIndex++;
+  // Status filter (comma-separated, supports "in_stock" as inventory check)
+  if (params.status) {
+    const parts = params.status.split(',').filter(Boolean);
+    const statusValues = parts.filter((s) => s !== 'in_stock');
+    const hasInStock = parts.includes('in_stock');
+
+    if (statusValues.length === 1) {
+      conditions.push(`status = $${paramIndex}`);
+      values.push(statusValues[0]);
+      paramIndex++;
+    } else if (statusValues.length > 1) {
+      const placeholders = statusValues.map(() => `$${paramIndex++}`);
+      conditions.push(`status IN (${placeholders.join(', ')})`);
+      values.push(...statusValues);
+    }
+
+    if (hasInStock) {
+      conditions.push(`inventory_quantity > 0`);
+    }
   }
 
   // Product type filter
