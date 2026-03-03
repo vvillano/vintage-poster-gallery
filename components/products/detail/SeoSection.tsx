@@ -3,9 +3,11 @@
 export default function SeoSection({
   seoTitle,
   seoDescription,
+  handle,
 }: {
   seoTitle: string | null;
   seoDescription: string | null;
+  handle: string;
 }) {
   return (
     <div className="grid gap-3 pt-4">
@@ -16,9 +18,15 @@ export default function SeoSection({
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-500 mb-1">SEO Description</label>
+        <label className="block text-sm font-medium text-slate-500 mb-1">Meta Description</label>
         <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 min-h-[60px]">
           {seoDescription || '-'}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-500 mb-1">Handle</label>
+        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 font-mono">
+          {handle || '-'}
         </div>
       </div>
     </div>

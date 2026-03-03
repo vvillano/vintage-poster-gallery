@@ -6,10 +6,12 @@ import Link from 'next/link';
 import type { ProductDetail, ProductUpdatePayload } from '@/types/shopify-product-detail';
 import ProductDetailSection from '@/components/products/detail/ProductDetailSection';
 import BasicInfoSection from '@/components/products/detail/BasicInfoSection';
+import SpecificationsSection from '@/components/products/detail/SpecificationsSection';
 import DescriptionSection from '@/components/products/detail/DescriptionSection';
 import ImagesSection from '@/components/products/detail/ImagesSection';
 import PricingSection from '@/components/products/detail/PricingSection';
 import TagsSection from '@/components/products/detail/TagsSection';
+import SubjectTaggingSection from '@/components/products/detail/SubjectTaggingSection';
 import MetafieldsSection from '@/components/products/detail/MetafieldsSection';
 import SeoSection from '@/components/products/detail/SeoSection';
 import AcquisitionSection from '@/components/products/detail/AcquisitionSection';
@@ -258,24 +260,44 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Images (always visible, not collapsible) */}
+      {/* 1. Images (always visible, not collapsible) */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 mb-3">
         <h2 className="font-semibold text-slate-900 mb-3">Images</h2>
         <ImagesSection images={product.images} />
       </div>
 
-      {/* Sections */}
+      {/* Sections - matching PM App order */}
       <div className="space-y-3">
-        <ProductDetailSection title="Basic Info" defaultOpen>
+        {/* 2. Listing Header (was "Basic Info") */}
+        <ProductDetailSection title="Listing Header" defaultOpen>
           <BasicInfoSection
             title={formData.title}
             productType={formData.productType}
             status={formData.status}
             handle={product.handle}
+            sku={formData.sku}
+            location={product.metafields.location}
+            internalNotes={product.metafields.internalNotes}
             onChange={handleFieldChange}
           />
         </ProductDetailSection>
 
+        {/* 3. Basic Information (specs: artist, year, dimensions, condition, colors, medium) */}
+        <ProductDetailSection title="Basic Information" badge="Read-Only" defaultOpen>
+          <SpecificationsSection metafields={product.metafields} />
+        </ProductDetailSection>
+
+        {/* 4. Selected Tags */}
+        <ProductDetailSection title="Selected Tags">
+          <TagsSection tags={formData.tags} onChange={handleTagsChange} />
+        </ProductDetailSection>
+
+        {/* 5. Subject Tagging */}
+        <ProductDetailSection title="Subject Tagging" badge="Coming Soon">
+          <SubjectTaggingSection />
+        </ProductDetailSection>
+
+        {/* 6. Description */}
         <ProductDetailSection title="Description" defaultOpen>
           <DescriptionSection
             bodyHtml={formData.bodyHtml}
@@ -283,35 +305,40 @@ export default function ProductDetailPage() {
           />
         </ProductDetailSection>
 
+        {/* 7. Pricing & Inventory */}
         <ProductDetailSection title="Pricing & Inventory" defaultOpen>
           <PricingSection
             price={formData.price}
             compareAtPrice={formData.compareAtPrice}
-            sku={formData.sku}
             inventoryQuantity={formData.inventoryQuantity}
             unitCost={product.unitCost}
+            metafields={product.metafields}
             onChange={handleFieldChange}
           />
         </ProductDetailSection>
 
-        <ProductDetailSection title="Tags">
-          <TagsSection tags={formData.tags} onChange={handleTagsChange} />
+        {/* 8. Acquisition (Costs & Source) */}
+        <ProductDetailSection title="Acquisition" badge="Read-Only">
+          <AcquisitionSection metafields={product.metafields} />
         </ProductDetailSection>
 
+        {/* 9. SEO & Marketing */}
+        <ProductDetailSection title="SEO & Marketing" badge="Read-Only">
+          <SeoSection
+            seoTitle={product.seoTitle}
+            seoDescription={product.seoDescription}
+            handle={product.handle}
+          />
+        </ProductDetailSection>
+
+        {/* 10. Research Data */}
         <ProductDetailSection title="Research Data" badge="Read-Only">
           <ResearchDataSection metafields={product.metafields} />
         </ProductDetailSection>
 
-        <ProductDetailSection title="Metafields" badge="Read-Only">
+        {/* All Metafields (raw view for debugging) */}
+        <ProductDetailSection title="All Metafields" badge="Debug">
           <MetafieldsSection metafields={product.metafields} />
-        </ProductDetailSection>
-
-        <ProductDetailSection title="SEO" badge="Read-Only">
-          <SeoSection seoTitle={product.seoTitle} seoDescription={product.seoDescription} />
-        </ProductDetailSection>
-
-        <ProductDetailSection title="Acquisition" badge="Read-Only">
-          <AcquisitionSection metafields={product.metafields} />
         </ProductDetailSection>
       </div>
 
