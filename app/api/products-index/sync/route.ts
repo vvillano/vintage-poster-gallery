@@ -44,7 +44,8 @@ const PRODUCTS_QUERY = `
             "jadepuma.source_platform",
             "jadepuma.purchase_price",
             "jadepuma.avp_shipping",
-            "jadepuma.avp_restoration"
+            "jadepuma.avp_restoration",
+            "jadepuma.internal_tags"
           ]) {
             edges {
               node {
@@ -103,6 +104,13 @@ export async function POST() {
     let hasNextPage = true;
     let cursor: string | null = null;
 
+    // Ensure internal_tags column exists (added after initial migration)
+    try {
+      await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS internal_tags TEXT`;
+    } catch {
+      // Column may already exist; ignore
+    }
+
     // Clear existing data
     try {
       await sql`DELETE FROM products_index`;
@@ -151,8 +159,20 @@ export async function POST() {
             const restoration = parsePrice(getMetafieldValue(p, 'jadepuma.avp_restoration'));
             const totalCogs = (purchasePrice || 0) + (shipping || 0) + (restoration || 0);
 
+            // Parse internal_tags metafield (JSON array like '["INV 2026","Ready to List"]')
+            const rawInternalTags = getMetafieldValue(p, 'jadepuma.internal_tags');
+            let internalTagsStr: string | null = null;
+            if (rawInternalTags) {
+              try {
+                const parsed = JSON.parse(rawInternalTags);
+                if (Array.isArray(parsed)) internalTagsStr = parsed.join(', ');
+              } catch {
+                internalTagsStr = rawInternalTags;
+              }
+            }
+
             const placeholders = [];
-            for (let i = 0; i < 22; i++) {
+            for (let i = 0; i < 23; i++) {
               placeholders.push(`$${paramIdx++}`);
             }
             valuePlaceholders.push(`(${placeholders.join(', ')})`);
@@ -178,6 +198,7 @@ export async function POST() {
               shipping,                                           // shipping
               restoration,                                        // restoration
               totalCogs > 0 ? totalCogs : null,                   // total_cogs
+              internalTagsStr,                                    // internal_tags
               p.createdAt,                                        // shopify_created_at
               p.updatedAt,                                        // shopify_updated_at
             );
@@ -189,7 +210,7 @@ export async function POST() {
               product_type, tags, sku, price, compare_at_price,
               inventory_quantity, thumbnail_url, year, artist,
               country_of_origin, source_platform, purchase_price,
-              shipping, restoration, total_cogs,
+              shipping, restoration, total_cogs, internal_tags,
               shopify_created_at, shopify_updated_at
             ) VALUES ${valuePlaceholders.join(', ')}
           `;

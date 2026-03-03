@@ -283,7 +283,7 @@ export default function ProductDetailPage() {
             sku={formData.sku}
             location={product.metafields.location}
             internalNotes={product.metafields.internalNotes}
-            tags={formData.tags}
+            internalTagsMetafield={product.metafields.internalTags}
             internalTagOptions={internalTagOptions}
             onChange={handleFieldChange}
           />

@@ -27,6 +27,7 @@ export interface ProductMetafields {
   referenceImages?: string;
   restorationCandidate?: string;
   primaryCollection?: string;
+  internalTags?: string;
   // specs namespace
   year?: string;
   height?: string;

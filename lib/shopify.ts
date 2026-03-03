@@ -1011,7 +1011,7 @@ const PRODUCT_DETAIL_QUERY = `
         "jadepuma.book_title_source", "jadepuma.book_source",
         "jadepuma.artist_bio",
         "jadepuma.reference_images", "jadepuma.restoration_candidate",
-        "jadepuma.primary_collection",
+        "jadepuma.primary_collection", "jadepuma.internal_tags",
         "specs.year", "specs.height", "specs.width"
       ]) {
         edges {
@@ -1072,6 +1072,7 @@ function mapGraphQLToProductDetail(product: any): ProductDetail {
     'jadepuma.reference_images': 'referenceImages',
     'jadepuma.restoration_candidate': 'restorationCandidate',
     'jadepuma.primary_collection': 'primaryCollection',
+    'jadepuma.internal_tags': 'internalTags',
     'specs.year': 'year',
     'specs.height': 'height',
     'specs.width': 'width',

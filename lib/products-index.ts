@@ -139,16 +139,16 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
     conditions.push(`(thumbnail_url IS NULL OR thumbnail_url = '')`);
   }
 
-  // Tag include (product must have this tag)
+  // Internal tag include (product must have this internal tag)
   if (params.tagInclude) {
-    conditions.push(`tags ILIKE $${paramIndex}`);
+    conditions.push(`internal_tags ILIKE $${paramIndex}`);
     values.push(`%${params.tagInclude}%`);
     paramIndex++;
   }
 
-  // Tag exclude (product must NOT have this tag)
+  // Internal tag exclude (product must NOT have this internal tag)
   if (params.tagExclude) {
-    conditions.push(`(tags IS NULL OR tags NOT ILIKE $${paramIndex})`);
+    conditions.push(`(internal_tags IS NULL OR internal_tags NOT ILIKE $${paramIndex})`);
     values.push(`%${params.tagExclude}%`);
     paramIndex++;
   }

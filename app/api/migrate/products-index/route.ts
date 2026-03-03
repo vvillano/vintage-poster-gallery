@@ -46,6 +46,8 @@ export async function POST() {
         restoration NUMERIC(10,2),
         total_cogs NUMERIC(10,2),
 
+        internal_tags TEXT,
+
         local_poster_id INTEGER,
 
         shopify_created_at TIMESTAMPTZ,
