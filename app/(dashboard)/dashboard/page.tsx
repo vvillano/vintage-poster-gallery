@@ -350,6 +350,11 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-500 line-clamp-1">
                   {poster.artist || 'Unknown Artist'}
                 </p>
+                {poster.sku && (
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    {poster.sku}
+                  </p>
+                )}
               </div>
             </Link>
           ))}
@@ -403,12 +408,14 @@ export default function DashboardPage() {
 
       {/* Floating hover preview (fixed positioning, outside grid) */}
       {hoveredPoster && previewPos && (() => {
-        const previewHeight = 512; // approximate max height for w-96 aspect-[3/4]
         const margin = 8;
         const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
-        let top = previewPos.centerY - previewHeight / 2;
-        top = Math.max(margin, Math.min(top, viewportH - previewHeight - margin));
-        const pointerY = Math.max(12, Math.min(previewPos.centerY - top, previewHeight - 12));
+        const maxHeight = viewportH - margin * 2;
+
+        // Center on the hovered card, clamp to viewport
+        let top = previewPos.centerY - maxHeight / 2;
+        top = Math.max(margin, Math.min(top, viewportH - maxHeight - margin));
+        const pointerY = Math.max(12, Math.min(previewPos.centerY - top, maxHeight - 12));
 
         return (
           <div
@@ -420,15 +427,16 @@ export default function DashboardPage() {
               className={`hover-preview-pointer ${previewPos.flipped ? 'flip' : ''}`}
               style={{ top: pointerY }}
             />
-            <div className="w-96 bg-white border border-slate-200 rounded-[5px] shadow-2xl overflow-hidden">
-              <div className="aspect-[3/4]">
-                <img
-                  src={hoveredPoster.imageUrl}
-                  alt={hoveredPoster.title}
-                  className="w-full h-full object-cover"
-                  decoding="async"
-                />
-              </div>
+            <div
+              className="w-96 bg-white border border-slate-200 rounded-[5px] shadow-2xl overflow-hidden flex items-center"
+              style={{ maxHeight }}
+            >
+              <img
+                src={hoveredPoster.imageUrl}
+                alt={hoveredPoster.title}
+                className="w-full h-auto max-h-full object-contain"
+                decoding="async"
+              />
             </div>
           </div>
         );
