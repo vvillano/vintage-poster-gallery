@@ -32,18 +32,22 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
     try {
       const res = await fetch('/api/products-index/sync', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      if (!res.ok) {
+        const msg = data.details || data.error || 'Sync failed';
+        throw new Error(msg);
+      }
       setSyncResult(`Synced ${data.synced} products in ${data.elapsed}`);
       onSyncComplete();
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Sync failed');
+      const message = err instanceof Error ? err.message : 'Sync failed';
+      setSyncError(message);
     } finally {
       setSyncing(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-3 text-xs text-slate-500">
+    <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
       {syncStatus && !syncStatus.isEmpty && syncStatus.lastSyncedAt && (
         <span>
           {syncStatus.totalProducts.toLocaleString()} products indexed, synced {formatTimeAgo(syncStatus.lastSyncedAt)}
@@ -53,7 +57,9 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
         <span className="text-amber-600">No products indexed. Run a sync to populate.</span>
       )}
       {syncResult && <span className="text-green-600">{syncResult}</span>}
-      {syncError && <span className="text-red-600">{syncError}</span>}
+      {syncError && (
+        <span className="text-red-600 max-w-md truncate" title={syncError}>{syncError}</span>
+      )}
       <button
         onClick={handleSync}
         disabled={syncing}
