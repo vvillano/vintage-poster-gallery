@@ -18,16 +18,11 @@ export default function ProductCard({
 }) {
   const href = product.isImported && product.localPosterId
     ? `/poster/${product.localPosterId}`
-    : shopDomain
-      ? `https://${shopDomain}/admin/products/${product.id}`
-      : '#';
-  const isExternal = !product.isImported;
+    : `/products/${product.id}`;
 
   return (
     <a
       href={href}
-      target={isExternal ? '_blank' : undefined}
-      rel={isExternal ? 'noopener noreferrer' : undefined}
       className="bg-white rounded-lg shadow-sm hover:shadow-md hover:ring-2 hover:ring-blue-300 transition-all overflow-hidden block"
     >
       <div className="aspect-[3/4] relative bg-slate-100 overflow-hidden">

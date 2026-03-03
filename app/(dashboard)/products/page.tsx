@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import ProductToolbar, { type ViewMode, type StatusFilter } from '@/components/products/ProductToolbar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductTable from '@/components/products/ProductTable';
@@ -131,7 +132,14 @@ export default function ProductsPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Products</h1>
-        <span className="text-sm text-slate-500">Shopify Product Browser</span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/products/new"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          >
+            + New Product
+          </Link>
+        </div>
       </div>
 
       <ProductToolbar

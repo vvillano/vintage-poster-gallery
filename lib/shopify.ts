@@ -910,3 +910,396 @@ export async function downloadAndHostImage(
     return null;
   }
 }
+
+// =====================
+// GraphQL Helpers (Phase 2)
+// =====================
+
+import type {
+  ProductDetail,
+  ProductMetafields,
+  ProductCreatePayload,
+  ProductUpdatePayload,
+} from '@/types/shopify-product-detail';
+
+/**
+ * Make authenticated request to Shopify GraphQL Admin API
+ */
+export async function shopifyGraphQL<T = any>(
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<T> {
+  const config = await getShopifyConfig();
+  if (!config) throw new Error('Shopify not configured');
+
+  const url = `https://${config.shopDomain.trim()}/admin/api/${config.apiVersion}/graphql.json`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': config.accessToken,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Shopify GraphQL error: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  if (result.errors) {
+    throw new Error(`Shopify GraphQL error: ${JSON.stringify(result.errors)}`);
+  }
+
+  return result.data;
+}
+
+const PRODUCT_DETAIL_QUERY = `
+  query getProductDetail($id: ID!) {
+    product(id: $id) {
+      id
+      title
+      handle
+      status
+      productType
+      tags
+      descriptionHtml
+      createdAt
+      updatedAt
+      seo { title description }
+      images(first: 50) {
+        edges {
+          node { id url altText width height }
+        }
+      }
+      variants(first: 1) {
+        edges {
+          node {
+            id
+            sku
+            price
+            compareAtPrice
+            inventoryQuantity
+            inventoryItem {
+              id
+              unitCost { amount }
+              inventoryLevels(first: 1) {
+                edges {
+                  node {
+                    location { id }
+                    quantities(names: ["available"]) { quantity }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      metafields(first: 30, keys: [
+        "jadepuma.artist", "jadepuma.date", "jadepuma.condition",
+        "jadepuma.condition_details", "jadepuma.color", "jadepuma.medium",
+        "jadepuma.country_of_origin", "jadepuma.location",
+        "jadepuma.internal_notes", "jadepuma.item_notes",
+        "jadepuma.purchase_price", "jadepuma.avp_shipping",
+        "jadepuma.avp_restoration", "jadepuma.dealer",
+        "jadepuma.source_platform", "jadepuma.platform_identity",
+        "jadepuma.private_seller_name", "jadepuma.concise_description",
+        "jadepuma.printer", "jadepuma.publisher",
+        "jadepuma.book_title_source", "jadepuma.artist_bio",
+        "jadepuma.reference_images", "jadepuma.restoration_candidate",
+        "jadepuma.primary_collection",
+        "specs.year", "specs.height", "specs.width"
+      ]) {
+        edges {
+          node { namespace key value }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch a single product with all fields, metafields, and inventory via GraphQL
+ */
+export async function getProductDetailGraphQL(productId: string): Promise<ProductDetail> {
+  const gid = productId.startsWith('gid://')
+    ? productId
+    : `gid://shopify/Product/${productId}`;
+
+  const data = await shopifyGraphQL<{ product: any }>(PRODUCT_DETAIL_QUERY, { id: gid });
+
+  if (!data.product) {
+    throw new Error('Product not found');
+  }
+
+  return mapGraphQLToProductDetail(data.product);
+}
+
+function mapGraphQLToProductDetail(product: any): ProductDetail {
+  const variant = product.variants.edges[0]?.node;
+  const inventoryLevel = variant?.inventoryItem?.inventoryLevels?.edges[0]?.node;
+
+  // Build metafields map
+  const metafields: ProductMetafields = {};
+  const mfKeyMap: Record<string, keyof ProductMetafields> = {
+    'jadepuma.artist': 'artist',
+    'jadepuma.date': 'date',
+    'jadepuma.condition': 'condition',
+    'jadepuma.condition_details': 'conditionDetails',
+    'jadepuma.color': 'color',
+    'jadepuma.medium': 'medium',
+    'jadepuma.country_of_origin': 'countryOfOrigin',
+    'jadepuma.location': 'location',
+    'jadepuma.internal_notes': 'internalNotes',
+    'jadepuma.item_notes': 'itemNotes',
+    'jadepuma.purchase_price': 'purchasePrice',
+    'jadepuma.avp_shipping': 'shipping',
+    'jadepuma.avp_restoration': 'restoration',
+    'jadepuma.dealer': 'dealer',
+    'jadepuma.source_platform': 'sourcePlatform',
+    'jadepuma.platform_identity': 'platformIdentity',
+    'jadepuma.private_seller_name': 'privateSellerName',
+    'jadepuma.concise_description': 'conciseDescription',
+    'jadepuma.printer': 'printer',
+    'jadepuma.publisher': 'publisher',
+    'jadepuma.book_title_source': 'bookTitleSource',
+    'jadepuma.artist_bio': 'artistBio',
+    'jadepuma.reference_images': 'referenceImages',
+    'jadepuma.restoration_candidate': 'restorationCandidate',
+    'jadepuma.primary_collection': 'primaryCollection',
+    'specs.year': 'year',
+    'specs.height': 'height',
+    'specs.width': 'width',
+  };
+
+  for (const edge of product.metafields?.edges || []) {
+    const { namespace, key, value } = edge.node;
+    const mappedKey = mfKeyMap[`${namespace}.${key}`];
+    if (mappedKey) {
+      metafields[mappedKey] = value;
+    }
+  }
+
+  // Extract numeric ID from gid
+  const numericId = product.id.replace('gid://shopify/Product/', '');
+
+  return {
+    id: numericId,
+    gid: product.id,
+    title: product.title,
+    handle: product.handle,
+    status: product.status.toLowerCase() as 'active' | 'draft' | 'archived',
+    productType: product.productType || null,
+    tags: product.tags || [],
+    bodyHtml: product.descriptionHtml || null,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+    seoTitle: product.seo?.title || null,
+    seoDescription: product.seo?.description || null,
+    images: (product.images?.edges || []).map((e: any) => ({
+      id: e.node.id,
+      url: e.node.url,
+      altText: e.node.altText,
+      width: e.node.width,
+      height: e.node.height,
+    })),
+    variantGid: variant?.id || '',
+    sku: variant?.sku || null,
+    price: variant?.price || '0.00',
+    compareAtPrice: variant?.compareAtPrice || null,
+    inventoryQuantity: variant?.inventoryQuantity ?? null,
+    unitCost: variant?.inventoryItem?.unitCost?.amount || null,
+    inventoryItemGid: variant?.inventoryItem?.id || '',
+    locationGid: inventoryLevel?.location?.id || null,
+    metafields,
+  };
+}
+
+/**
+ * Create a new Shopify product via GraphQL
+ * Returns the new product's GID
+ */
+export async function createShopifyProductGraphQL(
+  input: ProductCreatePayload
+): Promise<{ gid: string; numericId: string }> {
+  const mutation = `
+    mutation productCreate($product: ProductCreateInput!) {
+      productCreate(product: $product) {
+        product { id }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    product: {
+      title: input.title,
+      status: (input.status || 'DRAFT').toUpperCase(),
+      ...(input.bodyHtml && { descriptionHtml: input.bodyHtml }),
+      ...(input.productType && { productType: input.productType }),
+      ...(input.tags?.length && { tags: input.tags }),
+    },
+  });
+
+  if (data.productCreate.userErrors?.length > 0) {
+    throw new Error(data.productCreate.userErrors.map((e: any) => e.message).join(', '));
+  }
+
+  const gid = data.productCreate.product.id;
+  const numericId = gid.replace('gid://shopify/Product/', '');
+  return { gid, numericId };
+}
+
+/**
+ * Update core product fields via GraphQL (title, description, type, status, tags)
+ */
+export async function updateShopifyProductGraphQL(
+  productGid: string,
+  input: ProductUpdatePayload
+): Promise<void> {
+  const mutation = `
+    mutation productUpdate($product: ProductUpdateInput!) {
+      productUpdate(product: $product) {
+        product { id }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const productInput: Record<string, unknown> = { id: productGid };
+  if (input.title !== undefined) productInput.title = input.title;
+  if (input.bodyHtml !== undefined) productInput.descriptionHtml = input.bodyHtml;
+  if (input.productType !== undefined) productInput.productType = input.productType;
+  if (input.status !== undefined) productInput.status = input.status.toUpperCase();
+  if (input.tags !== undefined) productInput.tags = input.tags;
+
+  const data = await shopifyGraphQL<any>(mutation, { product: productInput });
+
+  if (data.productUpdate.userErrors?.length > 0) {
+    throw new Error(data.productUpdate.userErrors.map((e: any) => e.message).join(', '));
+  }
+}
+
+/**
+ * Update variant price and compare-at price via GraphQL
+ */
+export async function updateVariantPriceGraphQL(
+  productGid: string,
+  variantGid: string,
+  price: string,
+  compareAtPrice: string | null
+): Promise<void> {
+  const mutation = `
+    mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+        product { id }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    productId: productGid,
+    variants: [{
+      id: variantGid,
+      price,
+      compareAtPrice: compareAtPrice || null,
+    }],
+  });
+
+  if (data.productVariantsBulkUpdate.userErrors?.length > 0) {
+    throw new Error(data.productVariantsBulkUpdate.userErrors.map((e: any) => e.message).join(', '));
+  }
+}
+
+/**
+ * Update inventory item SKU via GraphQL
+ */
+export async function updateInventoryItemGraphQL(
+  inventoryItemGid: string,
+  sku: string
+): Promise<void> {
+  const mutation = `
+    mutation inventoryItemUpdate($id: ID!, $input: InventoryItemInput!) {
+      inventoryItemUpdate(id: $id, input: $input) {
+        inventoryItem { id sku }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    id: inventoryItemGid,
+    input: { sku, tracked: true },
+  });
+
+  if (data.inventoryItemUpdate.userErrors?.length > 0) {
+    throw new Error(data.inventoryItemUpdate.userErrors.map((e: any) => e.message).join(', '));
+  }
+}
+
+/**
+ * Set inventory quantity via GraphQL
+ */
+export async function setInventoryQuantityGraphQL(
+  inventoryItemGid: string,
+  locationGid: string,
+  quantity: number
+): Promise<void> {
+  const mutation = `
+    mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
+      inventorySetQuantities(input: $input) {
+        inventoryAdjustmentGroup { reason }
+        userErrors { code field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    input: {
+      ignoreCompareQuantity: true,
+      name: 'available',
+      reason: 'correction',
+      quantities: [{
+        inventoryItemId: inventoryItemGid,
+        locationId: locationGid,
+        quantity,
+      }],
+    },
+  });
+
+  if (data.inventorySetQuantities.userErrors?.length > 0) {
+    throw new Error(data.inventorySetQuantities.userErrors.map((e: any) => e.message).join(', '));
+  }
+}
+
+/**
+ * Delete a Shopify product via GraphQL
+ */
+export async function deleteShopifyProductGraphQL(productGid: string): Promise<string> {
+  const mutation = `
+    mutation productDelete($input: ProductDeleteInput!) {
+      productDelete(input: $input) {
+        deletedProductId
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    input: { id: productGid },
+  });
+
+  if (data.productDelete.userErrors?.length > 0) {
+    throw new Error(data.productDelete.userErrors.map((e: any) => e.message).join(', '));
+  }
+
+  if (!data.productDelete.deletedProductId) {
+    throw new Error('Product not found or could not be deleted');
+  }
+
+  return data.productDelete.deletedProductId;
+}

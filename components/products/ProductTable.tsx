@@ -28,7 +28,7 @@ export default function ProductTable({
     if (product.isImported && product.localPosterId) {
       return `/poster/${product.localPosterId}`;
     }
-    return shopDomain ? `https://${shopDomain}/admin/products/${product.id}` : '#';
+    return `/products/${product.id}`;
   }
 
   return (
@@ -50,12 +50,11 @@ export default function ProductTable({
           <tbody className="divide-y divide-slate-100">
             {products.map((product) => {
               const href = getHref(product);
-              const isExternal = !product.isImported;
 
               return (
                 <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-2">
-                    <a href={href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noopener noreferrer' : undefined}>
+                    <a href={href}>
                       <div className="w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0">
                         {product.thumbnailUrl ? (
                           <Image
@@ -77,8 +76,6 @@ export default function ProductTable({
                   <td className="px-4 py-2">
                     <a
                       href={href}
-                      target={isExternal ? '_blank' : undefined}
-                      rel={isExternal ? 'noopener noreferrer' : undefined}
                       className="font-medium text-slate-900 hover:text-blue-600 line-clamp-1"
                     >
                       {product.title}
