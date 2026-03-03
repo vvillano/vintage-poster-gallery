@@ -93,7 +93,7 @@ export default function DashboardPage() {
             href="/upload"
             className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition"
           >
-            <span>+</span> Upload Item
+            <span>+</span> Upload Research Item
           </Link>
           <Link
             href="/products/new"

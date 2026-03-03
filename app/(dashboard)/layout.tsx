@@ -6,10 +6,42 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const primaryNav = [
-  { name: 'Dashboard', href: '/dashboard' },
-  { name: 'Research', href: '/research' },
-  { name: 'Products', href: '/products' },
-  { name: 'Purchase Groups', href: '/purchase-groups' },
+  {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Research',
+    href: '/research',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Products',
+    href: '/products',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Purchase Groups',
+    href: '/purchase-groups',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
 ];
 
 const researchSubNav = [
@@ -62,7 +94,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="flex items-center px-2 text-xl font-bold text-slate-900"
               >
-                AVP Manager
+                AVP Inventory Management
               </Link>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 {primaryNav.map((item) => (
@@ -70,12 +102,13 @@ export default function DashboardLayout({
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium',
+                      'inline-flex items-center gap-1.5 px-1 pt-1 border-b-2 text-sm font-medium',
                       isPrimaryActive(item.href, pathname)
                         ? 'border-blue-500 text-slate-900'
                         : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     )}
                   >
+                    {item.icon}
                     {item.name}
                   </Link>
                 ))}
