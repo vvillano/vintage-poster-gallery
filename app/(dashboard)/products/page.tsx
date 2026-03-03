@@ -26,6 +26,8 @@ const EMPTY_FILTERS: FilterState = {
   platform: '',
   tags: '',
   hasImage: '',
+  tagInclude: '',
+  tagExclude: '',
 };
 
 const EMPTY_FILTER_OPTIONS: FilterOptions = {
@@ -34,6 +36,7 @@ const EMPTY_FILTER_OPTIONS: FilterOptions = {
   countries: [],
   platforms: [],
   tags: [],
+  internalTags: [],
 };
 
 const DEFAULT_SORT: SortState = { column: 'shopify_updated_at', order: 'desc' };
@@ -85,6 +88,8 @@ function ProductsPageInner() {
     platform: searchParams.get('platform') || '',
     tags: searchParams.get('tags') || '',
     hasImage: searchParams.get('has_image') || '',
+    tagInclude: searchParams.get('tag_include') || '',
+    tagExclude: searchParams.get('tag_exclude') || '',
   });
   const [sort, setSort] = useState<SortState>({
     column: searchParams.get('sort') || DEFAULT_SORT.column,
@@ -138,6 +143,8 @@ function ProductsPageInner() {
       if (opts.filters?.platform) params.set('platform', opts.filters.platform);
       if (opts.filters?.tags) params.set('tags', opts.filters.tags);
       if (opts.filters?.hasImage) params.set('has_image', opts.filters.hasImage);
+      if (opts.filters?.tagInclude) params.set('tag_include', opts.filters.tagInclude);
+      if (opts.filters?.tagExclude) params.set('tag_exclude', opts.filters.tagExclude);
       if (opts.sort) {
         params.set('sort', opts.sort.column);
         params.set('order', opts.sort.order);
@@ -165,6 +172,8 @@ function ProductsPageInner() {
       if (opts.filters?.platform) urlParams.set('platform', opts.filters.platform);
       if (opts.filters?.tags) urlParams.set('tags', opts.filters.tags);
       if (opts.filters?.hasImage) urlParams.set('has_image', opts.filters.hasImage);
+      if (opts.filters?.tagInclude) urlParams.set('tag_include', opts.filters.tagInclude);
+      if (opts.filters?.tagExclude) urlParams.set('tag_exclude', opts.filters.tagExclude);
       if (opts.sort && opts.sort.column !== DEFAULT_SORT.column) urlParams.set('sort', opts.sort.column);
       if (opts.sort && opts.sort.order !== DEFAULT_SORT.order) urlParams.set('order', opts.sort.order);
       if ((opts.page || 1) > 1) urlParams.set('page', String(opts.page));

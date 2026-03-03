@@ -29,6 +29,8 @@ export interface BrowseParams {
   platform?: string;
   tags?: string;
   hasImage?: string;
+  tagInclude?: string;
+  tagExclude?: string;
   sort?: string;
   order?: string;
   page?: number;
@@ -123,6 +125,20 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
     conditions.push(`(thumbnail_url IS NULL OR thumbnail_url = '')`);
   }
 
+  // Tag include (product must have this tag)
+  if (params.tagInclude) {
+    conditions.push(`tags ILIKE $${paramIndex}`);
+    values.push(`%${params.tagInclude}%`);
+    paramIndex++;
+  }
+
+  // Tag exclude (product must NOT have this tag)
+  if (params.tagExclude) {
+    conditions.push(`(tags IS NULL OR tags NOT ILIKE $${paramIndex})`);
+    values.push(`%${params.tagExclude}%`);
+    paramIndex++;
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Sorting
@@ -160,12 +176,13 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
 }
 
 export async function getFilterOptions() {
-  const [productTypes, artists, countries, platforms, tags] = await Promise.all([
+  const [productTypes, artists, countries, platforms, tags, internalTags] = await Promise.all([
     sql`SELECT DISTINCT product_type FROM products_index WHERE product_type IS NOT NULL AND product_type != '' ORDER BY product_type`,
     sql`SELECT DISTINCT artist FROM products_index WHERE artist IS NOT NULL AND artist != '' ORDER BY artist`,
     sql`SELECT DISTINCT country_of_origin FROM products_index WHERE country_of_origin IS NOT NULL AND country_of_origin != '' ORDER BY country_of_origin`,
     sql`SELECT DISTINCT source_platform FROM products_index WHERE source_platform IS NOT NULL AND source_platform != '' ORDER BY source_platform`,
     sql`SELECT DISTINCT TRIM(tag) as tag FROM products_index, unnest(string_to_array(tags, ',')) as tag WHERE tags IS NOT NULL AND TRIM(tag) != '' ORDER BY tag`,
+    sql`SELECT name FROM internal_tags ORDER BY display_order ASC, name ASC`,
   ]);
 
   return {
@@ -174,6 +191,7 @@ export async function getFilterOptions() {
     countries: countries.rows.map((r) => r.country_of_origin as string),
     platforms: platforms.rows.map((r) => r.source_platform as string),
     tags: tags.rows.map((r) => r.tag as string),
+    internalTags: internalTags.rows.map((r) => r.name as string),
   };
 }
 

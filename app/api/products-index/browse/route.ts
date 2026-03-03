@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
       platform: searchParams.get('platform') || undefined,
       tags: searchParams.get('tags') || undefined,
       hasImage: searchParams.get('has_image') || undefined,
+      tagInclude: searchParams.get('tag_include') || undefined,
+      tagExclude: searchParams.get('tag_exclude') || undefined,
       sort: searchParams.get('sort') || undefined,
       order: searchParams.get('order') || undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined,

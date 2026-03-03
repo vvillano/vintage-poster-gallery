@@ -81,6 +81,8 @@ export interface FilterState {
   platform: string;
   tags: string;
   hasImage: string;
+  tagInclude: string;
+  tagExclude: string;
 }
 
 export interface FilterOptions {
@@ -89,6 +91,7 @@ export interface FilterOptions {
   countries: string[];
   platforms: string[];
   tags: string[];
+  internalTags: string[];
 }
 
 export interface SortState {
