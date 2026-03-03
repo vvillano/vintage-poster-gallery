@@ -13,6 +13,7 @@ import TagsSection from '@/components/products/detail/TagsSection';
 import MetafieldsSection from '@/components/products/detail/MetafieldsSection';
 import SeoSection from '@/components/products/detail/SeoSection';
 import AcquisitionSection from '@/components/products/detail/AcquisitionSection';
+import ResearchDataSection from '@/components/products/detail/ResearchDataSection';
 import DeleteProductModal from '@/components/products/detail/DeleteProductModal';
 
 interface FormData {
@@ -257,6 +258,12 @@ export default function ProductDetailPage() {
         </div>
       )}
 
+      {/* Images (always visible, not collapsible) */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 mb-3">
+        <h2 className="font-semibold text-slate-900 mb-3">Images</h2>
+        <ImagesSection images={product.images} />
+      </div>
+
       {/* Sections */}
       <div className="space-y-3">
         <ProductDetailSection title="Basic Info" defaultOpen>
@@ -276,10 +283,6 @@ export default function ProductDetailPage() {
           />
         </ProductDetailSection>
 
-        <ProductDetailSection title="Images" badge="Read-Only">
-          <ImagesSection images={product.images} />
-        </ProductDetailSection>
-
         <ProductDetailSection title="Pricing & Inventory" defaultOpen>
           <PricingSection
             price={formData.price}
@@ -293,6 +296,10 @@ export default function ProductDetailPage() {
 
         <ProductDetailSection title="Tags">
           <TagsSection tags={formData.tags} onChange={handleTagsChange} />
+        </ProductDetailSection>
+
+        <ProductDetailSection title="Research Data" badge="Read-Only">
+          <ResearchDataSection metafields={product.metafields} />
         </ProductDetailSection>
 
         <ProductDetailSection title="Metafields" badge="Read-Only">

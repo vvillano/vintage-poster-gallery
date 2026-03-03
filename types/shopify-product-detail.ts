@@ -22,6 +22,7 @@ export interface ProductMetafields {
   printer?: string;
   publisher?: string;
   bookTitleSource?: string;
+  bookSource?: string;
   artistBio?: string;
   referenceImages?: string;
   restorationCandidate?: string;

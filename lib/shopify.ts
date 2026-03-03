@@ -1008,7 +1008,8 @@ const PRODUCT_DETAIL_QUERY = `
         "jadepuma.source_platform", "jadepuma.platform_identity",
         "jadepuma.private_seller_name", "jadepuma.concise_description",
         "jadepuma.printer", "jadepuma.publisher",
-        "jadepuma.book_title_source", "jadepuma.artist_bio",
+        "jadepuma.book_title_source", "jadepuma.book_source",
+        "jadepuma.artist_bio",
         "jadepuma.reference_images", "jadepuma.restoration_candidate",
         "jadepuma.primary_collection",
         "specs.year", "specs.height", "specs.width"
@@ -1066,6 +1067,7 @@ function mapGraphQLToProductDetail(product: any): ProductDetail {
     'jadepuma.printer': 'printer',
     'jadepuma.publisher': 'publisher',
     'jadepuma.book_title_source': 'bookTitleSource',
+    'jadepuma.book_source': 'bookSource',
     'jadepuma.artist_bio': 'artistBio',
     'jadepuma.reference_images': 'referenceImages',
     'jadepuma.restoration_candidate': 'restorationCandidate',

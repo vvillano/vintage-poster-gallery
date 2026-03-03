@@ -6,14 +6,14 @@ import type { ProductDetailImage } from '@/types/shopify-product-detail';
 export default function ImagesSection({ images }: { images: ProductDetailImage[] }) {
   if (images.length === 0) {
     return (
-      <div className="pt-4 text-sm text-slate-500">
+      <div className="text-sm text-slate-500">
         No images uploaded for this product.
       </div>
     );
   }
 
   return (
-    <div className="pt-4">
+    <div>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
         {images.map((img) => (
           <div key={img.id} className="aspect-square relative bg-slate-100 rounded-lg overflow-hidden">
