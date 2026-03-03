@@ -14,7 +14,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Research', href: '/dashboard', icon: '🔍' },
     { name: 'Products', href: '/products', icon: '🏷️' },
     { name: 'Upload', href: '/upload', icon: '📤' },
     { name: 'Import', href: '/import', icon: '📥' },

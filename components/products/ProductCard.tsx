@@ -16,9 +16,7 @@ export default function ProductCard({
   product: BrowseProduct;
   shopDomain: string | null;
 }) {
-  const href = product.isImported && product.localPosterId
-    ? `/poster/${product.localPosterId}`
-    : `/products/${product.id}`;
+  const href = `/products/${product.id}`;
 
   return (
     <a

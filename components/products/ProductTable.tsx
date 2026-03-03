@@ -25,9 +25,6 @@ export default function ProductTable({
   }
 
   function getHref(product: BrowseProduct) {
-    if (product.isImported && product.localPosterId) {
-      return `/poster/${product.localPosterId}`;
-    }
     return `/products/${product.id}`;
   }
 
