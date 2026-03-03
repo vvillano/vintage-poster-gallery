@@ -998,7 +998,7 @@ const PRODUCT_DETAIL_QUERY = `
           }
         }
       }
-      metafields(first: 30, keys: [
+      metafields(first: 35, keys: [
         "jadepuma.artist", "jadepuma.date", "jadepuma.condition",
         "jadepuma.condition_details", "jadepuma.color", "jadepuma.medium",
         "jadepuma.country_of_origin", "jadepuma.location",

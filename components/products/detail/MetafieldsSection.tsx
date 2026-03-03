@@ -21,6 +21,7 @@ const METAFIELD_LABELS: { key: keyof ProductMetafields; label: string; group: st
   { key: 'internalNotes', label: 'Internal Notes', group: 'Tracking' },
   { key: 'itemNotes', label: 'Item Notes', group: 'Tracking' },
   { key: 'restorationCandidate', label: 'Restoration Candidate', group: 'Tracking' },
+  { key: 'internalTags', label: 'Internal Tags (raw)', group: 'Tracking' },
 ];
 
 function formatValue(value: string | undefined): string {
