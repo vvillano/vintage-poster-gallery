@@ -331,6 +331,18 @@ export async function GET() {
       status['dealer-category'] = { completed: false };
     }
 
+    // Check Users table migration
+    try {
+      const usersResult = await sql`SELECT COUNT(*) as count FROM users`;
+      const usersCount = parseInt(usersResult.rows[0].count || '0');
+      status['users-table'] = {
+        completed: true,
+        details: `${usersCount} users`,
+      };
+    } catch {
+      status['users-table'] = { completed: false };
+    }
+
     // Check Serper API configuration (not a database migration, but important for research features)
     const serperConfigured = !!process.env.SERPER_API_KEY;
     status['serper-api'] = {

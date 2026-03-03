@@ -1,8 +1,9 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import { sql } from '@vercel/postgres';
 
-// Parse team credentials from environment variables
+// Parse team credentials from environment variables (fallback)
 function getTeamCredentials(): Map<string, string> {
   const credentials = new Map<string, string>();
 
@@ -20,6 +21,44 @@ function getTeamCredentials(): Map<string, string> {
   return credentials;
 }
 
+// Try DB lookup first, fall back to env vars
+async function findUser(username: string): Promise<{ id: string; name: string; role: string; passwordHash: string } | null> {
+  const normalizedUsername = username.toLowerCase();
+
+  // 1. Try database first
+  try {
+    const result = await sql`
+      SELECT id, username, password_hash, role FROM users
+      WHERE username = ${normalizedUsername} AND active = true
+    `;
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      return {
+        id: String(row.id),
+        name: row.username,
+        role: row.role,
+        passwordHash: row.password_hash,
+      };
+    }
+  } catch {
+    // Table might not exist yet (pre-migration). Fall through to env vars.
+  }
+
+  // 2. Fall back to environment variables
+  const teamCredentials = getTeamCredentials();
+  const storedHash = teamCredentials.get(normalizedUsername);
+  if (storedHash) {
+    return {
+      id: normalizedUsername,
+      name: username,
+      role: 'admin', // Env var users get admin by default (legacy behavior)
+      passwordHash: storedHash,
+    };
+  }
+
+  return null;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -33,26 +72,17 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const teamCredentials = getTeamCredentials();
-        const username = credentials.username.toLowerCase();
-        const storedHash = teamCredentials.get(username);
+        const user = await findUser(credentials.username);
+        if (!user) return null;
 
-        if (!storedHash) {
-          return null;
-        }
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) return null;
 
-        // Verify password
-        const isValid = await bcrypt.compare(credentials.password, storedHash);
-
-        if (!isValid) {
-          return null;
-        }
-
-        // Return user object
         return {
-          id: username,
-          name: credentials.username,
-          email: `${username}@gallery.local`,
+          id: user.id,
+          name: user.name,
+          email: `${user.name.toLowerCase()}@gallery.local`,
+          role: user.role,
         };
       },
     }),
@@ -65,12 +95,14 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.name = user.name;
+        token.role = (user as { role?: string }).role || 'member';
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.name = token.name as string;
+        (session.user as { role?: string }).role = token.role as string;
       }
       return session;
     },

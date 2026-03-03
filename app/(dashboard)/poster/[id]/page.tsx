@@ -1254,10 +1254,10 @@ export default function PosterDetailPage() {
           <h3 className="font-semibold mb-2">Error</h3>
           <p>{error || 'Poster not found'}</p>
           <Link
-            href="/dashboard"
+            href="/research"
             className="inline-block mt-4 text-blue-600 hover:underline"
           >
-            ← Back to Dashboard
+            ← Back to Research
           </Link>
         </div>
       </div>
@@ -1271,10 +1271,10 @@ export default function PosterDetailPage() {
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Link
-            href="/dashboard"
+            href="/research"
             className="text-slate-600 hover:text-slate-900 flex items-center"
           >
-            ← Back to Dashboard
+            ← Back to Research
           </Link>
           {/* PM App link - only shows when linked to Shopify */}
           {poster.shopifyProductId && (() => {

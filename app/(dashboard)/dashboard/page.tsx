@@ -1,446 +1,222 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Poster } from '@/types/poster';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-// Migration banner component
-function MigrationBanner() {
-  const [pendingMigrations, setPendingMigrations] = useState<string[]>([]);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    // Check for pending migrations
-    fetch('/api/migrate/status')
-      .then(res => res.json())
-      .then(data => {
-        if (data.status) {
-          const pending = Object.entries(data.status)
-            .filter(([, info]) => !(info as { completed: boolean }).completed)
-            .map(([name]) => name);
-          setPendingMigrations(pending);
-        }
-      })
-      .catch(() => {
-        // Ignore errors - migrations might not be set up yet
-      });
-  }, []);
-
-  if (dismissed || pendingMigrations.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">🔧</span>
-          <div>
-            <h3 className="font-semibold text-amber-800">Database Migrations Available</h3>
-            <p className="text-sm text-amber-700 mt-1">
-              {pendingMigrations.length} migration{pendingMigrations.length > 1 ? 's' : ''} pending: {pendingMigrations.map(m => m.replace(/-/g, ' ')).join(', ')}
-            </p>
-            <Link
-              href="/settings/migrate"
-              className="inline-block mt-2 text-sm font-medium text-amber-800 hover:text-amber-900 underline"
-            >
-              Run Migrations →
-            </Link>
-          </div>
-        </div>
-        <button
-          onClick={() => setDismissed(true)}
-          className="text-amber-600 hover:text-amber-800"
-          title="Dismiss"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
+interface DashboardStats {
+  shopify: { active: number; draft: number; archived: number; total: number };
+  research: { total: number; analyzed: number; pending: number };
+  recentProducts: { id: string; title: string; status: string; updatedAt: string; imageUrl: string | null }[];
+  recentResearch: { id: number; title: string; artist: string | null; createdAt: string; imageUrl: string | null }[];
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  active: 'text-green-700 bg-green-100',
+  draft: 'text-yellow-700 bg-yellow-100',
+  archived: 'text-slate-500 bg-slate-100',
+};
+
 export default function DashboardPage() {
-  const router = useRouter();
-  const [posters, setPosters] = useState<Poster[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, analyzed: 0, pending: 0 });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [skuQuery, setSkuQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hoveredPoster, setHoveredPoster] = useState<{ id: number; imageUrl: string; title: string } | null>(null);
-  const [previewPos, setPreviewPos] = useState<{ left: number; centerY: number; flipped: boolean } | null>(null);
-  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchData();
-    return () => {
-      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
-    };
+    fetch('/api/dashboard/stats')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load dashboard');
+        return res.json();
+      })
+      .then(setStats)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
-
-  // Dismiss hover preview on scroll
-  useEffect(() => {
-    const dismiss = () => {
-      setHoveredPoster(null);
-      setPreviewPos(null);
-    };
-    window.addEventListener('scroll', dismiss, true);
-    return () => window.removeEventListener('scroll', dismiss, true);
-  }, []);
-
-  const handleMouseEnter = useCallback((poster: Poster, e: React.MouseEvent) => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const previewWidth = 384;
-    const centerY = rect.top + rect.height / 2;
-
-    // Place to the right of the card; flip left if it would overflow viewport
-    let left = rect.right + 10;
-    let flipped = false;
-    if (left + previewWidth > window.innerWidth) {
-      left = rect.left - previewWidth - 10;
-      flipped = true;
-    }
-
-    setHoveredPoster({
-      id: poster.id,
-      imageUrl: poster.imageUrl,
-      title: poster.title || poster.fileName,
-    });
-    setPreviewPos({ left, centerY, flipped });
-  }, []);
-
-  const handleMouseLeave = useCallback((e: React.MouseEvent) => {
-    const nextEl = e.relatedTarget as Element | null;
-    if (nextEl && typeof nextEl.closest === 'function' && nextEl.closest('.hover-preview')) {
-      return;
-    }
-    leaveTimeoutRef.current = setTimeout(() => {
-      setHoveredPoster(null);
-      setPreviewPos(null);
-    }, 50);
-  }, []);
-
-  async function fetchData(pageNum?: number, size?: number) {
-    const currentPage = pageNum ?? page;
-    const currentSize = size ?? pageSize;
-    const offset = (currentPage - 1) * currentSize;
-
-    try {
-      setLoading(true);
-      const [postersRes, statsRes] = await Promise.all([
-        fetch(`/api/posters?limit=${currentSize}&offset=${offset}`),
-        fetch('/api/posters?stats=true'),
-      ]);
-
-      if (!postersRes.ok || !statsRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const postersData = await postersRes.json();
-      const statsData = await statsRes.json();
-
-      setPosters(postersData.posters || []);
-      setStats(statsData);
-      setIsSearching(false);
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      setPage(1);
-      fetchData(1);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/posters?q=${encodeURIComponent(searchQuery)}`);
-      if (!res.ok) throw new Error('Search failed');
-
-      const data = await res.json();
-      setPosters(data.posters || []);
-      setIsSearching(true);
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handlePageChange(newPage: number) {
-    setPage(newPage);
-    fetchData(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function handlePageSizeChange(newSize: number) {
-    setPageSize(newSize);
-    setPage(1);
-    fetchData(1, newSize);
-  }
-
-  function handleSkuLookup(e: React.FormEvent) {
-    e.preventDefault();
-    if (!skuQuery.trim()) return;
-    router.push(`/open?sku=${encodeURIComponent(skuQuery.trim())}`);
-  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-slate-600">Loading...</p>
+          <p className="mt-2 text-slate-600">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
+  if (error || !stats) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <p className="text-red-700">{error || 'Failed to load dashboard'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const researchPercent = stats.research.total > 0
+    ? Math.round((stats.research.analyzed / stats.research.total) * 100)
+    : 0;
+
   return (
-    <div>
-      {/* Migration notification banner */}
-      <MigrationBanner />
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-sm text-slate-500 mt-1">Overview of your vintage poster business</p>
+      </div>
 
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <Link
-            href="/upload"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition"
-          >
-            + Upload New Item
-          </Link>
+      {/* 1. Inventory Overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <div className="text-3xl font-bold text-blue-600">{stats.shopify.total.toLocaleString()}</div>
+          <div className="text-sm text-slate-500 mt-1">Total Products</div>
         </div>
-
-        {/* Search Bars */}
-        <div className="grid gap-4 md:grid-cols-2 mb-6">
-          {/* Local Search */}
-          <form onSubmit={handleSearch}>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-              Search Local Items
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Artist, title, technique..."
-                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-              <button
-                type="submit"
-                className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg transition"
-              >
-                Search
-              </button>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setPage(1);
-                    fetchData(1);
-                  }}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg transition"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </form>
-
-          {/* SKU Lookup */}
-          <form onSubmit={handleSkuLookup}>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-              Find by SKU (from Shopify)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={skuQuery}
-                onChange={(e) => setSkuQuery(e.target.value)}
-                placeholder="Enter SKU..."
-                className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-              />
-              <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-              >
-                Find
-              </button>
-            </div>
-          </form>
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <div className="text-3xl font-bold text-green-600">{stats.shopify.active.toLocaleString()}</div>
+          <div className="text-sm text-slate-500 mt-1">Active</div>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
-            <div className="text-sm text-slate-600">Total Items</div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-green-600">{stats.analyzed}</div>
-            <div className="text-sm text-slate-600">Analyzed</div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-orange-600">{stats.pending}</div>
-            <div className="text-sm text-slate-600">Pending Analysis</div>
-          </div>
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <div className="text-3xl font-bold text-yellow-600">{stats.shopify.draft.toLocaleString()}</div>
+          <div className="text-sm text-slate-500 mt-1">Draft</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <div className="text-3xl font-bold text-slate-500">{stats.shopify.archived.toLocaleString()}</div>
+          <div className="text-sm text-slate-500 mt-1">Archived</div>
         </div>
       </div>
 
-      {/* Items Grid */}
-      {posters.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <div className="text-6xl mb-4">🖼️</div>
-          <p className="text-slate-600 mb-4 text-lg">
-            {searchQuery ? 'No items found matching your search' : 'No items uploaded yet'}
-          </p>
-          {!searchQuery && (
-            <Link
-              href="/upload"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              Upload Your First Item
-            </Link>
-          )}
+      {/* 2. Quick Actions */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 mb-6">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link
+            href="/upload"
+            className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition"
+          >
+            <span>+</span> Upload Item
+          </Link>
+          <Link
+            href="/products/new"
+            className="flex items-center gap-2 px-4 py-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-sm font-medium text-green-700 transition"
+          >
+            <span>+</span> Create Product
+          </Link>
+          <Link
+            href="/import"
+            className="flex items-center gap-2 px-4 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-sm font-medium text-purple-700 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            Import from Shopify
+          </Link>
+          <Link
+            href="/products"
+            className="flex items-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            Browse Products
+          </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {posters.map((poster) => (
-            <Link
-              key={poster.id}
-              href={`/poster/${poster.id}`}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md hover:ring-2 hover:ring-blue-300 transition-all overflow-hidden"
-              onMouseEnter={(e) => handleMouseEnter(poster, e)}
-              onMouseLeave={handleMouseLeave}
-            >
-              <div className="aspect-[3/4] relative bg-slate-100 overflow-hidden">
-                <Image
-                  src={poster.imageUrl}
-                  alt={poster.title || poster.fileName}
-                  width={200}
-                  height={267}
-                  className="object-cover w-full h-full"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw"
-                  loading="lazy"
+      </div>
+
+      {/* 3. Research Status + Recent Activity */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Research Status */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Research Status</h2>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-slate-600">Completion</span>
+                <span className="font-semibold text-slate-900">{researchPercent}%</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3">
+                <div
+                  className="bg-blue-500 h-3 rounded-full transition-all"
+                  style={{ width: `${researchPercent}%` }}
                 />
               </div>
-              <div className="p-2">
-                <h3 className="font-semibold text-xs text-slate-900 line-clamp-1">
-                  {poster.title || 'Untitled'}
-                </h3>
-                <p className="text-xs text-slate-500 line-clamp-1">
-                  {poster.artist || 'Unknown Artist'}
-                </p>
-                {poster.sku && (
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                    {poster.sku}
-                  </p>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination controls */}
-      {posters.length > 0 && !isSearching && (() => {
-        const totalPages = Math.ceil(stats.total / pageSize);
-        const startItem = (page - 1) * pageSize + 1;
-        const endItem = Math.min(page * pageSize, stats.total);
-
-        return (
-          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-3">
-            <div className="text-sm text-slate-600">
-              Showing {startItem}{'\u2013'}{endItem} of {stats.total} items
             </div>
-            <div className="flex items-center gap-4">
-              <select
-                value={pageSize}
-                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option value={25}>25 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-slate-600 min-w-[100px] text-center">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                >
-                  Next
-                </button>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="text-xl font-bold text-blue-600">{stats.research.total}</div>
+                <div className="text-xs text-slate-500">Total</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="text-xl font-bold text-green-600">{stats.research.analyzed}</div>
+                <div className="text-xs text-slate-500">Analyzed</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="text-xl font-bold text-orange-600">{stats.research.pending}</div>
+                <div className="text-xs text-slate-500">Pending</div>
               </div>
             </div>
-          </div>
-        );
-      })()}
-
-      {/* Floating hover preview (fixed positioning, outside grid) */}
-      {hoveredPoster && previewPos && (() => {
-        const margin = 8;
-        const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
-        const maxHeight = viewportH - margin * 2;
-
-        // Center on the hovered card, clamp to viewport
-        let top = previewPos.centerY - maxHeight / 2;
-        top = Math.max(margin, Math.min(top, viewportH - maxHeight - margin));
-        const pointerY = Math.max(12, Math.min(previewPos.centerY - top, maxHeight - 12));
-
-        return (
-          <div
-            className="hover-preview fixed z-[9999] pointer-events-none"
-            style={{ top, left: previewPos.left }}
-          >
-            {/* Pointer arrow */}
-            <div
-              className={`hover-preview-pointer ${previewPos.flipped ? 'flip' : ''}`}
-              style={{ top: pointerY }}
-            />
-            <div
-              className="w-96 bg-white border border-slate-200 rounded-[5px] shadow-2xl overflow-hidden flex items-center"
-              style={{ maxHeight }}
+            <Link
+              href="/research"
+              className="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium mt-2"
             >
-              <img
-                src={hoveredPoster.imageUrl}
-                alt={hoveredPoster.title}
-                className="w-full h-auto max-h-full object-contain"
-                decoding="async"
-              />
-            </div>
+              Go to Research
+            </Link>
           </div>
-        );
-      })()}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Recent Activity</h2>
+          <div className="space-y-1">
+            {stats.recentProducts.map((p) => (
+              <Link
+                key={`product-${p.id}`}
+                href={`/products/${p.id}`}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition"
+              >
+                <div className="w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0">
+                  {p.imageUrl ? (
+                    <Image src={p.imageUrl} alt="" width={40} height={40} className="object-cover w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">N/A</div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{p.title}</p>
+                  <p className="text-xs text-slate-400">
+                    Product updated {new Date(p.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${STATUS_COLORS[p.status] || ''}`}>
+                  {p.status}
+                </span>
+              </Link>
+            ))}
+            {stats.recentResearch.map((r) => (
+              <Link
+                key={`research-${r.id}`}
+                href={`/poster/${r.id}`}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition"
+              >
+                <div className="w-10 h-10 rounded bg-slate-100 overflow-hidden flex-shrink-0">
+                  {r.imageUrl ? (
+                    <Image src={r.imageUrl} alt="" width={40} height={40} className="object-cover w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">N/A</div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{r.title}</p>
+                  <p className="text-xs text-slate-400">
+                    Research item{r.artist ? ` by ${r.artist}` : ''} added {new Date(r.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 flex-shrink-0">
+                  research
+                </span>
+              </Link>
+            ))}
+            {stats.recentProducts.length === 0 && stats.recentResearch.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-4">No recent activity</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

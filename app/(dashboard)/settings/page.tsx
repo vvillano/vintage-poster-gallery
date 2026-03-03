@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function SettingsPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = userRole === 'admin' || !userRole; // Default to showing for env-var users (no role = legacy admin)
+
   const settingsCards = [
     {
       title: 'Managed Lists',
@@ -39,6 +44,17 @@ export default function SettingsPage() {
       icon: '🔄',
       color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100',
     },
+    ...(isAdmin
+      ? [
+          {
+            title: 'User Management',
+            description: 'Add, remove, and manage team members. Assign roles and reset passwords.',
+            href: '/settings/users',
+            icon: '👤',
+            color: 'bg-rose-50 border-rose-200 hover:bg-rose-100',
+          },
+        ]
+      : []),
     {
       title: 'Database Migrations',
       description: 'Run database schema updates. Required after deploying new features that add tables or columns.',

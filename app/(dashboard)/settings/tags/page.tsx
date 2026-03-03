@@ -112,10 +112,10 @@ export default function TagsPage() {
           </p>
         </div>
         <Link
-          href="/dashboard"
+          href="/research"
           className="text-sm text-slate-600 hover:text-slate-900"
         >
-          Back to Dashboard
+          Back to Research
         </Link>
       </div>
 

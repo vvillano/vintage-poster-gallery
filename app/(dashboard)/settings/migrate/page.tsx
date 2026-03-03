@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'users-table',
+    name: 'Users Table',
+    description: 'Creates the users table and seeds existing env-var users into the database. First user becomes admin. Enables DB-based auth with roles and user management UI.',
+    endpoint: '/api/migrate/users-table',
+    successLink: { href: '/settings/users', label: 'Manage Users' },
+  },
+  {
     id: 'push-queue-history',
     name: 'Push Queue & History',
     description: 'Creates push_queue, push_history, and user_settings tables for the Shopify push queue system. Enables per-field push queuing, push history with undo, and per-user auto-push preferences.',
