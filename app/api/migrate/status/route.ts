@@ -343,6 +343,18 @@ export async function GET() {
       status['users-table'] = { completed: false };
     }
 
+    // Check Products Index migration
+    try {
+      const piResult = await sql`SELECT COUNT(*) as count FROM products_index`;
+      const piCount = parseInt(piResult.rows[0].count || '0');
+      status['products-index'] = {
+        completed: true,
+        details: piCount > 0 ? `${piCount} products indexed` : 'Table created (run sync)',
+      };
+    } catch {
+      status['products-index'] = { completed: false };
+    }
+
     // Check Serper API configuration (not a database migration, but important for research features)
     const serperConfigured = !!process.env.SERPER_API_KEY;
     status['serper-api'] = {

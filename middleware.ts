@@ -23,5 +23,6 @@ export const config = {
     '/api/posters/:path*',
     '/api/dashboard/:path*',
     '/api/admin/:path*',
+    '/api/products-index/:path*',
   ],
 };

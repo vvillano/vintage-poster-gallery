@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'products-index',
+    name: 'Products Index',
+    description: 'Creates the products_index table for the advanced product grid. Stores a local copy of all Shopify products with key metafields for fast filtering, sorting, and searching. Run "Sync" from the Products page after migration.',
+    endpoint: '/api/migrate/products-index',
+    successLink: { href: '/products', label: 'Go to Products' },
+  },
+  {
     id: 'users-table',
     name: 'Users Table',
     description: 'Creates the users table and seeds existing env-var users into the database. First user becomes admin. Enables DB-based auth with roles and user management UI.',

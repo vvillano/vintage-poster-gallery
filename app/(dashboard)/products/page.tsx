@@ -2,63 +2,132 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import ProductToolbar, { type ViewMode, type StatusFilter } from '@/components/products/ProductToolbar';
-import ProductGrid from '@/components/products/ProductGrid';
-import ProductTable from '@/components/products/ProductTable';
-import type { BrowseProduct, BrowsePagination } from '@/types/browse-product';
+import { useSearchParams, useRouter } from 'next/navigation';
+import ProductIndexToolbar from '@/components/products/index/ProductIndexToolbar';
+import ProductIndexTable from '@/components/products/index/ProductIndexTable';
+import ProductIndexPagination from '@/components/products/index/ProductIndexPagination';
+import SyncStatusBar from '@/components/products/index/SyncStatusBar';
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  type ColumnKey,
+  type FilterState,
+  type FilterOptions,
+  type SortState,
+  type IndexProduct,
+  type IndexPagination,
+  type SyncStatus,
+} from '@/types/product-index';
+
+const EMPTY_FILTERS: FilterState = {
+  status: '',
+  productType: '',
+  artist: '',
+  country: '',
+  platform: '',
+  tags: '',
+};
+
+const EMPTY_FILTER_OPTIONS: FilterOptions = {
+  productTypes: [],
+  artists: [],
+  countries: [],
+  platforms: [],
+  tags: [],
+};
+
+const DEFAULT_SORT: SortState = { column: 'shopify_updated_at', order: 'desc' };
+
+const STORAGE_KEY = 'products-index-columns';
+
+function loadColumns(): Set<ColumnKey> {
+  if (typeof window === 'undefined') return new Set(DEFAULT_VISIBLE_COLUMNS);
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as ColumnKey[];
+      return new Set(parsed);
+    }
+  } catch { /* ignore */ }
+  return new Set(DEFAULT_VISIBLE_COLUMNS);
+}
+
+function saveColumns(columns: Set<ColumnKey>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...columns]));
+}
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<BrowseProduct[]>([]);
-  const [pagination, setPagination] = useState<BrowsePagination | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read initial state from URL
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const [filters, setFilters] = useState<FilterState>({
+    status: searchParams.get('status') || '',
+    productType: searchParams.get('product_type') || '',
+    artist: searchParams.get('artist') || '',
+    country: searchParams.get('country') || '',
+    platform: searchParams.get('platform') || '',
+    tags: searchParams.get('tags') || '',
+  });
+  const [sort, setSort] = useState<SortState>({
+    column: searchParams.get('sort') || DEFAULT_SORT.column,
+    order: (searchParams.get('order') as 'asc' | 'desc') || DEFAULT_SORT.order,
+  });
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [pageSize, setPageSize] = useState(parseInt(searchParams.get('pageSize') || '50'));
+
+  // Data
+  const [products, setProducts] = useState<IndexProduct[]>([]);
+  const [pagination, setPagination] = useState<IndexPagination>({ page: 1, pageSize: 50, totalResults: 0, totalPages: 0 });
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>(EMPTY_FILTER_OPTIONS);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shopDomain, setShopDomain] = useState<string | null>(null);
 
-  // Toolbar state
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('products-view-mode') as ViewMode) || 'grid';
-    }
-    return 'grid';
-  });
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // Column visibility
+  const [enabledColumns, setEnabledColumns] = useState<Set<ColumnKey>>(loadColumns);
 
-  // Cursor stack for back navigation
-  const [cursorStack, setCursorStack] = useState<string[]>([]);
-
-  // Fetch shop domain for external links
+  // Fetch filter options and sync status on mount
   useEffect(() => {
-    fetch('/api/shopify/config')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.config?.shopDomain) {
-          setShopDomain(data.config.shopDomain);
-        }
-      })
+    fetch('/api/products-index/filters')
+      .then((res) => res.ok ? res.json() : EMPTY_FILTER_OPTIONS)
+      .then(setFilterOptions)
+      .catch(() => {});
+
+    fetch('/api/products-index/sync')
+      .then((res) => res.ok ? res.json() : null)
+      .then(setSyncStatus)
       .catch(() => {});
   }, []);
 
-  const fetchProducts = useCallback(async (options?: {
-    pageInfo?: string;
-    query?: string;
-    status?: StatusFilter;
+  // Build URL params and fetch products
+  const fetchProducts = useCallback(async (opts: {
+    q?: string;
+    filters?: FilterState;
+    sort?: SortState;
+    page?: number;
+    pageSize?: number;
   }) => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      params.set('limit', '50');
-
-      if (options?.pageInfo) {
-        params.set('page_info', options.pageInfo);
-      } else {
-        if (options?.query) params.set('q', options.query);
-        if (options?.status && options.status !== 'all') params.set('status', options.status);
+      if (opts.q) params.set('q', opts.q);
+      if (opts.filters?.status) params.set('status', opts.filters.status);
+      if (opts.filters?.productType) params.set('product_type', opts.filters.productType);
+      if (opts.filters?.artist) params.set('artist', opts.filters.artist);
+      if (opts.filters?.country) params.set('country', opts.filters.country);
+      if (opts.filters?.platform) params.set('platform', opts.filters.platform);
+      if (opts.filters?.tags) params.set('tags', opts.filters.tags);
+      if (opts.sort) {
+        params.set('sort', opts.sort.column);
+        params.set('order', opts.sort.order);
       }
+      params.set('page', String(opts.page || 1));
+      params.set('pageSize', String(opts.pageSize || 50));
 
-      const res = await fetch(`/api/shopify/products/browse?${params.toString()}`);
+      const res = await fetch(`/api/products-index/browse?${params.toString()}`);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.details || data.error || 'Failed to load products');
@@ -67,132 +136,156 @@ export default function ProductsPage() {
       const data = await res.json();
       setProducts(data.products);
       setPagination(data.pagination);
+
+      // Update URL (shallow, no reload)
+      const urlParams = new URLSearchParams();
+      if (opts.q) urlParams.set('q', opts.q);
+      if (opts.filters?.status) urlParams.set('status', opts.filters.status);
+      if (opts.filters?.productType) urlParams.set('product_type', opts.filters.productType);
+      if (opts.filters?.artist) urlParams.set('artist', opts.filters.artist);
+      if (opts.filters?.country) urlParams.set('country', opts.filters.country);
+      if (opts.filters?.platform) urlParams.set('platform', opts.filters.platform);
+      if (opts.filters?.tags) urlParams.set('tags', opts.filters.tags);
+      if (opts.sort && opts.sort.column !== DEFAULT_SORT.column) urlParams.set('sort', opts.sort.column);
+      if (opts.sort && opts.sort.order !== DEFAULT_SORT.order) urlParams.set('order', opts.sort.order);
+      if ((opts.page || 1) > 1) urlParams.set('page', String(opts.page));
+      if ((opts.pageSize || 50) !== 50) urlParams.set('pageSize', String(opts.pageSize));
+
+      const qs = urlParams.toString();
+      router.replace(qs ? `/products?${qs}` : '/products', { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load products');
       setProducts([]);
-      setPagination(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
-  // Initial load
+  // Initial fetch
   useEffect(() => {
-    fetchProducts({ status: statusFilter, query: searchQuery });
+    fetchProducts({ q: search, filters, sort, page, pageSize });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleSearch(query: string) {
-    setSearchQuery(query);
-    setCursorStack([]);
-    fetchProducts({ query, status: statusFilter });
+  // Handlers that update state and refetch
+  function handleSearchChange(q: string) {
+    setSearch(q);
+    setPage(1);
+    fetchProducts({ q, filters, sort, page: 1, pageSize });
+  }
+
+  function handleFiltersChange(newFilters: FilterState) {
+    setFilters(newFilters);
+    setPage(1);
+    fetchProducts({ q: search, filters: newFilters, sort, page: 1, pageSize });
+  }
+
+  function handleSortChange(newSort: SortState) {
+    setSort(newSort);
+    setPage(1);
+    fetchProducts({ q: search, filters, sort: newSort, page: 1, pageSize });
+  }
+
+  function handleTableSort(newSort: SortState) {
+    handleSortChange(newSort);
+  }
+
+  function handlePageChange(newPage: number) {
+    setPage(newPage);
+    fetchProducts({ q: search, filters, sort, page: newPage, pageSize });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function handleStatusChange(status: StatusFilter) {
-    setStatusFilter(status);
-    setCursorStack([]);
-    fetchProducts({ query: searchQuery, status });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  function handlePageSizeChange(newPageSize: number) {
+    setPageSize(newPageSize);
+    setPage(1);
+    fetchProducts({ q: search, filters, sort, page: 1, pageSize: newPageSize });
   }
 
-  function handleViewModeChange(mode: ViewMode) {
-    setViewMode(mode);
-    localStorage.setItem('products-view-mode', mode);
+  function handleColumnsChange(columns: Set<ColumnKey>) {
+    setEnabledColumns(columns);
+    saveColumns(columns);
   }
 
-  function handleNextPage() {
-    if (!pagination?.nextCursor) return;
-    // Push current prev cursor to stack for back navigation
-    if (pagination.prevCursor) {
-      setCursorStack((prev) => [...prev, pagination.prevCursor!]);
-    } else {
-      // First page has no prev cursor, push empty string as marker
-      setCursorStack((prev) => [...prev, '']);
-    }
-    fetchProducts({ pageInfo: pagination.nextCursor });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function handlePrevPage() {
-    if (cursorStack.length === 0) return;
-    const newStack = [...cursorStack];
-    const prevCursor = newStack.pop()!;
-    setCursorStack(newStack);
-
-    if (prevCursor === '') {
-      // Going back to first page (no cursor)
-      fetchProducts({ query: searchQuery, status: statusFilter });
-    } else {
-      fetchProducts({ pageInfo: prevCursor });
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  function handleSyncComplete() {
+    // Refresh everything
+    fetch('/api/products-index/sync')
+      .then((res) => res.ok ? res.json() : null)
+      .then(setSyncStatus)
+      .catch(() => {});
+    fetch('/api/products-index/filters')
+      .then((res) => res.ok ? res.json() : EMPTY_FILTER_OPTIONS)
+      .then(setFilterOptions)
+      .catch(() => {});
+    fetchProducts({ q: search, filters, sort, page: 1, pageSize });
+    setPage(1);
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-slate-900">Products</h1>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-slate-900">Products</h1>
         <div className="flex items-center gap-3">
+          <SyncStatusBar syncStatus={syncStatus} onSyncComplete={handleSyncComplete} />
           <Link
             href="/products/new"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap"
           >
             + New Product
           </Link>
         </div>
       </div>
 
-      <ProductToolbar
-        viewMode={viewMode}
-        statusFilter={statusFilter}
-        onSearch={handleSearch}
-        onStatusChange={handleStatusChange}
-        onViewModeChange={handleViewModeChange}
-        isLoading={loading}
-      />
+      {/* Toolbar: search, filters, sort, column picker */}
+      <div className="mb-4">
+        <ProductIndexToolbar
+          search={search}
+          onSearchChange={handleSearchChange}
+          filters={filters}
+          filterOptions={filterOptions}
+          onFiltersChange={handleFiltersChange}
+          sort={sort}
+          onSortChange={handleSortChange}
+          enabledColumns={enabledColumns}
+          onColumnsChange={handleColumnsChange}
+          totalResults={pagination.totalResults}
+        />
+      </div>
 
+      {/* Error */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-slate-600">Loading products...</p>
+      {/* Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-sm text-slate-600">Loading products...</p>
+            </div>
           </div>
-        </div>
-      ) : viewMode === 'grid' ? (
-        <ProductGrid products={products} shopDomain={shopDomain} />
-      ) : (
-        <ProductTable products={products} shopDomain={shopDomain} />
-      )}
+        ) : (
+          <ProductIndexTable
+            products={products}
+            enabledColumns={enabledColumns}
+            sort={sort}
+            onSort={handleTableSort}
+          />
+        )}
+      </div>
 
       {/* Pagination */}
-      {!loading && products.length > 0 && pagination && (
-        <div className="flex items-center justify-between mt-6">
-          <div className="text-sm text-slate-600">
-            Showing {products.length} products
-            {cursorStack.length > 0 && ` (page ${cursorStack.length + 1})`}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrevPage}
-              disabled={cursorStack.length === 0}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              Previous
-            </button>
-            <button
-              onClick={handleNextPage}
-              disabled={!pagination.hasNext}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              Next
-            </button>
-          </div>
+      {!loading && pagination.totalResults > 0 && (
+        <div className="mt-4">
+          <ProductIndexPagination
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </div>
       )}
     </div>
