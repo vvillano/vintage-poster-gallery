@@ -120,11 +120,22 @@ export default function DashboardPage() {
 
       {/* Build Info */}
       {process.env.NEXT_PUBLIC_BUILD_SHA && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-6 flex items-center gap-3 text-xs text-slate-500">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-6 flex items-center gap-4 text-xs text-slate-500">
           <span className="font-medium text-slate-600">Latest Build</span>
-          <code className="bg-slate-200 px-1.5 py-0.5 rounded font-mono">
-            {process.env.NEXT_PUBLIC_BUILD_SHA.slice(0, 7)}
-          </code>
+          <span className="flex items-center gap-1.5">
+            <span className="text-slate-400">Commit</span>
+            <code className="bg-slate-200 px-1.5 py-0.5 rounded font-mono">
+              {process.env.NEXT_PUBLIC_BUILD_SHA.slice(0, 7)}
+            </code>
+          </span>
+          {process.env.NEXT_PUBLIC_DEPLOYMENT_ID && (
+            <span className="flex items-center gap-1.5">
+              <span className="text-slate-400">Deploy</span>
+              <code className="bg-slate-200 px-1.5 py-0.5 rounded font-mono">
+                {process.env.NEXT_PUBLIC_DEPLOYMENT_ID}
+              </code>
+            </span>
+          )}
           {process.env.NEXT_PUBLIC_BUILD_REF && (
             <span className="text-slate-400">{process.env.NEXT_PUBLIC_BUILD_REF}</span>
           )}
