@@ -49,6 +49,8 @@ export default function ProductDetailPage() {
   const [tagOptions, setTagOptions] = useState<{ name: string }[]>([]);
   const [colorOptions, setColorOptions] = useState<{ name: string; hexCode: string | null }[]>([]);
   const [mediumOptions, setMediumOptions] = useState<{ name: string }[]>([]);
+  const [suggestedColors, setSuggestedColors] = useState<string[]>([]);
+  const [suggestingColors, setSuggestingColors] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -149,6 +151,34 @@ export default function ProductDetailPage() {
       .then((data) => setMediumOptions(data.items.map((i: { name: string }) => ({ name: i.name }))))
       .catch(() => {});
   }, [loadProduct]);
+
+  // Auto-detect colors from main image when product loads
+  useEffect(() => {
+    if (!product) return;
+    if (product.images.length === 0) return;
+    // Skip if already have suggestions (from linked poster or previous detection)
+    if (product.linkedPoster?.suggestedColors?.length) {
+      setSuggestedColors(product.linkedPoster.suggestedColors);
+      return;
+    }
+    if (suggestedColors.length > 0) return;
+
+    setSuggestingColors(true);
+    fetch(`/api/shopify/products/${id}/suggest-colors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl: product.images[0].url }),
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.suggestedColors?.length) {
+          setSuggestedColors(data.suggestedColors);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSuggestingColors(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   function handleFieldChange(field: string, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -580,7 +610,8 @@ export default function ProductDetailPage() {
             colorOptions={colorOptions}
             mediumOptions={mediumOptions}
             suggestedTags={product.linkedPoster?.suggestedTags}
-            suggestedColors={product.linkedPoster?.suggestedColors}
+            suggestedColors={suggestedColors}
+            suggestingColors={suggestingColors}
             onTagsChange={handleTagsChange}
             onColorsChange={handleColorsChange}
             onMediumChange={handleMediumChange}

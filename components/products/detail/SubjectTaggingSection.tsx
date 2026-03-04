@@ -11,6 +11,7 @@ interface SubjectTaggingSectionProps {
   mediumOptions: { name: string }[];
   suggestedTags?: string[];
   suggestedColors?: string[];
+  suggestingColors?: boolean;
   onTagsChange: (tags: string[]) => void;
   onColorsChange: (colors: string[]) => void;
   onMediumChange: (medium: string[]) => void;
@@ -36,6 +37,7 @@ export default function SubjectTaggingSection({
   mediumOptions,
   suggestedTags = [],
   suggestedColors = [],
+  suggestingColors = false,
   onTagsChange,
   onColorsChange,
   onMediumChange,
@@ -194,6 +196,42 @@ export default function SubjectTaggingSection({
             </span>
           )}
         </div>
+
+        {/* AI Suggested colors */}
+        {suggestingColors && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-amber-700">
+            <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
+            Detecting colors from image...
+          </div>
+        )}
+        {!suggestingColors && suggestedColors.length > 0 && (
+          <div className="mb-2">
+            <div className="text-xs text-amber-700 font-medium mb-1">AI Suggested</div>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestedColors.map((colorName) => {
+                const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
+                const isSelected = selectedColorSet.has(colorName.toLowerCase());
+                const textColor = opt?.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
+                return (
+                  <button
+                    key={`suggested-${colorName}`}
+                    type="button"
+                    onClick={() => toggleColor(opt?.name || colorName)}
+                    className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
+                      isSelected
+                        ? 'ring-2 ring-blue-400 border-blue-500'
+                        : 'border-amber-400'
+                    } ${textColor}`}
+                    style={{ backgroundColor: opt?.hexCode || '#f1f5f9' }}
+                  >
+                    {colorName}
+                    {isSelected && <span className="ml-1">&#10003;</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1.5">
           {/* Unmatched colors */}
