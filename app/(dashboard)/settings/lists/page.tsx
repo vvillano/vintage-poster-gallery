@@ -32,6 +32,13 @@ interface ListItem {
   // Publisher fields
   publicationType?: string;
   ceasedYear?: number;
+  // Size tag fields
+  tagType?: string;
+  minValue?: number;
+  maxValue?: number;
+  // Date tag fields
+  startYear?: number;
+  endYear?: number;
 }
 
 interface ListConfig {
@@ -47,6 +54,15 @@ interface ListConfig {
     relatedList?: string;  // For 'select' type - references another list
   }[];
 }
+
+// Maps local list page keys to PM App field names for writable lists
+const PM_APP_WRITABLE_LISTS: Record<string, string> = {
+  'available-tags': 'otherTags',
+  colors: 'colors',
+  'media-types': 'medium',
+  artists: 'artists',
+  countries: 'countries',
+};
 
 const LIST_CONFIGS: ListConfig[] = [
   {
@@ -150,6 +166,29 @@ const LIST_CONFIGS: ListConfig[] = [
     ],
   },
   {
+    key: 'size-tags',
+    label: 'Size Tags',
+    description: 'Auto-applied tags based on poster dimensions. Size buckets use max dimension; orientation uses height vs width.',
+    fields: [
+      { key: 'name', label: 'Tag Name', type: 'text', required: true },
+      { key: 'tagType', label: 'Type', type: 'text', placeholder: 'size_bucket or orientation' },
+      { key: 'minValue', label: 'Min Value (inches)', type: 'number' },
+      { key: 'maxValue', label: 'Max Value (inches)', type: 'number' },
+      { key: 'displayOrder', label: 'Display Order', type: 'number' },
+    ],
+  },
+  {
+    key: 'date-tags',
+    label: 'Date Tags',
+    description: 'Auto-applied tags based on poster year/date. Each tag defines a year range.',
+    fields: [
+      { key: 'name', label: 'Tag Name', type: 'text', required: true },
+      { key: 'startYear', label: 'Start Year', type: 'number' },
+      { key: 'endYear', label: 'End Year', type: 'number' },
+      { key: 'displayOrder', label: 'Display Order', type: 'number' },
+    ],
+  },
+  {
     key: 'internal-tags',
     label: 'Internal Tags',
     description: 'Tags for internal organization (INV 2024, Needs Research, etc.)',
@@ -196,6 +235,7 @@ function ManagedListsContent() {
   const [pendingEditId, setPendingEditId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [relatedItems, setRelatedItems] = useState<Record<string, ListItem[]>>({});
+  const [removingFromPMApp, setRemovingFromPMApp] = useState<number | null>(null);
   const editingRowRef = useRef<HTMLDivElement>(null);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
@@ -367,6 +407,30 @@ function ManagedListsContent() {
       await fetchItems();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  }
+
+  async function removeFromPMApp(item: ListItem) {
+    const pmAppField = PM_APP_WRITABLE_LISTS[activeList];
+    if (!pmAppField) return;
+
+    if (!confirm(`Remove "${item.name}" from PM App? This cannot be undone.`)) return;
+
+    try {
+      setRemovingFromPMApp(item.id);
+      setError('');
+      const res = await fetch('/api/pm-app/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listType: activeList, values: [item.name] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to remove from PM App');
+      // Show success briefly (no permanent state change needed — item stays in local DB)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove from PM App');
+    } finally {
+      setRemovingFromPMApp(null);
     }
   }
 
@@ -867,6 +931,16 @@ function ManagedListsContent() {
                               >
                                 Edit
                               </button>
+                              {PM_APP_WRITABLE_LISTS[activeList] && (
+                                <button
+                                  onClick={() => removeFromPMApp(item)}
+                                  disabled={removingFromPMApp === item.id || !!editingItem || isAdding}
+                                  className="px-3 py-1 text-sm text-slate-600 hover:text-orange-600 disabled:opacity-40"
+                                  title="Remove this item from PM App managed list"
+                                >
+                                  {removingFromPMApp === item.id ? '...' : 'Remove from PM App'}
+                                </button>
+                              )}
                               <button
                                 onClick={() => deleteItem(item.id)}
                                 className="px-3 py-1 text-sm text-slate-600 hover:text-red-600"

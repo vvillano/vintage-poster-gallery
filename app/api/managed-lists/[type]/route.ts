@@ -71,6 +71,18 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'hex_code', 'display_order'],
     updateColumns: ['name', 'hex_code', 'display_order'],
   },
+  'size-tags': {
+    table: 'size_tags',
+    columns: ['id', 'name', 'tag_type', 'min_value', 'max_value', 'display_order', 'created_at'],
+    insertColumns: ['name', 'tag_type', 'min_value', 'max_value', 'display_order'],
+    updateColumns: ['name', 'tag_type', 'min_value', 'max_value', 'display_order'],
+  },
+  'date-tags': {
+    table: 'date_tags',
+    columns: ['id', 'name', 'start_year', 'end_year', 'display_order', 'created_at'],
+    insertColumns: ['name', 'start_year', 'end_year', 'display_order'],
+    updateColumns: ['name', 'start_year', 'end_year', 'display_order'],
+  },
 } as const;
 
 type ListType = keyof typeof LIST_CONFIGS;
@@ -306,6 +318,20 @@ export async function POST(
           RETURNING *
         `;
         break;
+      case 'size-tags':
+        result = await sql`
+          INSERT INTO size_tags (name, tag_type, min_value, max_value, display_order)
+          VALUES (${body.name}, ${body.tagType || 'size_bucket'}, ${body.minValue ?? null}, ${body.maxValue ?? null}, ${body.displayOrder || 0})
+          RETURNING *
+        `;
+        break;
+      case 'date-tags':
+        result = await sql`
+          INSERT INTO date_tags (name, start_year, end_year, display_order)
+          VALUES (${body.name}, ${body.startYear ?? null}, ${body.endYear ?? null}, ${body.displayOrder || 0})
+          RETURNING *
+        `;
+        break;
     }
 
     const item = transformRow(result.rows[0], type);
@@ -513,6 +539,22 @@ export async function PUT(
         result = await sql`
           UPDATE colors
           SET name = ${body.name}, hex_code = ${body.hexCode || null}, display_order = ${body.displayOrder || 0}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      case 'size-tags':
+        result = await sql`
+          UPDATE size_tags
+          SET name = ${body.name}, tag_type = ${body.tagType || 'size_bucket'}, min_value = ${body.minValue ?? null}, max_value = ${body.maxValue ?? null}, display_order = ${body.displayOrder || 0}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      case 'date-tags':
+        result = await sql`
+          UPDATE date_tags
+          SET name = ${body.name}, start_year = ${body.startYear ?? null}, end_year = ${body.endYear ?? null}, display_order = ${body.displayOrder || 0}
           WHERE id = ${idNum}
           RETURNING *
         `;

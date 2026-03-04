@@ -17,6 +17,8 @@ import AcquisitionSection from '@/components/products/detail/AcquisitionSection'
 import ResearchDataSection from '@/components/products/detail/ResearchDataSection';
 import DeleteProductModal from '@/components/products/detail/DeleteProductModal';
 import TalkingPointsCard from '@/components/products/detail/TalkingPointsCard';
+import { computeAutoTags, parseYear } from '@/lib/auto-tags';
+import type { SizeTagRule, DateTagRule } from '@/lib/auto-tags';
 
 interface FormData {
   title: string;
@@ -51,6 +53,8 @@ export default function ProductDetailPage() {
   const [mediumOptions, setMediumOptions] = useState<{ name: string }[]>([]);
   const [suggestedColors, setSuggestedColors] = useState<string[]>([]);
   const [suggestingColors, setSuggestingColors] = useState(false);
+  const [sizeTagRules, setSizeTagRules] = useState<SizeTagRule[]>([]);
+  const [dateTagRules, setDateTagRules] = useState<DateTagRule[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -150,6 +154,22 @@ export default function ProductDetailPage() {
       .then((res) => res.ok ? res.json() : { items: [] })
       .then((data) => setMediumOptions(data.items.map((i: { name: string }) => ({ name: i.name }))))
       .catch(() => {});
+    fetch('/api/managed-lists/size-tags')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setSizeTagRules(data.items.map((i: SizeTagRule) => ({
+        id: i.id, name: i.name, tagType: i.tagType,
+        minValue: i.minValue != null ? Number(i.minValue) : null,
+        maxValue: i.maxValue != null ? Number(i.maxValue) : null,
+      }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/date-tags')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setDateTagRules(data.items.map((i: DateTagRule) => ({
+        id: i.id, name: i.name,
+        startYear: i.startYear != null ? Number(i.startYear) : null,
+        endYear: i.endYear != null ? Number(i.endYear) : null,
+      }))))
+      .catch(() => {});
   }, [loadProduct]);
 
   // Auto-detect colors from main image when product loads
@@ -179,6 +199,36 @@ export default function ProductDetailPage() {
       .finally(() => setSuggestingColors(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
+
+  // Auto-apply size and date tags when product data and rules are available
+  const autoTagResult = useMemo(() => {
+    if (!product || (sizeTagRules.length === 0 && dateTagRules.length === 0)) {
+      return { allAutoTags: [], newAutoTags: [] };
+    }
+    const height = product.metafields.height ? parseFloat(product.metafields.height) : null;
+    const width = product.metafields.width ? parseFloat(product.metafields.width) : null;
+    const year = parseYear(product.metafields.year);
+    return computeAutoTags(height, width, year, sizeTagRules, dateTagRules, formData.tags);
+  }, [product?.metafields.height, product?.metafields.width, product?.metafields.year, sizeTagRules, dateTagRules, formData.tags]);
+
+  // Auto-add new auto-tags to formData.tags (runs once when rules load)
+  const [autoTagsApplied, setAutoTagsApplied] = useState(false);
+  useEffect(() => {
+    if (autoTagsApplied) return;
+    if (!product) return;
+    if (sizeTagRules.length === 0 && dateTagRules.length === 0) return;
+
+    const height = product.metafields.height ? parseFloat(product.metafields.height) : null;
+    const width = product.metafields.width ? parseFloat(product.metafields.width) : null;
+    const year = parseYear(product.metafields.year);
+    const { newAutoTags } = computeAutoTags(height, width, year, sizeTagRules, dateTagRules, formData.tags);
+
+    if (newAutoTags.length > 0) {
+      setFormData(prev => ({ ...prev, tags: [...prev.tags, ...newAutoTags] }));
+    }
+    setAutoTagsApplied(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, sizeTagRules, dateTagRules]);
 
   function handleFieldChange(field: string, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -616,6 +666,7 @@ export default function ProductDetailPage() {
             tags={formData.tags}
             tagOptions={tagOptions}
             suggestedTags={product.linkedPoster?.suggestedTags}
+            autoTags={autoTagResult.allAutoTags}
             onTagsChange={handleTagsChange}
           />
         </ProductDetailSection>

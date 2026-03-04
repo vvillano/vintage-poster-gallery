@@ -182,12 +182,75 @@ export async function POST() {
     `;
     results.push('Seeded countries');
 
+    // Size Tags (auto-tagging rules based on dimensions)
+    await sql`
+      CREATE TABLE IF NOT EXISTS size_tags (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        tag_type VARCHAR(20) NOT NULL DEFAULT 'size_bucket',
+        min_value NUMERIC,
+        max_value NUMERIC,
+        display_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+    results.push('Created size_tags table');
+
+    // Seed size tags
+    await sql`
+      INSERT INTO size_tags (name, tag_type, min_value, max_value, display_order) VALUES
+        ('Small', 'size_bucket', 0, 15, 1),
+        ('Medium', 'size_bucket', 16, 24, 2),
+        ('Large', 'size_bucket', 25, 42, 3),
+        ('Oversize', 'size_bucket', 43, NULL, 4),
+        ('Horizontal', 'orientation', NULL, NULL, 10)
+      ON CONFLICT (name) DO NOTHING
+    `;
+    results.push('Seeded size_tags');
+
+    // Date Tags (auto-tagging rules based on year)
+    await sql`
+      CREATE TABLE IF NOT EXISTS date_tags (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        start_year INT,
+        end_year INT,
+        display_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+    results.push('Created date_tags table');
+
+    // Seed date tags
+    await sql`
+      INSERT INTO date_tags (name, start_year, end_year, display_order) VALUES
+        ('Pre 1700', NULL, 1699, 1),
+        ('1700-1799', 1700, 1799, 2),
+        ('1800-1849', 1800, 1849, 3),
+        ('1850-1899', 1850, 1899, 4),
+        ('1900-1909', 1900, 1909, 5),
+        ('1910-1919', 1910, 1919, 6),
+        ('1920-1929', 1920, 1929, 7),
+        ('1930-1939', 1930, 1939, 8),
+        ('1940-1949', 1940, 1949, 9),
+        ('1950-1959', 1950, 1959, 10),
+        ('1960-1969', 1960, 1969, 11),
+        ('1970-1979', 1970, 1979, 12),
+        ('1980-1989', 1980, 1989, 13),
+        ('1990-1999', 1990, 1999, 14),
+        ('2000+', 2000, NULL, 15)
+      ON CONFLICT (name) DO NOTHING
+    `;
+    results.push('Seeded date_tags');
+
     // Create indexes for ordering
     await sql`CREATE INDEX IF NOT EXISTS idx_media_types_order ON media_types (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_internal_tags_order ON internal_tags (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_source_platforms_order ON source_platforms (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_locations_order ON locations (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_countries_order ON countries (display_order)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_size_tags_order ON size_tags (display_order)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_date_tags_order ON date_tags (display_order)`;
     results.push('Created ordering indexes');
 
     return NextResponse.json({

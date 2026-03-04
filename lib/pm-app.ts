@@ -249,6 +249,18 @@ export const PM_APP_FIELD_MAPPINGS: Record<
     nameField: 'name',
     canPush: false, // PM App is source of truth for sellers
   },
+  dateTags: {
+    researchAppTable: 'date_tags',
+    description: 'Date range tags for auto-tagging by year',
+    nameField: 'name',
+    canPush: false, // PM App is source of truth
+  },
+  sizeTags: {
+    researchAppTable: 'size_tags',
+    description: 'Size bucket tags for auto-tagging by dimensions',
+    nameField: 'name',
+    canPush: false, // PM App is source of truth
+  },
 };
 
 /**
