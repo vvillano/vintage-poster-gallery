@@ -148,14 +148,38 @@ export default function ProductDetailPage() {
     return false;
   }, [formData, product]);
 
-  // Warn on browser close/refresh if there are unsaved changes
+  // Warn on any navigation when there are unsaved changes
   useEffect(() => {
     if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
+
+    // Browser close/refresh
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
+      e.returnValue = '';
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Client-side navigation (Next.js Links, sidebar, router.push)
+    const origPushState = window.history.pushState;
+    window.history.pushState = function (...args: Parameters<typeof origPushState>) {
+      if (window.confirm('You have unsaved changes. Leave without saving?')) {
+        return origPushState.apply(window.history, args);
+      }
+    } as typeof window.history.pushState;
+
+    // Browser back/forward buttons
+    const handlePopState = () => {
+      if (!window.confirm('You have unsaved changes. Leave without saving?')) {
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.history.pushState = origPushState;
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [isDirty]);
 
   async function handleSave() {
@@ -312,11 +336,6 @@ export default function ProductDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/products"
-            onClick={(e) => {
-              if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) {
-                e.preventDefault();
-              }
-            }}
             className="text-slate-400 hover:text-slate-600 transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,7 +363,7 @@ export default function ProductDetailPage() {
             disabled={saving || !isDirty}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               isDirty
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                ? 'bg-green-600 hover:bg-green-700 text-white'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
