@@ -316,18 +316,31 @@ export default function ProductDetailPage() {
   }, [product?.id, sizeTagRules, dateTagRules]);
 
   function handleFieldChange(field: string, value: string) {
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-      // Auto-populate condition details when product type changes and condition details is empty
-      if (field === 'productType' && !prev.conditionDetails) {
-        const pt = productTypeOptions.find((p) => p.name === value);
-        if (pt?.defaultConditionText) {
-          next.conditionDetails = pt.defaultConditionText;
-        }
-      }
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
     setSaveMessage(null);
+
+    // Auto-populate condition details when product type changes
+    if (field === 'productType') {
+      const pt = productTypeOptions.find((p) => p.name === value);
+      if (pt?.defaultConditionText) {
+        setFormData((prev) => {
+          if (!prev.conditionDetails) {
+            // Empty: auto-fill without asking
+            return { ...prev, conditionDetails: pt.defaultConditionText! };
+          }
+          if (prev.conditionDetails !== pt.defaultConditionText) {
+            // Has existing text: confirm before overwriting
+            const replace = window.confirm(
+              'Replace current condition details with the default text for this product type?'
+            );
+            if (replace) {
+              return { ...prev, conditionDetails: pt.defaultConditionText! };
+            }
+          }
+          return prev;
+        });
+      }
+    }
   }
 
   function handleCountryChange(countryOfOrigin: string[]) {
