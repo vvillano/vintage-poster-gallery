@@ -33,6 +33,13 @@ interface FormData {
   location: string;
   internalNotes: string;
   internalTags: string[];
+  artist: string;
+  year: string;
+  countryOfOrigin: string[];
+  height: string;
+  width: string;
+  condition: string;
+  conditionDetails: string;
   colors: string[];
   medium: string[];
 }
@@ -58,7 +65,9 @@ export default function ProductDetailPage() {
   const [sizeTagRules, setSizeTagRules] = useState<SizeTagRule[]>([]);
   const [dateTagRules, setDateTagRules] = useState<DateTagRule[]>([]);
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
-  const [productTypeOptions, setProductTypeOptions] = useState<string[]>([]);
+  const [productTypeOptions, setProductTypeOptions] = useState<{ name: string; defaultConditionText: string | null }[]>([]);
+  const [conditionOptions, setConditionOptions] = useState<string[]>([]);
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
   const [allPublications, setAllPublications] = useState<{ id: string; name: string }[]>([]);
   const [shopDomain, setShopDomain] = useState<string | null>(null);
 
@@ -75,6 +84,13 @@ export default function ProductDetailPage() {
     location: '',
     internalNotes: '',
     internalTags: [],
+    artist: '',
+    year: '',
+    countryOfOrigin: [],
+    height: '',
+    width: '',
+    condition: '',
+    conditionDetails: '',
     colors: [],
     medium: [],
   });
@@ -123,6 +139,17 @@ export default function ProductDetailPage() {
         }
       }
 
+      // Parse country of origin from metafield JSON array
+      let parsedCountries: string[] = [];
+      if (data.metafields.countryOfOrigin) {
+        try {
+          const parsed = JSON.parse(data.metafields.countryOfOrigin);
+          if (Array.isArray(parsed)) parsedCountries = parsed;
+        } catch {
+          parsedCountries = [data.metafields.countryOfOrigin];
+        }
+      }
+
       setFormData({
         title: data.title,
         bodyHtml: data.bodyHtml || '',
@@ -136,6 +163,13 @@ export default function ProductDetailPage() {
         location: data.metafields.location || '',
         internalNotes: data.metafields.internalNotes || '',
         internalTags: parsedInternalTags,
+        artist: data.metafields.artist || '',
+        year: data.metafields.year || '',
+        countryOfOrigin: parsedCountries,
+        height: data.metafields.height || '',
+        width: data.metafields.width || '',
+        condition: data.metafields.condition || '',
+        conditionDetails: data.metafields.conditionDetails || '',
         colors: parsedColors,
         medium: parsedMedium,
       });
@@ -186,7 +220,15 @@ export default function ProductDetailPage() {
       .catch(() => {});
     fetch('/api/managed-lists/product-types')
       .then((res) => res.ok ? res.json() : { items: [] })
-      .then((data) => setProductTypeOptions(data.items.filter((i: { active?: boolean }) => i.active !== false).map((i: { name: string }) => i.name)))
+      .then((data) => setProductTypeOptions(data.items.filter((i: { active?: boolean }) => i.active !== false).map((i: { name: string; defaultConditionText?: string }) => ({ name: i.name, defaultConditionText: i.defaultConditionText || null }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/conditions')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setConditionOptions(data.items.map((i: { name: string }) => i.name)))
+      .catch(() => {});
+    fetch('/api/managed-lists/countries')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setCountryOptions(data.items.map((i: { name: string }) => i.name)))
       .catch(() => {});
     fetch('/api/shopify/publications')
       .then((res) => res.ok ? res.json() : { publications: [] })
@@ -272,7 +314,22 @@ export default function ProductDetailPage() {
   }, [product?.id, sizeTagRules, dateTagRules]);
 
   function handleFieldChange(field: string, value: string) {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      // Auto-populate condition details when product type changes and condition details is empty
+      if (field === 'productType' && !prev.conditionDetails) {
+        const pt = productTypeOptions.find((p) => p.name === value);
+        if (pt?.defaultConditionText) {
+          next.conditionDetails = pt.defaultConditionText;
+        }
+      }
+      return next;
+    });
+    setSaveMessage(null);
+  }
+
+  function handleCountryChange(countryOfOrigin: string[]) {
+    setFormData((prev) => ({ ...prev, countryOfOrigin }));
     setSaveMessage(null);
   }
 
@@ -358,6 +415,22 @@ export default function ProductDetailPage() {
     if (formData.location !== (product.metafields.location || '')) return true;
     if (formData.internalNotes !== (product.metafields.internalNotes || '')) return true;
     // Internal tags are immediate-apply (not part of Save button dirty check)
+    // Basic Information fields
+    if (formData.artist !== (product.metafields.artist || '')) return true;
+    if (formData.year !== (product.metafields.year || '')) return true;
+    if (formData.height !== (product.metafields.height || '')) return true;
+    if (formData.width !== (product.metafields.width || '')) return true;
+    if (formData.condition !== (product.metafields.condition || '')) return true;
+    if (formData.conditionDetails !== (product.metafields.conditionDetails || '')) return true;
+    // Compare country of origin (order-independent)
+    let origCountries: string[] = [];
+    if (product.metafields.countryOfOrigin) {
+      try {
+        const parsed = JSON.parse(product.metafields.countryOfOrigin);
+        if (Array.isArray(parsed)) origCountries = parsed;
+      } catch { origCountries = [product.metafields.countryOfOrigin]; }
+    }
+    if (JSON.stringify([...formData.countryOfOrigin].sort()) !== JSON.stringify([...origCountries].sort())) return true;
     // Compare colors (order-independent)
     let origColors: string[] = [];
     if (product.metafields.color) {
@@ -479,6 +552,42 @@ export default function ProductDetailPage() {
 
       // Internal tags are immediate-apply (saved on toggle, not here)
 
+      // Check Basic Information metafield changes
+      const metafieldChecks: { formValue: string; origValue: string | undefined; namespace: string; key: string; type: 'single_line_text_field' | 'multi_line_text_field' }[] = [
+        { formValue: formData.artist, origValue: product.metafields.artist, namespace: 'jadepuma', key: 'artist', type: 'single_line_text_field' },
+        { formValue: formData.year, origValue: product.metafields.year, namespace: 'specs', key: 'year', type: 'single_line_text_field' },
+        { formValue: formData.height, origValue: product.metafields.height, namespace: 'specs', key: 'height', type: 'single_line_text_field' },
+        { formValue: formData.width, origValue: product.metafields.width, namespace: 'specs', key: 'width', type: 'single_line_text_field' },
+        { formValue: formData.condition, origValue: product.metafields.condition, namespace: 'jadepuma', key: 'condition', type: 'single_line_text_field' },
+        { formValue: formData.conditionDetails, origValue: product.metafields.conditionDetails, namespace: 'jadepuma', key: 'condition_details', type: 'multi_line_text_field' },
+      ];
+      for (const check of metafieldChecks) {
+        if (check.formValue !== (check.origValue || '')) {
+          const metafields: MetafieldWrite[] = payload.metafields || [];
+          metafields.push({ namespace: check.namespace, key: check.key, value: check.formValue, type: check.type });
+          payload.metafields = metafields;
+        }
+      }
+
+      // Check if country of origin changed
+      let originalCountries: string[] = [];
+      if (product.metafields.countryOfOrigin) {
+        try {
+          const parsed = JSON.parse(product.metafields.countryOfOrigin);
+          if (Array.isArray(parsed)) originalCountries = parsed;
+        } catch { originalCountries = [product.metafields.countryOfOrigin]; }
+      }
+      if (JSON.stringify([...formData.countryOfOrigin].sort()) !== JSON.stringify([...originalCountries].sort())) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'country_of_origin',
+          value: JSON.stringify(formData.countryOfOrigin),
+          type: 'list.single_line_text_field',
+        });
+        payload.metafields = metafields;
+      }
+
       // Check if colors changed
       let originalColors: string[] = [];
       if (product.metafields.color) {
@@ -565,6 +674,15 @@ export default function ProductDetailPage() {
         } catch { updatedMedium = [updated.metafields.medium]; }
       }
 
+      // Parse updated country of origin
+      let updatedCountries: string[] = [];
+      if (updated.metafields.countryOfOrigin) {
+        try {
+          const parsed = JSON.parse(updated.metafields.countryOfOrigin);
+          if (Array.isArray(parsed)) updatedCountries = parsed;
+        } catch { updatedCountries = [updated.metafields.countryOfOrigin]; }
+      }
+
       setFormData({
         title: updated.title,
         bodyHtml: updated.bodyHtml || '',
@@ -578,6 +696,13 @@ export default function ProductDetailPage() {
         location: updated.metafields.location || '',
         internalNotes: updated.metafields.internalNotes || '',
         internalTags: updatedInternalTags,
+        artist: updated.metafields.artist || '',
+        year: updated.metafields.year || '',
+        countryOfOrigin: updatedCountries,
+        height: updated.metafields.height || '',
+        width: updated.metafields.width || '',
+        condition: updated.metafields.condition || '',
+        conditionDetails: updated.metafields.conditionDetails || '',
         colors: updatedColors,
         medium: updatedMedium,
       });
@@ -743,7 +868,7 @@ export default function ProductDetailPage() {
             categoryName={product.categoryName}
             salesChannels={mergedSalesChannels}
             locationOptions={locationOptions}
-            productTypeOptions={productTypeOptions}
+            productTypeOptions={productTypeOptions.map((pt) => pt.name)}
             selectedInternalTags={formData.internalTags}
             unmatchedInternalTags={unmatchedInternalTags}
             internalTagOptions={internalTagOptions}
@@ -757,13 +882,23 @@ export default function ProductDetailPage() {
         {/* 3. Basic Information (specs, colors, medium) */}
         <ProductDetailSection title="Basic Information" defaultOpen>
           <SpecificationsSection
-            metafields={product.metafields}
+            artist={formData.artist}
+            year={formData.year}
+            countryOfOrigin={formData.countryOfOrigin}
+            height={formData.height}
+            width={formData.width}
+            condition={formData.condition}
+            conditionDetails={formData.conditionDetails}
+            conditionOptions={conditionOptions}
+            countryOptions={countryOptions}
             colors={formData.colors}
             medium={formData.medium}
             colorOptions={colorOptions}
             mediumOptions={mediumOptions}
             suggestedColors={suggestedColors}
             suggestingColors={suggestingColors}
+            onChange={handleFieldChange}
+            onCountryChange={handleCountryChange}
             onColorsChange={handleColorsChange}
             onMediumChange={handleMediumChange}
           />
