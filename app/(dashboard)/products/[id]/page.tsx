@@ -17,6 +17,7 @@ import SeoSection from '@/components/products/detail/SeoSection';
 import AcquisitionSection from '@/components/products/detail/AcquisitionSection';
 import ResearchDataSection from '@/components/products/detail/ResearchDataSection';
 import DeleteProductModal from '@/components/products/detail/DeleteProductModal';
+import TalkingPointsCard from '@/components/products/detail/TalkingPointsCard';
 
 interface FormData {
   title: string;
@@ -323,6 +324,22 @@ export default function ProductDetailPage() {
   const managedTagNames = new Set(internalTagOptions.map((t) => t.name.toLowerCase()));
   const unmatchedInternalTags = formData.internalTags.filter((t) => !managedTagNames.has(t.toLowerCase()));
 
+  // Talking points: prefer linked poster data, fall back to metafield
+  const talkingPoints = useMemo(() => {
+    if (product.linkedPoster?.talkingPoints?.length) {
+      return product.linkedPoster.talkingPoints;
+    }
+    if (product.metafields.talkingPoints) {
+      try {
+        const parsed = JSON.parse(product.metafields.talkingPoints);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [product.linkedPoster, product.metafields.talkingPoints]);
+
   const STATUS_COLORS: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
     draft: 'bg-yellow-100 text-yellow-700',
@@ -391,6 +408,13 @@ export default function ProductDetailPage() {
         <h2 className="font-semibold text-slate-900 mb-3">Images</h2>
         <ImagesSection images={product.images} />
       </div>
+
+      {/* 2. Talking Points (prominent card, between images and listing) */}
+      {talkingPoints.length > 0 && (
+        <div className="mb-3">
+          <TalkingPointsCard points={talkingPoints} />
+        </div>
+      )}
 
       {/* Sections - matching PM App order */}
       <div className="space-y-3">

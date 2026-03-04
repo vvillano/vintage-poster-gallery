@@ -28,6 +28,8 @@ export interface ProductMetafields {
   restorationCandidate?: string;
   primaryCollection?: string;
   internalTags?: string;
+  // custom namespace
+  talkingPoints?: string;
   // specs namespace
   year?: string;
   height?: string;
@@ -68,6 +70,53 @@ export interface ProductDetail {
   locationGid: string | null;
   // Metafields
   metafields: ProductMetafields;
+  // Linked poster data from research database
+  linkedPoster: LinkedPosterData | null;
+}
+
+/** Linked poster data from the research database */
+export interface LinkedPosterData {
+  posterId: number;
+  talkingPoints: string[];
+  designProfile: {
+    periodMovement: string | null;
+    publication: string | null;
+    advertiser: string | null;
+    eraContext: string | null;
+    composition: string | null;
+    colorPalette: string | null;
+    typography: string | null;
+  };
+  timeAndPlace: {
+    world: string | null;
+    regional: string | null;
+    local: string | null;
+  };
+  rarityValue: {
+    rarityAssessment: string | null;
+    valueInsights: string | null;
+    collectorInterest: string | null;
+  };
+  comparableSales: {
+    id: string;
+    date: string;
+    price: number;
+    currency: string;
+    source: string;
+    condition?: string;
+    notes?: string;
+    url?: string;
+    createdAt: string;
+  }[];
+  artistConfidence: string | null;
+  artistConfidenceScore: number | null;
+  attributionBasis: string | null;
+  sourceCitations: {
+    claim: string;
+    source: string;
+    url: string;
+    reliability: string;
+  }[];
 }
 
 /** A single metafield write operation */
