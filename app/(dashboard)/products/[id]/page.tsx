@@ -59,7 +59,7 @@ export default function ProductDetailPage() {
   const [dateTagRules, setDateTagRules] = useState<DateTagRule[]>([]);
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [productTypeOptions, setProductTypeOptions] = useState<string[]>([]);
-  const [salesChannels, setSalesChannels] = useState<{ name: string; published: boolean }[]>([]);
+  const [allPublications, setAllPublications] = useState<{ id: string; name: string }[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -187,6 +187,10 @@ export default function ProductDetailPage() {
       .then((res) => res.ok ? res.json() : { items: [] })
       .then((data) => setProductTypeOptions(data.items.filter((i: { active?: boolean }) => i.active !== false).map((i: { name: string }) => i.name)))
       .catch(() => {});
+    fetch('/api/shopify/publications')
+      .then((res) => res.ok ? res.json() : { publications: [] })
+      .then((data) => setAllPublications(data.publications))
+      .catch(() => {});
   }, [loadProduct]);
 
   // Auto-detect colors from main image when product loads
@@ -216,6 +220,21 @@ export default function ProductDetailPage() {
       .finally(() => setSuggestingColors(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
+
+  // Merge all shop publications with the product's current published state
+  const mergedSalesChannels = useMemo(() => {
+    if (!product) return [];
+    const publishedIds = new Set(product.salesChannels.map((ch) => ch.id));
+    if (allPublications.length === 0) {
+      // Fallback: show only the product's current channels until all pubs load
+      return product.salesChannels;
+    }
+    return allPublications.map((pub) => ({
+      id: pub.id,
+      name: pub.name,
+      published: publishedIds.has(pub.id),
+    }));
+  }, [product?.salesChannels, allPublications]);
 
   // Auto-apply size and date tags when product data and rules are available
   const autoTagResult = useMemo(() => {
@@ -257,9 +276,39 @@ export default function ProductDetailPage() {
     setSaveMessage(null);
   }
 
-  function handleInternalTagsChange(internalTags: string[]) {
+  // Immediate-apply: Internal Tags save directly to Shopify on change
+  const [savingInternalTags, setSavingInternalTags] = useState(false);
+  async function handleInternalTagsChange(internalTags: string[]) {
     setFormData((prev) => ({ ...prev, internalTags }));
     setSaveMessage(null);
+
+    if (!product) return;
+    setSavingInternalTags(true);
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: 'jadepuma',
+            key: 'internal_tags',
+            value: JSON.stringify(internalTags),
+            type: 'list.single_line_text_field',
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || 'Failed to save internal tags');
+      }
+      const updated: ProductDetail = await res.json();
+      // Sync the product baseline so isDirty doesn't flag internal tags
+      setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, internalTags: updated.metafields.internalTags } } : prev);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save internal tags');
+    } finally {
+      setSavingInternalTags(false);
+    }
   }
 
   function handleColorsChange(colors: string[]) {
@@ -303,17 +352,7 @@ export default function ProductDetailPage() {
     if (formData.inventoryQuantity !== String(product.inventoryQuantity ?? 0)) return true;
     if (formData.location !== (product.metafields.location || '')) return true;
     if (formData.internalNotes !== (product.metafields.internalNotes || '')) return true;
-    // Compare internal tags (order-independent)
-    let origTags: string[] = [];
-    if (product.metafields.internalTags) {
-      try {
-        const parsed = JSON.parse(product.metafields.internalTags);
-        if (Array.isArray(parsed)) origTags = parsed;
-      } catch {
-        origTags = product.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
-      }
-    }
-    if (JSON.stringify([...formData.internalTags].sort()) !== JSON.stringify([...origTags].sort())) return true;
+    // Internal tags are immediate-apply (not part of Save button dirty check)
     // Compare colors (order-independent)
     let origColors: string[] = [];
     if (product.metafields.color) {
@@ -433,26 +472,7 @@ export default function ProductDetailPage() {
         payload.metafields = metafields;
       }
 
-      // Check if internal tags changed
-      let originalInternalTags: string[] = [];
-      if (product.metafields.internalTags) {
-        try {
-          const parsed = JSON.parse(product.metafields.internalTags);
-          if (Array.isArray(parsed)) originalInternalTags = parsed;
-        } catch {
-          originalInternalTags = product.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
-        }
-      }
-      if (JSON.stringify(formData.internalTags.sort()) !== JSON.stringify(originalInternalTags.sort())) {
-        const metafields: MetafieldWrite[] = payload.metafields || [];
-        metafields.push({
-          namespace: 'jadepuma',
-          key: 'internal_tags',
-          value: JSON.stringify(formData.internalTags),
-          type: 'list.single_line_text_field',
-        });
-        payload.metafields = metafields;
-      }
+      // Internal tags are immediate-apply (saved on toggle, not here)
 
       // Check if colors changed
       let originalColors: string[] = [];
@@ -703,12 +723,13 @@ export default function ProductDetailPage() {
             location={formData.location}
             internalNotes={formData.internalNotes}
             categoryName={product.categoryName}
-            salesChannels={product.salesChannels}
+            salesChannels={mergedSalesChannels}
             locationOptions={locationOptions}
             productTypeOptions={productTypeOptions}
             selectedInternalTags={formData.internalTags}
             unmatchedInternalTags={unmatchedInternalTags}
             internalTagOptions={internalTagOptions}
+            savingInternalTags={savingInternalTags}
             onChange={handleFieldChange}
             onInternalTagsChange={handleInternalTagsChange}
             onSalesChannelToggle={handleSalesChannelToggle}

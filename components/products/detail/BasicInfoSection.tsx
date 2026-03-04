@@ -22,6 +22,7 @@ export default function BasicInfoSection({
   selectedInternalTags,
   unmatchedInternalTags,
   internalTagOptions,
+  savingInternalTags,
   onChange,
   onInternalTagsChange,
   onSalesChannelToggle,
@@ -40,6 +41,7 @@ export default function BasicInfoSection({
   selectedInternalTags: string[];
   unmatchedInternalTags: string[];
   internalTagOptions: InternalTagOption[];
+  savingInternalTags?: boolean;
   onChange: (field: string, value: string) => void;
   onInternalTagsChange: (tags: string[]) => void;
   onSalesChannelToggle: (publicationId: string, publish: boolean) => Promise<void>;
@@ -143,9 +145,14 @@ export default function BasicInfoSection({
         />
       </div>
 
-      {/* Internal Tags */}
+      {/* Internal Tags (immediate-apply) */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Internal Tags</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Internal Tags
+          {savingInternalTags && (
+            <span className="ml-2 text-xs font-normal text-blue-500">Saving...</span>
+          )}
+        </label>
         <div className="px-3 py-2 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
           {internalTagOptions.map((tag) => {
             const isSelected = selectedSet.has(tag.name.toLowerCase());

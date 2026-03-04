@@ -1386,3 +1386,26 @@ export async function unpublishProductFromChannels(
     throw new Error(data.publishableUnpublish.userErrors.map((e: any) => e.message).join(', '));
   }
 }
+
+/**
+ * Fetch all available publications (sales channels) for the shop
+ */
+export async function getAllPublications(): Promise<{ id: string; name: string }[]> {
+  const query = `
+    query getPublications {
+      publications(first: 20) {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+    }
+  `;
+  const data = await shopifyGraphQL<any>(query);
+  return (data.publications?.edges || []).map((e: any) => ({
+    id: e.node.id,
+    name: e.node.name,
+  }));
+}
