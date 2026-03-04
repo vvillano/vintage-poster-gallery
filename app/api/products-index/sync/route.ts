@@ -92,6 +92,18 @@ function getMetafieldValue(product: GQLProduct, namespaceKey: string): string | 
   return edge?.node.value || null;
 }
 
+/** Strip JSON array brackets from list-type metafield values: '["USA"]' -> 'USA' */
+function cleanListValue(value: string | null): string | null {
+  if (!value) return null;
+  if (value.startsWith('[')) {
+    try {
+      const arr = JSON.parse(value);
+      if (Array.isArray(arr)) return arr.join(', ');
+    } catch { /* not JSON */ }
+  }
+  return value;
+}
+
 /**
  * POST /api/products-index/sync
  * Full sync of all Shopify products into products_index table
@@ -195,10 +207,10 @@ export async function POST() {
               parsePrice(variant?.compareAtPrice) ?? null,        // compare_at_price
               variant?.inventoryQuantity ?? null,                 // inventory_quantity
               p.featuredImage?.url || null,                       // thumbnail_url
-              getMetafieldValue(p, 'specs.year') || null,               // year
-              getMetafieldValue(p, 'jadepuma.artist') || null,             // artist
-              getMetafieldValue(p, 'jadepuma.country_of_origin') || null,  // country_of_origin
-              getMetafieldValue(p, 'jadepuma.source_platform') || null,    // source_platform
+              getMetafieldValue(p, 'specs.year') || null,                        // year
+              cleanListValue(getMetafieldValue(p, 'jadepuma.artist')) || null,             // artist
+              cleanListValue(getMetafieldValue(p, 'jadepuma.country_of_origin')) || null,  // country_of_origin
+              cleanListValue(getMetafieldValue(p, 'jadepuma.source_platform')) || null,    // source_platform
               purchasePrice,                                      // purchase_price
               shipping,                                           // shipping
               restoration,                                        // restoration
