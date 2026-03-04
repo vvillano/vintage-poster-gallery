@@ -595,26 +595,28 @@ export default function ProductDetailPage() {
           />
         </ProductDetailSection>
 
-        {/* 3. Basic Information (specs: artist, year, dimensions, condition, colors, medium) */}
-        <ProductDetailSection title="Basic Information" badge="Read-Only" defaultOpen>
-          <SpecificationsSection metafields={product.metafields} />
+        {/* 3. Basic Information (specs, colors, medium) */}
+        <ProductDetailSection title="Basic Information" defaultOpen>
+          <SpecificationsSection
+            metafields={product.metafields}
+            colors={formData.colors}
+            medium={formData.medium}
+            colorOptions={colorOptions}
+            mediumOptions={mediumOptions}
+            suggestedColors={suggestedColors}
+            suggestingColors={suggestingColors}
+            onColorsChange={handleColorsChange}
+            onMediumChange={handleMediumChange}
+          />
         </ProductDetailSection>
 
-        {/* 4. Subject Tagging (tags, colors, medium) */}
+        {/* 4. Subject Tagging (tags) */}
         <ProductDetailSection title="Subject Tagging" defaultOpen>
           <SubjectTaggingSection
             tags={formData.tags}
-            colors={formData.colors}
-            medium={formData.medium}
             tagOptions={tagOptions}
-            colorOptions={colorOptions}
-            mediumOptions={mediumOptions}
             suggestedTags={product.linkedPoster?.suggestedTags}
-            suggestedColors={suggestedColors}
-            suggestingColors={suggestingColors}
             onTagsChange={handleTagsChange}
-            onColorsChange={handleColorsChange}
-            onMediumChange={handleMediumChange}
           />
         </ProductDetailSection>
 
