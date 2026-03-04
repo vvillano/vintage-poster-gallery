@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface InternalTagOption {
   name: string;
   color: string;
@@ -22,6 +24,7 @@ export default function BasicInfoSection({
   internalTagOptions,
   onChange,
   onInternalTagsChange,
+  onSalesChannelToggle,
 }: {
   title: string;
   productType: string;
@@ -39,6 +42,7 @@ export default function BasicInfoSection({
   internalTagOptions: InternalTagOption[];
   onChange: (field: string, value: string) => void;
   onInternalTagsChange: (tags: string[]) => void;
+  onSalesChannelToggle: (publicationId: string, publish: boolean) => Promise<void>;
 }) {
   const selectedSet = new Set(selectedInternalTags.map((t) => t.toLowerCase()));
   return (
@@ -122,37 +126,10 @@ export default function BasicInfoSection({
       </div>
 
       {/* Sales Channels */}
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
-          Sales Channels
-          {salesChannels.length > 0 && (
-            <span className="ml-2 text-xs font-normal text-slate-500">
-              ({salesChannels.filter(c => c.published).length} of {salesChannels.length} active)
-            </span>
-          )}
-        </label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-          {salesChannels.length === 0 ? (
-            <span className="text-slate-400">No sales channels</span>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {salesChannels.map((ch) => (
-                <span
-                  key={ch.id}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium ${
-                    ch.published
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${ch.published ? 'bg-green-500' : 'bg-slate-400'}`} />
-                  {ch.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <SalesChannelsField
+        salesChannels={salesChannels}
+        onToggle={onSalesChannelToggle}
+      />
 
       {/* Internal Notes */}
       <div>
@@ -210,6 +187,68 @@ export default function BasicInfoSection({
         <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">
           {categoryName || <span className="text-slate-400">Not categorized</span>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SalesChannelsField({
+  salesChannels,
+  onToggle,
+}: {
+  salesChannels: { id: string; name: string; published: boolean }[];
+  onToggle: (publicationId: string, publish: boolean) => Promise<void>;
+}) {
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  async function handleToggle(ch: { id: string; name: string; published: boolean }) {
+    setToggling(ch.id);
+    try {
+      await onToggle(ch.id, !ch.published);
+    } finally {
+      setToggling(null);
+    }
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Sales Channels
+        {salesChannels.length > 0 && (
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            ({salesChannels.filter(c => c.published).length} of {salesChannels.length} active)
+          </span>
+        )}
+      </label>
+      <div className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+        {salesChannels.length === 0 ? (
+          <span className="text-slate-400">No sales channels</span>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {salesChannels.map((ch) => (
+              <button
+                key={ch.id}
+                type="button"
+                disabled={toggling !== null}
+                onClick={() => handleToggle(ch)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                  ch.published
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                } ${toggling === ch.id ? 'opacity-50' : ''}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${ch.published ? 'bg-green-500' : 'bg-slate-400'}`} />
+                {ch.name}
+                {toggling === ch.id && (
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

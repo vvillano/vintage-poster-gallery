@@ -1336,3 +1336,53 @@ export async function deleteShopifyProductGraphQL(productGid: string): Promise<s
 
   return data.productDelete.deletedProductId;
 }
+
+/**
+ * Publish a product to one or more sales channels
+ */
+export async function publishProductToChannels(
+  productGid: string,
+  publicationIds: string[]
+): Promise<void> {
+  const mutation = `
+    mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) {
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    id: productGid,
+    input: publicationIds.map((id) => ({ publicationId: id })),
+  });
+
+  if (data.publishablePublish.userErrors?.length > 0) {
+    throw new Error(data.publishablePublish.userErrors.map((e: any) => e.message).join(', '));
+  }
+}
+
+/**
+ * Unpublish a product from one or more sales channels
+ */
+export async function unpublishProductFromChannels(
+  productGid: string,
+  publicationIds: string[]
+): Promise<void> {
+  const mutation = `
+    mutation publishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
+      publishableUnpublish(id: $id, input: $input) {
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const data = await shopifyGraphQL<any>(mutation, {
+    id: productGid,
+    input: publicationIds.map((id) => ({ publicationId: id })),
+  });
+
+  if (data.publishableUnpublish.userErrors?.length > 0) {
+    throw new Error(data.publishableUnpublish.userErrors.map((e: any) => e.message).join(', '));
+  }
+}

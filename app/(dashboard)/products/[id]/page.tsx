@@ -272,6 +272,23 @@ export default function ProductDetailPage() {
     setSaveMessage(null);
   }
 
+  async function handleSalesChannelToggle(publicationId: string, publish: boolean) {
+    if (!product) return;
+    try {
+      const res = await fetch(`/api/shopify/products/${id}/publications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicationId, publish }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.details || data.error || 'Failed to update');
+      // Update local product state with new sales channels
+      setProduct((prev) => prev ? { ...prev, salesChannels: data.salesChannels } : prev);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update sales channel');
+    }
+  }
+
   // Compute dirty state by comparing formData against the loaded product
   const isDirty = useMemo(() => {
     if (!product) return false;
@@ -691,6 +708,7 @@ export default function ProductDetailPage() {
             internalTagOptions={internalTagOptions}
             onChange={handleFieldChange}
             onInternalTagsChange={handleInternalTagsChange}
+            onSalesChannelToggle={handleSalesChannelToggle}
           />
         </ProductDetailSection>
 
