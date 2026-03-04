@@ -60,6 +60,7 @@ export default function ProductDetailPage() {
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [productTypeOptions, setProductTypeOptions] = useState<string[]>([]);
   const [allPublications, setAllPublications] = useState<{ id: string; name: string }[]>([]);
+  const [shopDomain, setShopDomain] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -190,6 +191,10 @@ export default function ProductDetailPage() {
     fetch('/api/shopify/publications')
       .then((res) => res.ok ? res.json() : { publications: [] })
       .then((data) => setAllPublications(data.publications))
+      .catch(() => {});
+    fetch('/api/shopify/config')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.shopDomain) setShopDomain(data.shopDomain); })
       .catch(() => {});
   }, [loadProduct]);
 
@@ -661,6 +666,19 @@ export default function ProductDetailPage() {
               )}
               {(product.inventoryQuantity ?? 0) < 1 && (
                 <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-700">Out of Stock</span>
+              )}
+              {shopDomain && (
+                <a
+                  href={`https://${shopDomain}/admin/products/${product.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Shopify
+                </a>
               )}
             </div>
           </div>
