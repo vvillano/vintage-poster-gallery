@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '',
+    NEXT_PUBLIC_BUILD_MESSAGE: process.env.VERCEL_GIT_COMMIT_MESSAGE || '',
+    NEXT_PUBLIC_BUILD_REF: process.env.VERCEL_GIT_COMMIT_REF || '',
+  },
   images: {
     remotePatterns: [
       {
