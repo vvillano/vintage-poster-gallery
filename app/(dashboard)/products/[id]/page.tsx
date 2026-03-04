@@ -920,6 +920,21 @@ export default function ProductDetailPage() {
               />
             </ProductDetailSection>
 
+            <ProductDetailSection title="Pricing & Inventory" defaultOpen>
+              <PricingSection
+                price={formData.price}
+                compareAtPrice={formData.compareAtPrice}
+                inventoryQuantity={formData.inventoryQuantity}
+                unitCost={product.unitCost}
+                metafields={product.metafields}
+                onChange={handleFieldChange}
+              />
+            </ProductDetailSection>
+
+            <ProductDetailSection title="Acquisition" badge="Read-Only">
+              <AcquisitionSection metafields={product.metafields} />
+            </ProductDetailSection>
+
             <ProductDetailSection title="SEO & Marketing" badge="Read-Only">
               <SeoSection
                 seoTitle={product.seoTitle}
@@ -967,23 +982,7 @@ export default function ProductDetailPage() {
         {/* ============ VALUATION TAB ============ */}
         {activeTab === 'valuation' && (
           <div className="space-y-3">
-            <ProductDetailSection title="Pricing & Inventory" defaultOpen>
-              <PricingSection
-                price={formData.price}
-                compareAtPrice={formData.compareAtPrice}
-                inventoryQuantity={formData.inventoryQuantity}
-                unitCost={product.unitCost}
-                metafields={product.metafields}
-                onChange={handleFieldChange}
-              />
-            </ProductDetailSection>
-
-            <ProductDetailSection title="Acquisition" badge="Read-Only" defaultOpen>
-              <AcquisitionSection metafields={product.metafields} />
-            </ProductDetailSection>
-
-            {/* Placeholder for future valuation features */}
-            {product.linkedPoster && (product.linkedPoster.rarityValue.rarityAssessment || product.linkedPoster.comparableSales.length > 0) && (
+            {product.linkedPoster && (product.linkedPoster.rarityValue.rarityAssessment || product.linkedPoster.comparableSales.length > 0) ? (
               <ProductDetailSection title="Market Intelligence" defaultOpen>
                 <div className="grid gap-4 pt-4">
                   {product.linkedPoster.rarityValue.rarityAssessment && (
@@ -1035,6 +1034,19 @@ export default function ProductDetailPage() {
                   )}
                 </div>
               </ProductDetailSection>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                <div className="text-green-400 mb-2">
+                  <svg className="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-medium text-green-700 mb-1">Market Intelligence</h3>
+                <p className="text-xs text-green-500">
+                  Rarity assessments, comparable sales, and value insights will appear here
+                  once research data is available for this product.
+                </p>
+              </div>
             )}
           </div>
         )}
