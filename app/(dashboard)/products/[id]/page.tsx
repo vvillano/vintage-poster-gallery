@@ -639,6 +639,9 @@ export default function ProductDetailPage() {
               {product.sku && (
                 <span className="text-xs text-slate-400 font-mono">{product.sku}</span>
               )}
+              {(product.inventoryQuantity ?? 0) < 1 && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-700">Out of Stock</span>
+              )}
             </div>
           </div>
         </div>
