@@ -42,6 +42,7 @@ const EMPTY_FILTER_OPTIONS: FilterOptions = {
 const DEFAULT_SORT: SortState = { column: 'shopify_updated_at', order: 'desc' };
 
 const STORAGE_KEY = 'products-index-columns';
+const FILTERS_STORAGE_KEY = 'products-index-filters';
 
 function loadColumns(): Set<ColumnKey> {
   if (typeof window === 'undefined') return new Set(DEFAULT_VISIBLE_COLUMNS);
@@ -57,6 +58,29 @@ function loadColumns(): Set<ColumnKey> {
 
 function saveColumns(columns: Set<ColumnKey>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...columns]));
+}
+
+interface PersistedFilterState {
+  q: string;
+  filters: FilterState;
+  sort: SortState;
+  page: number;
+  pageSize: number;
+}
+
+function loadPersistedFilters(): PersistedFilterState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+    if (stored) return JSON.parse(stored) as PersistedFilterState;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function savePersistedFilters(state: PersistedFilterState) {
+  try {
+    sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
 }
 
 export default function ProductsPage() {
@@ -78,25 +102,30 @@ function ProductsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Read initial state from URL
-  const [search, setSearch] = useState(searchParams.get('q') || '');
+  // URL params take priority; if none present, restore from sessionStorage
+  const hasUrlParams = searchParams.toString().length > 0;
+  const persisted = hasUrlParams ? null : loadPersistedFilters();
+
+  const [search, setSearch] = useState(
+    searchParams.get('q') || persisted?.q || ''
+  );
   const [filters, setFilters] = useState<FilterState>({
-    status: searchParams.get('status') || '',
-    productType: searchParams.get('product_type') || '',
-    artist: searchParams.get('artist') || '',
-    country: searchParams.get('country') || '',
-    platform: searchParams.get('platform') || '',
-    tags: searchParams.get('tags') || '',
-    hasImage: searchParams.get('has_image') || '',
-    tagInclude: searchParams.get('tag_include') || '',
-    tagExclude: searchParams.get('tag_exclude') || '',
+    status: searchParams.get('status') || persisted?.filters.status || '',
+    productType: searchParams.get('product_type') || persisted?.filters.productType || '',
+    artist: searchParams.get('artist') || persisted?.filters.artist || '',
+    country: searchParams.get('country') || persisted?.filters.country || '',
+    platform: searchParams.get('platform') || persisted?.filters.platform || '',
+    tags: searchParams.get('tags') || persisted?.filters.tags || '',
+    hasImage: searchParams.get('has_image') || persisted?.filters.hasImage || '',
+    tagInclude: searchParams.get('tag_include') || persisted?.filters.tagInclude || '',
+    tagExclude: searchParams.get('tag_exclude') || persisted?.filters.tagExclude || '',
   });
   const [sort, setSort] = useState<SortState>({
-    column: searchParams.get('sort') || DEFAULT_SORT.column,
-    order: (searchParams.get('order') as 'asc' | 'desc') || DEFAULT_SORT.order,
+    column: searchParams.get('sort') || persisted?.sort.column || DEFAULT_SORT.column,
+    order: (searchParams.get('order') as 'asc' | 'desc') || persisted?.sort.order || DEFAULT_SORT.order,
   });
-  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
-  const [pageSize, setPageSize] = useState(parseInt(searchParams.get('pageSize') || '50'));
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || String(persisted?.page || 1)));
+  const [pageSize, setPageSize] = useState(parseInt(searchParams.get('pageSize') || String(persisted?.pageSize || 50)));
 
   // Data
   const [products, setProducts] = useState<IndexProduct[]>([]);
@@ -178,6 +207,15 @@ function ProductsPageInner() {
       if (opts.sort && opts.sort.order !== DEFAULT_SORT.order) urlParams.set('order', opts.sort.order);
       if ((opts.page || 1) > 1) urlParams.set('page', String(opts.page));
       if ((opts.pageSize || 50) !== 50) urlParams.set('pageSize', String(opts.pageSize));
+
+      // Persist filter state to sessionStorage for tab lifetime
+      savePersistedFilters({
+        q: opts.q || '',
+        filters: opts.filters || EMPTY_FILTERS,
+        sort: opts.sort || DEFAULT_SORT,
+        page: opts.page || 1,
+        pageSize: opts.pageSize || 50,
+      });
 
       const qs = urlParams.toString();
       router.replace(qs ? `/products?${qs}` : '/products', { scroll: false });
