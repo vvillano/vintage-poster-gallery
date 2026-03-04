@@ -132,7 +132,7 @@ export default function DashboardPage() {
             <span className="flex items-center gap-1.5">
               <span className="text-slate-400">Deploy</span>
               <code className="bg-slate-200 px-1.5 py-0.5 rounded font-mono">
-                {process.env.NEXT_PUBLIC_DEPLOYMENT_ID.slice(0, 9)}
+                {process.env.NEXT_PUBLIC_DEPLOYMENT_ID.replace(/^dpl_/, '').slice(0, 9)}
               </code>
             </span>
           )}
