@@ -1004,17 +1004,6 @@ const PRODUCT_DETAIL_QUERY = `
           fullName
         }
       }
-      resourcePublicationsV2(first: 20) {
-        edges {
-          node {
-            isPublished
-            publication {
-              id
-              name
-            }
-          }
-        }
-      }
       metafields(first: 36, keys: [
         "jadepuma.artist", "jadepuma.date", "jadepuma.condition",
         "jadepuma.condition_details", "jadepuma.color", "jadepuma.medium",
