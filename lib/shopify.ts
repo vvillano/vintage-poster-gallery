@@ -998,6 +998,23 @@ const PRODUCT_DETAIL_QUERY = `
           }
         }
       }
+      productCategory {
+        productTaxonomyNode {
+          id
+          fullName
+        }
+      }
+      resourcePublicationsV2(first: 20) {
+        edges {
+          node {
+            isPublished
+            publication {
+              id
+              name
+            }
+          }
+        }
+      }
       metafields(first: 36, keys: [
         "jadepuma.artist", "jadepuma.date", "jadepuma.condition",
         "jadepuma.condition_details", "jadepuma.color", "jadepuma.medium",
@@ -1123,6 +1140,13 @@ function mapGraphQLToProductDetail(product: any): ProductDetail {
     inventoryItemGid: variant?.inventoryItem?.id || '',
     locationGid: inventoryLevel?.location?.id || null,
     metafields,
+    categoryId: product.productCategory?.productTaxonomyNode?.id || null,
+    categoryName: product.productCategory?.productTaxonomyNode?.fullName || null,
+    salesChannels: (product.resourcePublicationsV2?.edges || []).map((e: any) => ({
+      id: e.node.publication.id,
+      name: e.node.publication.name,
+      published: e.node.isPublished,
+    })),
     linkedPoster: null,
   };
 }

@@ -13,6 +13,10 @@ export default function BasicInfoSection({
   sku,
   location,
   internalNotes,
+  categoryName,
+  salesChannels,
+  locationOptions,
+  productTypeOptions,
   selectedInternalTags,
   unmatchedInternalTags,
   internalTagOptions,
@@ -24,8 +28,12 @@ export default function BasicInfoSection({
   status: string;
   handle: string;
   sku: string;
-  location: string | undefined;
-  internalNotes: string | undefined;
+  location: string;
+  internalNotes: string;
+  categoryName: string | null;
+  salesChannels: { id: string; name: string; published: boolean }[];
+  locationOptions: string[];
+  productTypeOptions: string[];
   selectedInternalTags: string[];
   unmatchedInternalTags: string[];
   internalTagOptions: InternalTagOption[];
@@ -49,10 +57,20 @@ export default function BasicInfoSection({
       {/* Location / Status / Product Type */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-500 mb-1">Location</label>
-          <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">
-            {location || '-'}
-          </div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+          <select
+            value={location}
+            onChange={(e) => onChange('location', e.target.value)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm bg-white"
+          >
+            <option value="">-- Select --</option>
+            {locationOptions.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+            {location && !locationOptions.includes(location) && (
+              <option value={location}>{location}</option>
+            )}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
@@ -68,12 +86,19 @@ export default function BasicInfoSection({
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Product Type</label>
-          <input
-            type="text"
+          <select
             value={productType}
             onChange={(e) => onChange('productType', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-          />
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm bg-white"
+          >
+            <option value="">-- Select --</option>
+            {productTypeOptions.map((pt) => (
+              <option key={pt} value={pt}>{pt}</option>
+            ))}
+            {productType && !productTypeOptions.includes(productType) && (
+              <option value={productType}>{productType}</option>
+            )}
+          </select>
         </div>
       </div>
 
@@ -98,18 +123,47 @@ export default function BasicInfoSection({
 
       {/* Sales Channels */}
       <div>
-        <label className="block text-sm font-medium text-slate-500 mb-1">Sales Channels</label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-400 italic">
-          Sales channel management coming soon
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Sales Channels
+          {salesChannels.length > 0 && (
+            <span className="ml-2 text-xs font-normal text-slate-500">
+              ({salesChannels.filter(c => c.published).length} of {salesChannels.length} active)
+            </span>
+          )}
+        </label>
+        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+          {salesChannels.length === 0 ? (
+            <span className="text-slate-400">No sales channels</span>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {salesChannels.map((ch) => (
+                <span
+                  key={ch.id}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium ${
+                    ch.published
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${ch.published ? 'bg-green-500' : 'bg-slate-400'}`} />
+                  {ch.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Internal Notes */}
       <div>
-        <label className="block text-sm font-medium text-slate-500 mb-1">Internal Notes</label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 min-h-[60px] whitespace-pre-wrap">
-          {internalNotes || '-'}
-        </div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Internal Notes</label>
+        <textarea
+          value={internalNotes}
+          onChange={(e) => onChange('internalNotes', e.target.value)}
+          placeholder="Add internal notes..."
+          rows={3}
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
+        />
       </div>
 
       {/* Internal Tags */}
@@ -153,8 +207,8 @@ export default function BasicInfoSection({
       {/* Shopify Category */}
       <div>
         <label className="block text-sm font-medium text-slate-500 mb-1">Shopify Category</label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-400 italic">
-          Category management coming soon
+        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">
+          {categoryName || <span className="text-slate-400">Not categorized</span>}
         </div>
       </div>
     </div>

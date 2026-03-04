@@ -70,6 +70,11 @@ export interface ProductDetail {
   locationGid: string | null;
   // Metafields
   metafields: ProductMetafields;
+  // Shopify category
+  categoryId: string | null;
+  categoryName: string | null;
+  // Sales channels / publications
+  salesChannels: { id: string; name: string; published: boolean }[];
   // Linked poster data from research database
   linkedPoster: LinkedPosterData | null;
 }

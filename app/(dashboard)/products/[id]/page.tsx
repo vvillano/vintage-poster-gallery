@@ -30,6 +30,8 @@ interface FormData {
   compareAtPrice: string;
   sku: string;
   inventoryQuantity: string;
+  location: string;
+  internalNotes: string;
   internalTags: string[];
   colors: string[];
   medium: string[];
@@ -55,6 +57,9 @@ export default function ProductDetailPage() {
   const [suggestingColors, setSuggestingColors] = useState(false);
   const [sizeTagRules, setSizeTagRules] = useState<SizeTagRule[]>([]);
   const [dateTagRules, setDateTagRules] = useState<DateTagRule[]>([]);
+  const [locationOptions, setLocationOptions] = useState<string[]>([]);
+  const [productTypeOptions, setProductTypeOptions] = useState<string[]>([]);
+  const [salesChannels, setSalesChannels] = useState<{ name: string; published: boolean }[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -66,6 +71,8 @@ export default function ProductDetailPage() {
     compareAtPrice: '',
     sku: '',
     inventoryQuantity: '0',
+    location: '',
+    internalNotes: '',
     internalTags: [],
     colors: [],
     medium: [],
@@ -125,6 +132,8 @@ export default function ProductDetailPage() {
         compareAtPrice: data.compareAtPrice || '',
         sku: data.sku || '',
         inventoryQuantity: String(data.inventoryQuantity ?? 0),
+        location: data.metafields.location || '',
+        internalNotes: data.metafields.internalNotes || '',
         internalTags: parsedInternalTags,
         colors: parsedColors,
         medium: parsedMedium,
@@ -169,6 +178,14 @@ export default function ProductDetailPage() {
         startYear: i.startYear != null ? Number(i.startYear) : null,
         endYear: i.endYear != null ? Number(i.endYear) : null,
       }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/locations')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setLocationOptions(data.items.map((i: { name: string }) => i.name)))
+      .catch(() => {});
+    fetch('/api/managed-lists/product-types')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setProductTypeOptions(data.items.filter((i: { active?: boolean }) => i.active !== false).map((i: { name: string }) => i.name)))
       .catch(() => {});
   }, [loadProduct]);
 
@@ -267,6 +284,8 @@ export default function ProductDetailPage() {
     if (formData.compareAtPrice !== (product.compareAtPrice || '')) return true;
     if (formData.sku !== (product.sku || '')) return true;
     if (formData.inventoryQuantity !== String(product.inventoryQuantity ?? 0)) return true;
+    if (formData.location !== (product.metafields.location || '')) return true;
+    if (formData.internalNotes !== (product.metafields.internalNotes || '')) return true;
     // Compare internal tags (order-independent)
     let origTags: string[] = [];
     if (product.metafields.internalTags) {
@@ -371,6 +390,30 @@ export default function ProductDetailPage() {
       if (formData.sku !== (product.sku || '')) payload.sku = formData.sku;
       if (formData.inventoryQuantity !== String(product.inventoryQuantity ?? 0)) {
         payload.inventoryQuantity = parseInt(formData.inventoryQuantity) || 0;
+      }
+
+      // Check if location changed
+      if (formData.location !== (product.metafields.location || '')) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'location',
+          value: formData.location,
+          type: 'single_line_text_field',
+        });
+        payload.metafields = metafields;
+      }
+
+      // Check if internal notes changed
+      if (formData.internalNotes !== (product.metafields.internalNotes || '')) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'internal_notes',
+          value: formData.internalNotes,
+          type: 'multi_line_text_field',
+        });
+        payload.metafields = metafields;
       }
 
       // Check if internal tags changed
@@ -490,6 +533,8 @@ export default function ProductDetailPage() {
         compareAtPrice: updated.compareAtPrice || '',
         sku: updated.sku || '',
         inventoryQuantity: String(updated.inventoryQuantity ?? 0),
+        location: updated.metafields.location || '',
+        internalNotes: updated.metafields.internalNotes || '',
         internalTags: updatedInternalTags,
         colors: updatedColors,
         medium: updatedMedium,
@@ -635,8 +680,12 @@ export default function ProductDetailPage() {
             status={formData.status}
             handle={product.handle}
             sku={formData.sku}
-            location={product.metafields.location}
-            internalNotes={product.metafields.internalNotes}
+            location={formData.location}
+            internalNotes={formData.internalNotes}
+            categoryName={product.categoryName}
+            salesChannels={product.salesChannels}
+            locationOptions={locationOptions}
+            productTypeOptions={productTypeOptions}
             selectedInternalTags={formData.internalTags}
             unmatchedInternalTags={unmatchedInternalTags}
             internalTagOptions={internalTagOptions}
