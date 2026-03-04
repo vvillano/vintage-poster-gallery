@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'seed-date-tags',
+    name: 'Seed Date Tags',
+    description: 'Seeds all 24 date tag ranges: decade-level (1900-1909 through 2020-2029), quarter-century (1900-1924 through 2000-2024), century-level (Pre 1700, 1700s, 1800s), and 2000+ catch-all. Clears existing date tags first. Overlapping ranges apply correctly (e.g., 1941 matches both 1940-1949 and 1925-1949).',
+    endpoint: '/api/migrate/seed-date-tags',
+    successLink: { href: '/settings/lists', label: 'View Date Tags' },
+  },
+  {
     id: 'products-index',
     name: 'Products Index',
     description: 'Creates the products_index table for the advanced product grid. Stores a local copy of all Shopify products with key metafields for fast filtering, sorting, and searching. Run "Sync" from the Products page after migration.',
