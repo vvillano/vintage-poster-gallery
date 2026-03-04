@@ -339,13 +339,13 @@ export default function ProductDetailPage() {
   }
 
   // Immediate-apply: Internal Tags save directly to Shopify on change
-  const [savingInternalTags, setSavingInternalTags] = useState(false);
-  async function handleInternalTagsChange(internalTags: string[]) {
+  const [savingInternalTag, setSavingInternalTag] = useState<string | null>(null);
+  async function handleInternalTagsChange(internalTags: string[], toggledTag?: string) {
     setFormData((prev) => ({ ...prev, internalTags }));
     setSaveMessage(null);
 
     if (!product) return;
-    setSavingInternalTags(true);
+    setSavingInternalTag(toggledTag || null);
     try {
       const res = await fetch(`/api/shopify/products/${id}`, {
         method: 'PUT',
@@ -369,7 +369,7 @@ export default function ProductDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save internal tags');
     } finally {
-      setSavingInternalTags(false);
+      setSavingInternalTag(null);
     }
   }
 
@@ -553,11 +553,11 @@ export default function ProductDetailPage() {
       // Internal tags are immediate-apply (saved on toggle, not here)
 
       // Check Basic Information metafield changes
-      const metafieldChecks: { formValue: string; origValue: string | undefined; namespace: string; key: string; type: 'single_line_text_field' | 'multi_line_text_field' }[] = [
+      const metafieldChecks: { formValue: string; origValue: string | undefined; namespace: string; key: string; type: MetafieldWrite['type'] }[] = [
         { formValue: formData.artist, origValue: product.metafields.artist, namespace: 'jadepuma', key: 'artist', type: 'single_line_text_field' },
         { formValue: formData.year, origValue: product.metafields.year, namespace: 'specs', key: 'year', type: 'single_line_text_field' },
-        { formValue: formData.height, origValue: product.metafields.height, namespace: 'specs', key: 'height', type: 'single_line_text_field' },
-        { formValue: formData.width, origValue: product.metafields.width, namespace: 'specs', key: 'width', type: 'single_line_text_field' },
+        { formValue: formData.height, origValue: product.metafields.height, namespace: 'specs', key: 'height', type: 'number_decimal' },
+        { formValue: formData.width, origValue: product.metafields.width, namespace: 'specs', key: 'width', type: 'number_decimal' },
         { formValue: formData.condition, origValue: product.metafields.condition, namespace: 'jadepuma', key: 'condition', type: 'single_line_text_field' },
         { formValue: formData.conditionDetails, origValue: product.metafields.conditionDetails, namespace: 'jadepuma', key: 'condition_details', type: 'multi_line_text_field' },
       ];
@@ -872,7 +872,7 @@ export default function ProductDetailPage() {
             selectedInternalTags={formData.internalTags}
             unmatchedInternalTags={unmatchedInternalTags}
             internalTagOptions={internalTagOptions}
-            savingInternalTags={savingInternalTags}
+            savingInternalTag={savingInternalTag}
             onChange={handleFieldChange}
             onInternalTagsChange={handleInternalTagsChange}
             onSalesChannelToggle={handleSalesChannelToggle}

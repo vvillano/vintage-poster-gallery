@@ -22,7 +22,7 @@ export default function BasicInfoSection({
   selectedInternalTags,
   unmatchedInternalTags,
   internalTagOptions,
-  savingInternalTags,
+  savingInternalTag,
   onChange,
   onInternalTagsChange,
   onSalesChannelToggle,
@@ -41,9 +41,9 @@ export default function BasicInfoSection({
   selectedInternalTags: string[];
   unmatchedInternalTags: string[];
   internalTagOptions: InternalTagOption[];
-  savingInternalTags?: boolean;
+  savingInternalTag?: string | null;
   onChange: (field: string, value: string) => void;
-  onInternalTagsChange: (tags: string[]) => void;
+  onInternalTagsChange: (tags: string[], toggledTag?: string) => void;
   onSalesChannelToggle: (publicationId: string, publish: boolean) => Promise<void>;
 }) {
   const selectedSet = new Set(selectedInternalTags.map((t) => t.toLowerCase()));
@@ -151,23 +151,31 @@ export default function BasicInfoSection({
         <div className="px-3 py-2 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
           {internalTagOptions.map((tag) => {
             const isSelected = selectedSet.has(tag.name.toLowerCase());
+            const isSaving = savingInternalTag === tag.name;
             return (
               <button
                 key={tag.name}
                 type="button"
+                disabled={savingInternalTag !== null}
                 onClick={() => {
                   const next = isSelected
                     ? selectedInternalTags.filter((t) => t.toLowerCase() !== tag.name.toLowerCase())
                     : [...selectedInternalTags, tag.name];
-                  onInternalTagsChange(next);
+                  onInternalTagsChange(next, tag.name);
                 }}
-                className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                   isSelected
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                }`}
+                } ${isSaving ? 'opacity-50' : ''}`}
               >
                 {tag.name}
+                {isSaving && (
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
               </button>
             );
           })}
@@ -180,12 +188,6 @@ export default function BasicInfoSection({
               {tag}
             </span>
           ))}
-          {savingInternalTags && (
-            <svg className="w-3.5 h-3.5 animate-spin text-blue-500" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          )}
         </div>
       </div>
 

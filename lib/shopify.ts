@@ -343,7 +343,7 @@ export async function setProductMetafield(
     namespace: string;
     key: string;
     value: string;
-    type: 'single_line_text_field' | 'multi_line_text_field' | 'json' | 'list.single_line_text_field' | 'boolean';
+    type: 'single_line_text_field' | 'multi_line_text_field' | 'json' | 'list.single_line_text_field' | 'boolean' | 'number_decimal';
   }
 ): Promise<void> {
   const numericId = productId.replace('gid://shopify/Product/', '');
