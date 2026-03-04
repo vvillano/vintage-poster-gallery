@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { ProductDetail, ProductUpdatePayload } from '@/types/shopify-product-detail';
+import type { ProductDetail, ProductUpdatePayload, MetafieldWrite } from '@/types/shopify-product-detail';
 import ProductDetailSection from '@/components/products/detail/ProductDetailSection';
 import BasicInfoSection from '@/components/products/detail/BasicInfoSection';
 import SpecificationsSection from '@/components/products/detail/SpecificationsSection';
@@ -28,6 +28,7 @@ interface FormData {
   compareAtPrice: string;
   sku: string;
   inventoryQuantity: string;
+  internalTags: string[];
 }
 
 export default function ProductDetailPage() {
@@ -54,6 +55,7 @@ export default function ProductDetailPage() {
     compareAtPrice: '',
     sku: '',
     inventoryQuantity: '0',
+    internalTags: [],
   });
 
   const loadProduct = useCallback(async () => {
@@ -67,6 +69,17 @@ export default function ProductDetailPage() {
       }
       const data: ProductDetail = await res.json();
       setProduct(data);
+      // Parse internal tags from metafield JSON array
+      let parsedInternalTags: string[] = [];
+      if (data.metafields.internalTags) {
+        try {
+          const parsed = JSON.parse(data.metafields.internalTags);
+          if (Array.isArray(parsed)) parsedInternalTags = parsed;
+        } catch {
+          parsedInternalTags = data.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
+        }
+      }
+
       setFormData({
         title: data.title,
         bodyHtml: data.bodyHtml || '',
@@ -77,6 +90,7 @@ export default function ProductDetailPage() {
         compareAtPrice: data.compareAtPrice || '',
         sku: data.sku || '',
         inventoryQuantity: String(data.inventoryQuantity ?? 0),
+        internalTags: parsedInternalTags,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
@@ -100,6 +114,11 @@ export default function ProductDetailPage() {
 
   function handleTagsChange(tags: string[]) {
     setFormData((prev) => ({ ...prev, tags }));
+    setSaveMessage(null);
+  }
+
+  function handleInternalTagsChange(internalTags: string[]) {
+    setFormData((prev) => ({ ...prev, internalTags }));
     setSaveMessage(null);
   }
 
@@ -127,6 +146,27 @@ export default function ProductDetailPage() {
         payload.inventoryQuantity = parseInt(formData.inventoryQuantity) || 0;
       }
 
+      // Check if internal tags changed
+      let originalInternalTags: string[] = [];
+      if (product.metafields.internalTags) {
+        try {
+          const parsed = JSON.parse(product.metafields.internalTags);
+          if (Array.isArray(parsed)) originalInternalTags = parsed;
+        } catch {
+          originalInternalTags = product.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
+        }
+      }
+      if (JSON.stringify(formData.internalTags.sort()) !== JSON.stringify(originalInternalTags.sort())) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'internal_tags',
+          value: JSON.stringify(formData.internalTags),
+          type: 'list.single_line_text_field',
+        });
+        payload.metafields = metafields;
+      }
+
       if (Object.keys(payload).length === 0) {
         setSaveMessage('No changes to save');
         return;
@@ -145,6 +185,18 @@ export default function ProductDetailPage() {
 
       const updated: ProductDetail = await res.json();
       setProduct(updated);
+
+      // Parse updated internal tags
+      let updatedInternalTags: string[] = [];
+      if (updated.metafields.internalTags) {
+        try {
+          const parsed = JSON.parse(updated.metafields.internalTags);
+          if (Array.isArray(parsed)) updatedInternalTags = parsed;
+        } catch {
+          updatedInternalTags = updated.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
+        }
+      }
+
       setFormData({
         title: updated.title,
         bodyHtml: updated.bodyHtml || '',
@@ -155,6 +207,7 @@ export default function ProductDetailPage() {
         compareAtPrice: updated.compareAtPrice || '',
         sku: updated.sku || '',
         inventoryQuantity: String(updated.inventoryQuantity ?? 0),
+        internalTags: updatedInternalTags,
       });
       setSaveMessage('Saved successfully');
     } catch (err) {
@@ -205,6 +258,10 @@ export default function ProductDetailPage() {
   }
 
   if (!product) return null;
+
+  // Internal tags on the product that aren't in the managed list
+  const managedTagNames = new Set(internalTagOptions.map((t) => t.name.toLowerCase()));
+  const unmatchedInternalTags = formData.internalTags.filter((t) => !managedTagNames.has(t.toLowerCase()));
 
   const STATUS_COLORS: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
@@ -283,9 +340,11 @@ export default function ProductDetailPage() {
             sku={formData.sku}
             location={product.metafields.location}
             internalNotes={product.metafields.internalNotes}
-            internalTagsMetafield={product.metafields.internalTags}
+            selectedInternalTags={formData.internalTags}
+            unmatchedInternalTags={unmatchedInternalTags}
             internalTagOptions={internalTagOptions}
             onChange={handleFieldChange}
+            onInternalTagsChange={handleInternalTagsChange}
           />
         </ProductDetailSection>
 

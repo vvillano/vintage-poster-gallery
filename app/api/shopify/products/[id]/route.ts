@@ -9,6 +9,7 @@ import {
   updateInventoryItemGraphQL,
   setInventoryQuantityGraphQL,
   deleteShopifyProductGraphQL,
+  setProductMetafield,
 } from '@/lib/shopify';
 import type { ProductUpdatePayload } from '@/types/shopify-product-detail';
 
@@ -79,6 +80,13 @@ export async function PUT(
         current.locationGid,
         body.inventoryQuantity
       );
+    }
+
+    // Write metafields if any
+    if (body.metafields && body.metafields.length > 0) {
+      for (const mf of body.metafields) {
+        await setProductMetafield(id, mf);
+      }
     }
 
     // Re-fetch updated product

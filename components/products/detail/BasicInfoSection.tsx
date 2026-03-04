@@ -13,9 +13,11 @@ export default function BasicInfoSection({
   sku,
   location,
   internalNotes,
-  internalTagsMetafield,
+  selectedInternalTags,
+  unmatchedInternalTags,
   internalTagOptions,
   onChange,
+  onInternalTagsChange,
 }: {
   title: string;
   productType: string;
@@ -24,26 +26,13 @@ export default function BasicInfoSection({
   sku: string;
   location: string | undefined;
   internalNotes: string | undefined;
-  internalTagsMetafield: string | undefined;
+  selectedInternalTags: string[];
+  unmatchedInternalTags: string[];
   internalTagOptions: InternalTagOption[];
   onChange: (field: string, value: string) => void;
+  onInternalTagsChange: (tags: string[]) => void;
 }) {
-  // Parse internal tags from Shopify metafield (JSON array format: '["INV 2026","Ready to List"]')
-  let productInternalTags: string[] = [];
-  if (internalTagsMetafield) {
-    try {
-      const parsed = JSON.parse(internalTagsMetafield);
-      if (Array.isArray(parsed)) productInternalTags = parsed;
-    } catch {
-      productInternalTags = internalTagsMetafield.split(',').map((t) => t.trim()).filter(Boolean);
-    }
-  }
-  // Build a map of internal tag names to colors for quick lookup
-  const tagColorMap = new Map(internalTagOptions.map((t) => [t.name.toLowerCase(), t.color]));
-  // Match product's internal tags against the managed list for display colors
-  const matchedInternalTags = productInternalTags.filter((t) => tagColorMap.has(t.toLowerCase()));
-  // Also show any internal tags not in the managed list (with default gray)
-  const unmatchedInternalTags = productInternalTags.filter((t) => !tagColorMap.has(t.toLowerCase()));
+  const selectedSet = new Set(selectedInternalTags.map((t) => t.toLowerCase()));
   return (
     <div className="grid gap-4 pt-4">
       {/* Title */}
@@ -125,34 +114,39 @@ export default function BasicInfoSection({
 
       {/* Internal Tags */}
       <div>
-        <label className="block text-sm font-medium text-slate-500 mb-1">Internal Tags</label>
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
-          {productInternalTags.length > 0 ? (
-            <>
-              {matchedInternalTags.map((tag) => {
-                const color = tagColorMap.get(tag.toLowerCase()) || '#6B7280';
-                return (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
-                    style={{ backgroundColor: color }}
-                  >
-                    {tag}
-                  </span>
-                );
-              })}
-              {unmatchedInternalTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white bg-slate-500"
-                >
-                  {tag}
-                </span>
-              ))}
-            </>
-          ) : (
-            <span className="text-sm text-slate-400">No internal tags</span>
-          )}
+        <label className="block text-sm font-medium text-slate-700 mb-1">Internal Tags</label>
+        <div className="px-3 py-2 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
+          {internalTagOptions.map((tag) => {
+            const isSelected = selectedSet.has(tag.name.toLowerCase());
+            return (
+              <button
+                key={tag.name}
+                type="button"
+                onClick={() => {
+                  const next = isSelected
+                    ? selectedInternalTags.filter((t) => t.toLowerCase() !== tag.name.toLowerCase())
+                    : [...selectedInternalTags, tag.name];
+                  onInternalTagsChange(next);
+                }}
+                className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white transition-opacity cursor-pointer"
+                style={{
+                  backgroundColor: tag.color,
+                  opacity: isSelected ? 1 : 0.3,
+                }}
+              >
+                {tag.name}
+              </button>
+            );
+          })}
+          {unmatchedInternalTags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
+              title="Not in managed list"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
 

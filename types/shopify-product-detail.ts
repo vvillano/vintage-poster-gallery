@@ -70,6 +70,14 @@ export interface ProductDetail {
   metafields: ProductMetafields;
 }
 
+/** A single metafield write operation */
+export interface MetafieldWrite {
+  namespace: string;
+  key: string;
+  value: string;
+  type: 'single_line_text_field' | 'multi_line_text_field' | 'json' | 'list.single_line_text_field' | 'boolean';
+}
+
 /** Payload for updating a product */
 export interface ProductUpdatePayload {
   title?: string;
@@ -81,6 +89,8 @@ export interface ProductUpdatePayload {
   compareAtPrice?: string | null;
   sku?: string;
   inventoryQuantity?: number;
+  metafields?: MetafieldWrite[];
+  categoryId?: string;
 }
 
 /** Payload for creating a product */
