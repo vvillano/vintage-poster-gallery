@@ -119,7 +119,7 @@ export default function PlatformsPage() {
       displayOrder: platform.displayOrder || 0,
       notes: platform.notes || '',
     });
-    setShowForm(true);
+    // Form renders inline in the list row — no need to setShowForm
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -224,6 +224,189 @@ export default function PlatformsPage() {
     }
   };
 
+  // Renders the platform form (used both for Add at top and Edit inline)
+  function renderPlatformForm() {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Platform Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., eBay, Rose Bowl, WorthPoint"
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Platform Type *</label>
+            <select
+              value={formData.platformType}
+              onChange={(e) => setFormData({ ...formData, platformType: e.target.value as PlatformType })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            >
+              {PLATFORM_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              {PLATFORM_TYPES.find(t => t.value === formData.platformType)?.description}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Display Order</label>
+            <input
+              type="number"
+              value={formData.displayOrder}
+              onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+            <p className="text-xs text-slate-500 mt-1">Lower numbers appear first</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Main URL</label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              placeholder="https://www.ebay.com"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Search URL Template</label>
+            <input
+              type="text"
+              value={formData.searchUrlTemplate}
+              onChange={(e) => setFormData({ ...formData, searchUrlTemplate: e.target.value })}
+              placeholder="https://ebay.com/sch/i.html?_nkw={query}"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none font-mono text-sm"
+            />
+            <p className="text-xs text-slate-500 mt-1">Use {'{query}'} as placeholder for search terms</p>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Sold/Completed Search URL Template
+            <span className="text-xs text-slate-500 ml-1">(for price research)</span>
+          </label>
+          <input
+            type="text"
+            value={formData.searchSoldUrlTemplate}
+            onChange={(e) => setFormData({ ...formData, searchSoldUrlTemplate: e.target.value })}
+            placeholder="https://ebay.com/sch/i.html?_nkw={query}&LH_Complete=1&LH_Sold=1"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none font-mono text-sm"
+          />
+          <p className="text-xs text-slate-500 mt-1">URL template to search for sold items - used for valuation research</p>
+        </div>
+
+        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+          <p className="text-sm font-medium text-slate-700 mb-2">Platform Purpose:</p>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isAcquisitionPlatform}
+                onChange={(e) => setFormData({ ...formData, isAcquisitionPlatform: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-700">Acquisition Platform</span>
+              <span className="text-xs text-slate-500">(syncs to Shopify as "Source")</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.canResearchPrices}
+                onChange={(e) => setFormData({ ...formData, canResearchPrices: e.target.checked })}
+                className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+              />
+              <span className="text-sm text-slate-700">Can Research Prices</span>
+              <span className="text-xs text-slate-500">(shows in valuation research)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isResearchSite}
+                onChange={(e) => setFormData({ ...formData, isResearchSite: e.target.checked })}
+                className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500"
+              />
+              <span className="text-sm text-slate-700">Research Site (legacy)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.requiresSubscription}
+                onChange={(e) => setFormData({ ...formData, requiresSubscription: e.target.checked })}
+                className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+              />
+              <span className="text-sm text-slate-700">Requires Subscription</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+            <input
+              type="text"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              placeholder="Login username/email"
+              autoComplete="new-password"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="Login password"
+              autoComplete="new-password"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="Any additional notes about this platform..."
+            rows={2}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={submitting || !formData.name.trim()}
+            className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+          >
+            {submitting ? 'Saving...' : editingPlatform ? 'Update Platform' : 'Add Platform'}
+          </button>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-6 py-2 text-slate-600 hover:text-slate-900 transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -301,225 +484,23 @@ export default function PlatformsPage() {
         </div>
       </div>
 
-      {/* Add/Edit Form */}
-      <div className="bg-white border border-slate-200 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {editingPlatform ? `Edit "${editingPlatform.name}"` : 'Add Platform'}
-          </h2>
-          {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition text-sm"
-            >
-              + Add Platform
-            </button>
-          )}
+      {/* Add Form — only shown when adding new (not editing) */}
+      {!editingPlatform && (
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Add Platform</h2>
+            {!showForm && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm"
+              >
+                + Add Platform
+              </button>
+            )}
+          </div>
+          {showForm && renderPlatformForm()}
         </div>
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Platform Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., eBay, Rose Bowl, WorthPoint"
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Platform Type *
-                </label>
-                <select
-                  value={formData.platformType}
-                  onChange={(e) => setFormData({ ...formData, platformType: e.target.value as PlatformType })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                >
-                  {PLATFORM_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  {PLATFORM_TYPES.find(t => t.value === formData.platformType)?.description}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Display Order
-                </label>
-                <input
-                  type="number"
-                  value={formData.displayOrder}
-                  onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Lower numbers appear first
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Main URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder="https://www.ebay.com"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Search URL Template
-                </label>
-                <input
-                  type="text"
-                  value={formData.searchUrlTemplate}
-                  onChange={(e) => setFormData({ ...formData, searchUrlTemplate: e.target.value })}
-                  placeholder="https://ebay.com/sch/i.html?_nkw={query}"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Use {'{query}'} as placeholder for search terms
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Sold/Completed Search URL Template
-                <span className="text-xs text-slate-500 ml-1">(for price research)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.searchSoldUrlTemplate}
-                onChange={(e) => setFormData({ ...formData, searchSoldUrlTemplate: e.target.value })}
-                placeholder="https://ebay.com/sch/i.html?_nkw={query}&LH_Complete=1&LH_Sold=1"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                URL template to search for sold items - used for valuation research
-              </p>
-            </div>
-
-            {/* Purpose checkboxes */}
-            <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-700 mb-2">Platform Purpose:</p>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isAcquisitionPlatform}
-                    onChange={(e) => setFormData({ ...formData, isAcquisitionPlatform: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-slate-700">Acquisition Platform</span>
-                  <span className="text-xs text-slate-500">(syncs to Shopify as "Source")</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.canResearchPrices}
-                    onChange={(e) => setFormData({ ...formData, canResearchPrices: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-slate-700">Can Research Prices</span>
-                  <span className="text-xs text-slate-500">(shows in valuation research)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isResearchSite}
-                    onChange={(e) => setFormData({ ...formData, isResearchSite: e.target.checked })}
-                    className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500"
-                  />
-                  <span className="text-sm text-slate-700">Research Site (legacy)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.requiresSubscription}
-                    onChange={(e) => setFormData({ ...formData, requiresSubscription: e.target.checked })}
-                    className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
-                  />
-                  <span className="text-sm text-slate-700">Requires Subscription</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="Login username/email"
-                  autoComplete="new-password"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Login password"
-                  autoComplete="new-password"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Any additional notes about this platform..."
-                rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={submitting || !formData.name.trim()}
-                className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
-              >
-                {submitting ? 'Saving...' : editingPlatform ? 'Update Platform' : 'Add Platform'}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-6 py-2 text-slate-600 hover:text-slate-900 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+      )}
 
       {/* Platforms List */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -530,6 +511,11 @@ export default function PlatformsPage() {
               ({filteredPlatforms.length} of {platforms.length})
             </span>
           </h2>
+          {editingPlatform && (
+            <span className="text-xs text-amber-600 font-medium">
+              Editing below — scroll to highlighted row
+            </span>
+          )}
         </div>
 
         {filteredPlatforms.length === 0 ? (
@@ -541,110 +527,123 @@ export default function PlatformsPage() {
         ) : (
           <div className="divide-y divide-slate-100">
             {filteredPlatforms.map((platform) => (
-              <div
-                key={platform.id}
-                className="px-4 py-3 hover:bg-slate-50 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-slate-900">{platform.name}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getPlatformTypeBadgeColor(platform.platformType)}`}>
-                        {PLATFORM_TYPES.find(t => t.value === platform.platformType)?.label || platform.platformType}
-                      </span>
-                      {platform.isAcquisitionPlatform && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                          Acquisition
-                        </span>
-                      )}
-                      {platform.canResearchPrices && (
-                        <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
-                          Price Research
-                        </span>
-                      )}
-                      {platform.requiresSubscription && (
-                        <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-                          Subscription
-                        </span>
-                      )}
-                      {(platform.username || platform.password) && (
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                          Has Credentials
-                        </span>
-                      )}
+              <div key={platform.id}>
+                {editingPlatform?.id === platform.id ? (
+                  /* Inline Edit Form */
+                  <div className="p-4 bg-amber-50 border-l-4 border-amber-400">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-slate-700">
+                        Editing: <span className="text-amber-700">{platform.name}</span>
+                      </h3>
                     </div>
-                    {platform.url && (
-                      <a
-                        href={platform.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline truncate block mt-0.5"
-                      >
-                        {platform.url}
-                      </a>
-                    )}
-                    {platform.searchUrlTemplate && (
-                      <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
-                        Search: {platform.searchUrlTemplate}
-                      </p>
-                    )}
-                    {platform.searchSoldUrlTemplate && (
-                      <p className="text-xs text-emerald-500 font-mono mt-0.5 truncate">
-                        Sold: {platform.searchSoldUrlTemplate}
-                      </p>
-                    )}
-                    {platform.notes && (
-                      <p className="text-sm text-slate-500 mt-0.5">{platform.notes}</p>
-                    )}
+                    {renderPlatformForm()}
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-                    {(platform.username || platform.password) && (
-                      <button
-                        onClick={() => setShowCredentials(showCredentials === platform.id ? null : platform.id)}
-                        className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded transition"
-                      >
-                        {showCredentials === platform.id ? 'Hide' : 'Show'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => startEdit(platform)}
-                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(platform)}
-                      disabled={deleting === platform.id}
-                      className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded transition disabled:opacity-50"
-                    >
-                      {deleting === platform.id ? '...' : 'Delete'}
-                    </button>
-                  </div>
-                </div>
-                {showCredentials === platform.id && (platform.username || platform.password) && (
-                  <div className="mt-2 p-2 bg-green-50 rounded border border-green-200 text-sm">
-                    {platform.username && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">Username:</span>
-                        <span className="font-mono text-slate-900">{platform.username}</span>
+                ) : (
+                  /* Normal Row */
+                  <div className="px-4 py-3 hover:bg-slate-50 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-slate-900">{platform.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${getPlatformTypeBadgeColor(platform.platformType)}`}>
+                            {PLATFORM_TYPES.find(t => t.value === platform.platformType)?.label || platform.platformType}
+                          </span>
+                          {platform.isAcquisitionPlatform && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                              Acquisition
+                            </span>
+                          )}
+                          {platform.canResearchPrices && (
+                            <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                              Price Research
+                            </span>
+                          )}
+                          {platform.requiresSubscription && (
+                            <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                              Subscription
+                            </span>
+                          )}
+                          {(platform.username || platform.password) && (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                              Has Credentials
+                            </span>
+                          )}
+                        </div>
+                        {platform.url && (
+                          <a
+                            href={platform.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline truncate block mt-0.5"
+                          >
+                            {platform.url}
+                          </a>
+                        )}
+                        {platform.searchUrlTemplate && (
+                          <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+                            Search: {platform.searchUrlTemplate}
+                          </p>
+                        )}
+                        {platform.searchSoldUrlTemplate && (
+                          <p className="text-xs text-emerald-500 font-mono mt-0.5 truncate">
+                            Sold: {platform.searchSoldUrlTemplate}
+                          </p>
+                        )}
+                        {platform.notes && (
+                          <p className="text-sm text-slate-500 mt-0.5">{platform.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                        {(platform.username || platform.password) && (
+                          <button
+                            onClick={() => setShowCredentials(showCredentials === platform.id ? null : platform.id)}
+                            className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded transition"
+                          >
+                            {showCredentials === platform.id ? 'Hide' : 'Show'}
+                          </button>
+                        )}
                         <button
-                          onClick={() => navigator.clipboard.writeText(platform.username!)}
-                          className="text-xs text-green-600 hover:underline"
+                          onClick={() => startEdit(platform)}
+                          disabled={!!editingPlatform || showForm}
+                          className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded transition disabled:opacity-40"
                         >
-                          Copy
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(platform)}
+                          disabled={deleting === platform.id || !!editingPlatform}
+                          className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded transition disabled:opacity-50"
+                        >
+                          {deleting === platform.id ? '...' : 'Delete'}
                         </button>
                       </div>
-                    )}
-                    {platform.password && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-slate-600">Password:</span>
-                        <span className="font-mono text-slate-900">{platform.password}</span>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(platform.password!)}
-                          className="text-xs text-green-600 hover:underline"
-                        >
-                          Copy
-                        </button>
+                    </div>
+                    {showCredentials === platform.id && (platform.username || platform.password) && (
+                      <div className="mt-2 p-2 bg-green-50 rounded border border-green-200 text-sm">
+                        {platform.username && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-600">Username:</span>
+                            <span className="font-mono text-slate-900">{platform.username}</span>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(platform.username!)}
+                              className="text-xs text-green-600 hover:underline"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        )}
+                        {platform.password && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-slate-600">Password:</span>
+                            <span className="font-mono text-slate-900">{platform.password}</span>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(platform.password!)}
+                              className="text-xs text-green-600 hover:underline"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

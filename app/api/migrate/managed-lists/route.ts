@@ -243,6 +243,66 @@ export async function POST() {
     `;
     results.push('Seeded date_tags');
 
+    // Product Types (with SKU abbreviation, default condition text, SEO title prefix)
+    await sql`
+      CREATE TABLE IF NOT EXISTS product_types (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        active BOOLEAN DEFAULT true,
+        sku_abbreviation VARCHAR(20),
+        default_condition_text TEXT,
+        seo_title_prefix VARCHAR(200),
+        display_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+    results.push('Created product_types table');
+
+    // Seed product types with known values from PM App
+    await sql`
+      INSERT INTO product_types (name, active, sku_abbreviation, display_order) VALUES
+        ('Poster', true, 'P', 1),
+        ('Antique Print', true, 'AP', 2),
+        ('Window Card', true, 'WC', 3),
+        ('Postcard', true, 'PC', 4),
+        ('Vintage Ad', true, 'VA', 5),
+        ('Map', true, 'MP', 6),
+        ('Magazine/Book', true, 'BK', 7),
+        ('Cover Art', true, 'CA', 8),
+        ('Merchandise', true, 'MERCH', 9),
+        ('Illustration', true, 'IL', 10),
+        ('Product Label', true, 'PL', 11),
+        ('Victorian Trade Card', true, 'VTC', 12)
+      ON CONFLICT (name) DO NOTHING
+    `;
+    results.push('Seeded product_types');
+
+    // Conditions (condition grades for poster evaluation)
+    await sql`
+      CREATE TABLE IF NOT EXISTS conditions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        display_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+    results.push('Created conditions table');
+
+    // Seed conditions
+    await sql`
+      INSERT INTO conditions (name, display_order) VALUES
+        ('Mint', 1),
+        ('Near Mint', 2),
+        ('Very Good', 3),
+        ('Good', 4),
+        ('Fair', 5),
+        ('Poor', 6),
+        ('Fair to Good', 7),
+        ('Good to Very Good', 8)
+      ON CONFLICT (name) DO NOTHING
+    `;
+    results.push('Seeded conditions');
+
     // Create indexes for ordering
     await sql`CREATE INDEX IF NOT EXISTS idx_media_types_order ON media_types (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_internal_tags_order ON internal_tags (display_order)`;
@@ -251,6 +311,8 @@ export async function POST() {
     await sql`CREATE INDEX IF NOT EXISTS idx_countries_order ON countries (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_size_tags_order ON size_tags (display_order)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_date_tags_order ON date_tags (display_order)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_product_types_order ON product_types (display_order)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_conditions_order ON conditions (display_order)`;
     results.push('Created ordering indexes');
 
     return NextResponse.json({

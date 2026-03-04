@@ -220,7 +220,7 @@ export default function SellerDatabasePage() {
       notes: seller.notes || '',
       isActive: seller.isActive,
     });
-    setShowSellerForm(true);
+    // Form renders inline in the list row — no need to setShowSellerForm
   }
 
   function handleTypeChange(newType: SellerType) {
@@ -481,6 +481,331 @@ export default function SellerDatabasePage() {
     }
   };
 
+  // Renders the seller form (used both for Add at top and Edit inline in list rows)
+  function renderSellerForm() {
+    return (
+      <form onSubmit={handleSubmitSeller} className="space-y-4" autoComplete="off">
+        {/* Basic Info */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+            <input
+              type="text"
+              value={sellerFormData.name}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, name: e.target.value })}
+              placeholder="Seller name"
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
+            <select
+              value={sellerFormData.type}
+              onChange={(e) => handleTypeChange(e.target.value as SellerType)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            >
+              {SELLER_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+            <input
+              type="url"
+              value={sellerFormData.website}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, website: e.target.value })}
+              placeholder="https://example.com"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Platform Link */}
+        {(sellerFormData.type === 'individual' || sellerFormData.platformId) && (
+          <div className="grid gap-4 md:grid-cols-2 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Platform <span className="text-xs text-slate-500 ml-1">(where they sell)</span>
+              </label>
+              <select
+                value={sellerFormData.platformId || ''}
+                onChange={(e) => setSellerFormData({ ...sellerFormData, platformId: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none bg-white"
+              >
+                <option value="">-- No platform --</option>
+                {platforms.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Which platform does this seller primarily operate on?</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Linked Seller <span className="text-xs text-slate-500 ml-1">(if known dealer)</span>
+              </label>
+              <select
+                value={sellerFormData.linkedSellerId || ''}
+                onChange={(e) => setSellerFormData({ ...sellerFormData, linkedSellerId: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none bg-white"
+              >
+                <option value="">-- Not linked --</option>
+                {sellers.filter(s => s.id !== editingSeller?.id && s.type !== 'individual').map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Link to their main seller record if this is a known dealer's platform username</p>
+            </div>
+          </div>
+        )}
+
+        {/* Location */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
+            <input
+              type="text"
+              value={sellerFormData.country}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, country: e.target.value })}
+              placeholder="United States"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+            <input
+              type="text"
+              value={sellerFormData.city}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, city: e.target.value })}
+              placeholder="New York"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Region</label>
+            <select
+              value={sellerFormData.region}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, region: e.target.value as SellerRegion | '' })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            >
+              <option value="">Select region...</option>
+              {REGIONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Reliability & Weights */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Reliability Tier <span className="text-xs text-slate-500 ml-1">(1=highest)</span>
+            </label>
+            <select
+              value={sellerFormData.reliabilityTier}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, reliabilityTier: parseInt(e.target.value) })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            >
+              {Object.entries(RELIABILITY_TIERS).map(([tier, info]) => (
+                <option key={tier} value={tier}>{info.label} - {info.description}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Attribution Weight <span className="text-xs text-slate-500 ml-1">({(sellerFormData.attributionWeight * 100).toFixed(0)}%)</span>
+            </label>
+            <input
+              type="range" min="0.5" max="0.95" step="0.05"
+              value={sellerFormData.attributionWeight}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, attributionWeight: parseFloat(e.target.value) })}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Pricing Weight <span className="text-xs text-slate-500 ml-1">({(sellerFormData.pricingWeight * 100).toFixed(0)}%)</span>
+            </label>
+            <input
+              type="range" min="0.5" max="0.95" step="0.05"
+              value={sellerFormData.pricingWeight}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, pricingWeight: parseFloat(e.target.value) })}
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        {/* Capabilities */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Capabilities</label>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sellerFormData.canResearchAt}
+                onChange={(e) => setSellerFormData({ ...sellerFormData, canResearchAt: e.target.checked })}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">Can Research At</span>
+              <span className="text-xs text-slate-500">(has searchable archive)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sellerFormData.isActive}
+                onChange={(e) => setSellerFormData({ ...sellerFormData, isActive: e.target.checked })}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">Active</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Specializations */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Specializations</label>
+          <div className="space-y-3">
+            {Object.entries(SPECIALIZATION_CATEGORIES).map(([key, category]) => (
+              <div key={key}>
+                <div className="text-xs text-slate-500 mb-1">{category.label}</div>
+                <div className="flex flex-wrap gap-1">
+                  {category.options.map(spec => (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => toggleSpecialization(spec)}
+                      className={`text-xs px-2 py-1 rounded transition ${
+                        sellerFormData.specializations.includes(spec)
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      {SPECIALIZATION_LABELS[spec]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Search URLs */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Search URL Template <span className="text-xs text-slate-500 ml-1">(use {'{query}'})</span>
+            </label>
+            <input
+              type="text"
+              value={sellerFormData.searchUrlTemplate}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, searchUrlTemplate: e.target.value })}
+              placeholder="https://example.com/search?q={query}"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none font-mono text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Sold Search URL Template <span className="text-xs text-slate-500 ml-1">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={sellerFormData.searchSoldUrlTemplate}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, searchSoldUrlTemplate: e.target.value })}
+              placeholder="https://example.com/sold?q={query}"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none font-mono text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={sellerFormData.email}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, email: e.target.value })}
+              placeholder="contact@example.com"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+            <input
+              type="tel"
+              value={sellerFormData.phone}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, phone: e.target.value })}
+              placeholder="+1 (555) 123-4567"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Credentials */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Login Username <span className="text-xs text-slate-500 ml-1">(for their website)</span>
+            </label>
+            <input
+              type="text"
+              value={sellerFormData.username}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, username: e.target.value })}
+              placeholder="Your login username"
+              autoComplete="new-password"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Login Password <span className="text-xs text-slate-500 ml-1">(for their website)</span>
+            </label>
+            <input
+              type="password"
+              value={sellerFormData.password}
+              onChange={(e) => setSellerFormData({ ...sellerFormData, password: e.target.value })}
+              placeholder="Your login password"
+              autoComplete="new-password"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+          <textarea
+            value={sellerFormData.notes}
+            onChange={(e) => setSellerFormData({ ...sellerFormData, notes: e.target.value })}
+            placeholder="Any additional notes..."
+            rows={2}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={submittingSeller || !sellerFormData.name.trim()}
+            className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+          >
+            {submittingSeller ? 'Saving...' : editingSeller ? 'Update Seller' : 'Add Seller'}
+          </button>
+          <button
+            type="button"
+            onClick={resetSellerForm}
+            className="px-6 py-2 text-slate-600 hover:text-slate-900 transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -606,369 +931,26 @@ export default function SellerDatabasePage() {
             </div>
           </div>
 
-          {/* Add/Edit Form */}
-          <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {editingSeller ? `Edit "${editingSeller.name}"` : 'Add New Seller'}
-              </h2>
-              {!showSellerForm && (
-                <button
-                  onClick={() => setShowSellerForm(true)}
-                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition text-sm"
-                >
-                  + Add Seller
-                </button>
-              )}
-            </div>
-
-            {showSellerForm && (
-              <form onSubmit={handleSubmitSeller} className="space-y-4" autoComplete="off">
-                {/* Basic Info */}
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
-                    <input
-                      type="text"
-                      value={sellerFormData.name}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, name: e.target.value })}
-                      placeholder="Seller name"
-                      required
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
-                    <select
-                      value={sellerFormData.type}
-                      onChange={(e) => handleTypeChange(e.target.value as SellerType)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    >
-                      {SELLER_TYPES.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
-                    <input
-                      type="url"
-                      value={sellerFormData.website}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, website: e.target.value })}
-                      placeholder="https://example.com"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Platform Link (especially useful for individual sellers) */}
-                {(sellerFormData.type === 'individual' || sellerFormData.platformId) && (
-                  <div className="grid gap-4 md:grid-cols-2 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Platform
-                        <span className="text-xs text-slate-500 ml-1">(where they sell)</span>
-                      </label>
-                      <select
-                        value={sellerFormData.platformId || ''}
-                        onChange={(e) => setSellerFormData({
-                          ...sellerFormData,
-                          platformId: e.target.value ? parseInt(e.target.value) : null
-                        })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none bg-white"
-                      >
-                        <option value="">-- No platform --</option>
-                        {platforms.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Which platform does this seller primarily operate on?
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Linked Seller
-                        <span className="text-xs text-slate-500 ml-1">(if known dealer)</span>
-                      </label>
-                      <select
-                        value={sellerFormData.linkedSellerId || ''}
-                        onChange={(e) => setSellerFormData({
-                          ...sellerFormData,
-                          linkedSellerId: e.target.value ? parseInt(e.target.value) : null
-                        })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none bg-white"
-                      >
-                        <option value="">-- Not linked --</option>
-                        {sellers.filter(s => s.id !== editingSeller?.id && s.type !== 'individual').map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Link to their main seller record if this is a known dealer's platform username
-                      </p>
-                    </div>
-                  </div>
+          {/* Add Form — only shown when adding new (not editing) */}
+          {!editingSeller && (
+            <div className="bg-white border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">Add New Seller</h2>
+                {!showSellerForm && (
+                  <button
+                    onClick={() => setShowSellerForm(true)}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm"
+                  >
+                    + Add Seller
+                  </button>
                 )}
+              </div>
+              {showSellerForm && renderSellerForm()}
+            </div>
+          )}
 
-                {/* Location */}
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
-                    <input
-                      type="text"
-                      value={sellerFormData.country}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, country: e.target.value })}
-                      placeholder="United States"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                    <input
-                      type="text"
-                      value={sellerFormData.city}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, city: e.target.value })}
-                      placeholder="New York"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Region</label>
-                    <select
-                      value={sellerFormData.region}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, region: e.target.value as SellerRegion | '' })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    >
-                      <option value="">Select region...</option>
-                      {REGIONS.map(r => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+          {/* removed old floating form — edit is now inline in the list below */}
 
-                {/* Reliability & Weights */}
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Reliability Tier
-                      <span className="text-xs text-slate-500 ml-1">(1=highest)</span>
-                    </label>
-                    <select
-                      value={sellerFormData.reliabilityTier}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, reliabilityTier: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    >
-                      {Object.entries(RELIABILITY_TIERS).map(([tier, info]) => (
-                        <option key={tier} value={tier}>{info.label} - {info.description}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Attribution Weight
-                      <span className="text-xs text-slate-500 ml-1">({(sellerFormData.attributionWeight * 100).toFixed(0)}%)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="0.95"
-                      step="0.05"
-                      value={sellerFormData.attributionWeight}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, attributionWeight: parseFloat(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Pricing Weight
-                      <span className="text-xs text-slate-500 ml-1">({(sellerFormData.pricingWeight * 100).toFixed(0)}%)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="0.95"
-                      step="0.05"
-                      value={sellerFormData.pricingWeight}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, pricingWeight: parseFloat(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Capabilities */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Capabilities</label>
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sellerFormData.canResearchAt}
-                        onChange={(e) => setSellerFormData({ ...sellerFormData, canResearchAt: e.target.checked })}
-                        className="rounded border-slate-300"
-                      />
-                      <span className="text-sm text-slate-700">Can Research At</span>
-                      <span className="text-xs text-slate-500">(has searchable archive)</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sellerFormData.isActive}
-                        onChange={(e) => setSellerFormData({ ...sellerFormData, isActive: e.target.checked })}
-                        className="rounded border-slate-300"
-                      />
-                      <span className="text-sm text-slate-700">Active</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Specializations */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Specializations</label>
-                  <div className="space-y-3">
-                    {Object.entries(SPECIALIZATION_CATEGORIES).map(([key, category]) => (
-                      <div key={key}>
-                        <div className="text-xs text-slate-500 mb-1">{category.label}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {category.options.map(spec => (
-                            <button
-                              key={spec}
-                              type="button"
-                              onClick={() => toggleSpecialization(spec)}
-                              className={`text-xs px-2 py-1 rounded transition ${
-                                sellerFormData.specializations.includes(spec)
-                                  ? 'bg-violet-100 text-violet-800 border border-violet-300'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                              }`}
-                            >
-                              {SPECIALIZATION_LABELS[spec]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Search URLs */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Search URL Template
-                      <span className="text-xs text-slate-500 ml-1">(use {'{query}'})</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={sellerFormData.searchUrlTemplate}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, searchUrlTemplate: e.target.value })}
-                      placeholder="https://example.com/search?q={query}"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Sold Search URL Template
-                      <span className="text-xs text-slate-500 ml-1">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={sellerFormData.searchSoldUrlTemplate}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, searchSoldUrlTemplate: e.target.value })}
-                      placeholder="https://example.com/sold?q={query}"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-mono text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Contact */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={sellerFormData.email}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, email: e.target.value })}
-                      placeholder="contact@example.com"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={sellerFormData.phone}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, phone: e.target.value })}
-                      placeholder="+1 (555) 123-4567"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Credentials */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Login Username
-                      <span className="text-xs text-slate-500 ml-1">(for their website)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={sellerFormData.username}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, username: e.target.value })}
-                      placeholder="Your login username"
-                      autoComplete="new-password"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Login Password
-                      <span className="text-xs text-slate-500 ml-1">(for their website)</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={sellerFormData.password}
-                      onChange={(e) => setSellerFormData({ ...sellerFormData, password: e.target.value })}
-                      placeholder="Your login password"
-                      autoComplete="new-password"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                  <textarea
-                    value={sellerFormData.notes}
-                    onChange={(e) => setSellerFormData({ ...sellerFormData, notes: e.target.value })}
-                    placeholder="Any additional notes..."
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={submittingSeller || !sellerFormData.name.trim()}
-                    className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
-                  >
-                    {submittingSeller ? 'Saving...' : editingSeller ? 'Update Seller' : 'Add Seller'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetSellerForm}
-                    className="px-6 py-2 text-slate-600 hover:text-slate-900 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
 
           {/* Sellers List */}
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -979,22 +961,40 @@ export default function SellerDatabasePage() {
                   ({filteredSellers.length} of {sellers.length})
                 </span>
               </h2>
+              {editingSeller && (
+                <span className="text-xs text-amber-600 font-medium">
+                  Editing below — scroll to highlighted row
+                </span>
+              )}
             </div>
 
             {loadingSellers ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
               </div>
             ) : filteredSellers.length === 0 ? (
               <p className="text-slate-500 text-center py-8">
                 {sellers.length === 0
-                  ? 'No sellers yet. Add your first seller above.'
+                  ? 'No sellers yet. Click "Add Seller" above.'
                   : 'No sellers match your filters.'}
               </p>
             ) : (
               <div className="divide-y divide-slate-100">
                 {filteredSellers.map((seller) => (
-                  <div key={seller.id} className="px-4 py-3 hover:bg-slate-50 group">
+                  <div key={seller.id}>
+                    {editingSeller?.id === seller.id ? (
+                      /* Inline Edit Form */
+                      <div className="p-4 bg-amber-50 border-l-4 border-amber-400">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-sm font-semibold text-slate-700">
+                            Editing: <span className="text-amber-700">{seller.name}</span>
+                          </h3>
+                        </div>
+                        {renderSellerForm()}
+                      </div>
+                    ) : (
+                      /* Normal Row */
+                      <div className="px-4 py-3 hover:bg-slate-50 group">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1061,13 +1061,14 @@ export default function SellerDatabasePage() {
                         )}
                         <button
                           onClick={() => startEditSeller(seller)}
-                          className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded transition"
+                          disabled={!!editingSeller || showSellerForm}
+                          className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded transition disabled:opacity-40"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteSeller(seller)}
-                          disabled={deletingSeller === seller.id}
+                          disabled={deletingSeller === seller.id || !!editingSeller}
                           className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded transition disabled:opacity-50"
                         >
                           {deletingSeller === seller.id ? '...' : 'Delete'}
@@ -1102,6 +1103,8 @@ export default function SellerDatabasePage() {
                         )}
                       </div>
                     )}
+                    </div>
+                  )}
                   </div>
                 ))}
               </div>

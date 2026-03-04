@@ -83,6 +83,18 @@ const LIST_CONFIGS = {
     insertColumns: ['name', 'start_year', 'end_year', 'display_order'],
     updateColumns: ['name', 'start_year', 'end_year', 'display_order'],
   },
+  'product-types': {
+    table: 'product_types',
+    columns: ['id', 'name', 'active', 'sku_abbreviation', 'default_condition_text', 'seo_title_prefix', 'display_order', 'created_at'],
+    insertColumns: ['name', 'active', 'sku_abbreviation', 'default_condition_text', 'seo_title_prefix', 'display_order'],
+    updateColumns: ['name', 'active', 'sku_abbreviation', 'default_condition_text', 'seo_title_prefix', 'display_order'],
+  },
+  'conditions': {
+    table: 'conditions',
+    columns: ['id', 'name', 'display_order', 'created_at'],
+    insertColumns: ['name', 'display_order'],
+    updateColumns: ['name', 'display_order'],
+  },
 } as const;
 
 type ListType = keyof typeof LIST_CONFIGS;
@@ -332,6 +344,20 @@ export async function POST(
           RETURNING *
         `;
         break;
+      case 'product-types':
+        result = await sql`
+          INSERT INTO product_types (name, active, sku_abbreviation, default_condition_text, seo_title_prefix, display_order)
+          VALUES (${body.name}, ${body.active ?? true}, ${body.skuAbbreviation || null}, ${body.defaultConditionText || null}, ${body.seoTitlePrefix || null}, ${body.displayOrder || 0})
+          RETURNING *
+        `;
+        break;
+      case 'conditions':
+        result = await sql`
+          INSERT INTO conditions (name, display_order)
+          VALUES (${body.name}, ${body.displayOrder || 0})
+          RETURNING *
+        `;
+        break;
     }
 
     const item = transformRow(result.rows[0], type);
@@ -555,6 +581,22 @@ export async function PUT(
         result = await sql`
           UPDATE date_tags
           SET name = ${body.name}, start_year = ${body.startYear ?? null}, end_year = ${body.endYear ?? null}, display_order = ${body.displayOrder || 0}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      case 'product-types':
+        result = await sql`
+          UPDATE product_types
+          SET name = ${body.name}, active = ${body.active ?? true}, sku_abbreviation = ${body.skuAbbreviation || null}, default_condition_text = ${body.defaultConditionText || null}, seo_title_prefix = ${body.seoTitlePrefix || null}, display_order = ${body.displayOrder || 0}
+          WHERE id = ${idNum}
+          RETURNING *
+        `;
+        break;
+      case 'conditions':
+        result = await sql`
+          UPDATE conditions
+          SET name = ${body.name}, display_order = ${body.displayOrder || 0}
           WHERE id = ${idNum}
           RETURNING *
         `;

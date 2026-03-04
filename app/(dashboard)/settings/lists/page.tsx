@@ -39,6 +39,11 @@ interface ListItem {
   // Date tag fields
   startYear?: number;
   endYear?: number;
+  // Product type fields
+  active?: boolean;
+  skuAbbreviation?: string;
+  defaultConditionText?: string;
+  seoTitlePrefix?: string;
 }
 
 interface ListConfig {
@@ -218,6 +223,28 @@ const LIST_CONFIGS: ListConfig[] = [
       { key: 'displayOrder', label: 'Display Order', type: 'number' },
     ],
   },
+  {
+    key: 'product-types',
+    label: 'Product Types',
+    description: 'Product type classifications with SKU abbreviations, default condition text, and SEO title prefixes.',
+    fields: [
+      { key: 'name', label: 'Product Type', type: 'text', required: true },
+      { key: 'active', label: 'Active', type: 'checkbox' },
+      { key: 'skuAbbreviation', label: 'SKU Abbreviation', type: 'text', placeholder: 'P, WC, AP...' },
+      { key: 'defaultConditionText', label: 'Default Condition Text', type: 'textarea', placeholder: 'Age-appropriate wear...' },
+      { key: 'seoTitlePrefix', label: 'SEO Title Prefix', type: 'text', placeholder: 'Original Vintage Poster:' },
+      { key: 'displayOrder', label: 'Display Order', type: 'number' },
+    ],
+  },
+  {
+    key: 'conditions',
+    label: 'Conditions',
+    description: 'Condition grades for poster evaluation (maps to jadepuma.condition metafield).',
+    fields: [
+      { key: 'name', label: 'Condition Grade', type: 'text', required: true },
+      { key: 'displayOrder', label: 'Display Order', type: 'number' },
+    ],
+  },
 ];
 
 function ManagedListsContent() {
@@ -345,7 +372,9 @@ function ManagedListsContent() {
   function startAdd() {
     setIsAdding(true);
     setEditingItem(null);
-    setFormData({ displayOrder: items.length + 1 });
+    const defaults: Record<string, unknown> = { displayOrder: items.length + 1 };
+    if (activeList === 'product-types') defaults.active = true;
+    setFormData(defaults);
   }
 
   function startEdit(item: ListItem) {
@@ -519,6 +548,7 @@ function ManagedListsContent() {
             type="text"
             value={(value as string) || ''}
             onChange={e => updateFormField(field.key, e.target.value)}
+            placeholder={field.placeholder}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             required={field.required}
           />
@@ -555,6 +585,7 @@ function ManagedListsContent() {
           <textarea
             value={(value as string) || ''}
             onChange={e => updateFormField(field.key, e.target.value)}
+            placeholder={field.placeholder}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             rows={3}
           />
@@ -920,6 +951,25 @@ function ManagedListsContent() {
                                   >
                                     Wikipedia →
                                   </a>
+                                )}
+                                {activeList === 'product-types' && (
+                                  <div className="text-xs text-slate-500 space-y-0.5">
+                                    {item.skuAbbreviation && <span>SKU: {item.skuAbbreviation}</span>}
+                                    {item.seoTitlePrefix && <span className="ml-2">SEO: {item.seoTitlePrefix}</span>}
+                                    {item.active === false && (
+                                      <span className="ml-2 text-orange-500 font-medium">Inactive</span>
+                                    )}
+                                  </div>
+                                )}
+                                {activeList === 'size-tags' && (
+                                  <div className="text-xs text-slate-500">
+                                    {item.tagType === 'orientation' ? 'Orientation rule' : `${item.minValue ?? 0}" - ${item.maxValue ? item.maxValue + '"' : 'No max'}`}
+                                  </div>
+                                )}
+                                {activeList === 'date-tags' && (
+                                  <div className="text-xs text-slate-500">
+                                    {item.startYear ?? 'Beginning'} - {item.endYear ?? 'Present'}
+                                  </div>
                                 )}
                               </div>
                             </div>
