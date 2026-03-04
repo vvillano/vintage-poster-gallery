@@ -183,6 +183,22 @@ export default function ProductDetailPage() {
     };
   }, [isDirty]);
 
+  // Talking points: prefer linked poster data, fall back to metafield
+  const talkingPoints = useMemo(() => {
+    if (product?.linkedPoster?.talkingPoints?.length) {
+      return product.linkedPoster.talkingPoints;
+    }
+    if (product?.metafields.talkingPoints) {
+      try {
+        const parsed = JSON.parse(product.metafields.talkingPoints);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [product?.linkedPoster, product?.metafields.talkingPoints]);
+
   async function handleSave() {
     if (!product) return;
 
@@ -324,21 +340,6 @@ export default function ProductDetailPage() {
   const managedTagNames = new Set(internalTagOptions.map((t) => t.name.toLowerCase()));
   const unmatchedInternalTags = formData.internalTags.filter((t) => !managedTagNames.has(t.toLowerCase()));
 
-  // Talking points: prefer linked poster data, fall back to metafield
-  const talkingPoints = useMemo(() => {
-    if (product.linkedPoster?.talkingPoints?.length) {
-      return product.linkedPoster.talkingPoints;
-    }
-    if (product.metafields.talkingPoints) {
-      try {
-        const parsed = JSON.parse(product.metafields.talkingPoints);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  }, [product.linkedPoster, product.metafields.talkingPoints]);
 
   const STATUS_COLORS: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
