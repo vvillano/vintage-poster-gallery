@@ -61,8 +61,8 @@ export function computeSizeTags(
 }
 
 /**
- * Compute which date tag applies given a year.
- * Returns at most one date tag (the matching range).
+ * Compute which date tags apply given a year.
+ * Returns ALL matching date tags (a year can fall into multiple overlapping ranges).
  */
 export function computeDateTags(
   year: number | null,
@@ -70,15 +70,16 @@ export function computeDateTags(
 ): string[] {
   if (year == null) return [];
 
+  const tags: string[] = [];
   for (const rule of rules) {
     const start = rule.startYear ?? -Infinity;
     const end = rule.endYear ?? Infinity;
     if (year >= start && year <= end) {
-      return [rule.name];
+      tags.push(rule.name);
     }
   }
 
-  return [];
+  return tags;
 }
 
 /**
