@@ -1080,7 +1080,10 @@ function mapGraphQLToProductDetail(product: any): ProductDetail {
 
   for (const edge of product.metafields?.edges || []) {
     const { namespace, key, value } = edge.node;
-    const mappedKey = mfKeyMap[`${namespace}.${key}`];
+    // Shopify 2025-01 API returns key as "namespace.key" (e.g. "jadepuma.internal_tags")
+    // Handle both formats: full "namespace.key" or just "key"
+    const lookupKey = key.includes('.') ? key : `${namespace}.${key}`;
+    const mappedKey = mfKeyMap[lookupKey];
     if (mappedKey) {
       metafields[mappedKey] = value;
     }

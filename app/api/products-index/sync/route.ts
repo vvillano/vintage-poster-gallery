@@ -83,7 +83,12 @@ function parsePrice(value: string | null | undefined): number | null {
 }
 
 function getMetafieldValue(product: GQLProduct, namespaceKey: string): string | null {
-  const edge = product.metafields.edges.find((e) => `${e.node.namespace}.${e.node.key}` === namespaceKey);
+  // Shopify 2025-01 API returns key as "namespace.key" (e.g. "jadepuma.internal_tags")
+  // Handle both formats: full "namespace.key" or just "key"
+  const edge = product.metafields.edges.find((e) => {
+    const fullKey = e.node.key.includes('.') ? e.node.key : `${e.node.namespace}.${e.node.key}`;
+    return fullKey === namespaceKey;
+  });
   return edge?.node.value || null;
 }
 
