@@ -128,11 +128,11 @@ export default function BasicInfoSection({
                     : [...selectedInternalTags, tag.name];
                   onInternalTagsChange(next);
                 }}
-                className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white transition-opacity cursor-pointer"
-                style={{
-                  backgroundColor: tag.color,
-                  opacity: isSelected ? 1 : 0.3,
-                }}
+                className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
               >
                 {tag.name}
               </button>

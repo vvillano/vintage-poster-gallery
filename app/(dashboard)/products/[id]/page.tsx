@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { ProductDetail, ProductUpdatePayload, MetafieldWrite } from '@/types/shopify-product-detail';
@@ -121,6 +121,42 @@ export default function ProductDetailPage() {
     setFormData((prev) => ({ ...prev, internalTags }));
     setSaveMessage(null);
   }
+
+  // Compute dirty state by comparing formData against the loaded product
+  const isDirty = useMemo(() => {
+    if (!product) return false;
+    if (formData.title !== product.title) return true;
+    if (formData.bodyHtml !== (product.bodyHtml || '')) return true;
+    if (formData.productType !== (product.productType || '')) return true;
+    if (formData.status !== product.status) return true;
+    if (JSON.stringify(formData.tags) !== JSON.stringify(product.tags)) return true;
+    if (formData.price !== product.price) return true;
+    if (formData.compareAtPrice !== (product.compareAtPrice || '')) return true;
+    if (formData.sku !== (product.sku || '')) return true;
+    if (formData.inventoryQuantity !== String(product.inventoryQuantity ?? 0)) return true;
+    // Compare internal tags (order-independent)
+    let origTags: string[] = [];
+    if (product.metafields.internalTags) {
+      try {
+        const parsed = JSON.parse(product.metafields.internalTags);
+        if (Array.isArray(parsed)) origTags = parsed;
+      } catch {
+        origTags = product.metafields.internalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    }
+    if (JSON.stringify([...formData.internalTags].sort()) !== JSON.stringify([...origTags].sort())) return true;
+    return false;
+  }, [formData, product]);
+
+  // Warn on browser close/refresh if there are unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   async function handleSave() {
     if (!product) return;
@@ -276,6 +312,11 @@ export default function ProductDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/products"
+            onClick={(e) => {
+              if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) {
+                e.preventDefault();
+              }
+            }}
             className="text-slate-400 hover:text-slate-600 transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,14 +337,18 @@ export default function ProductDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {saveMessage && (
-            <span className="text-sm text-green-600">{saveMessage}</span>
+            <span className={`text-sm ${saveMessage === 'Saved successfully' ? 'text-green-600' : 'text-slate-500'}`}>{saveMessage}</span>
           )}
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition"
+            disabled={saving || !isDirty}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+              isDirty
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Saving...' : isDirty ? 'Save Changes' : 'Saved'}
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
