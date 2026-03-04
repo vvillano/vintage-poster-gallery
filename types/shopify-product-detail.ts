@@ -117,6 +117,8 @@ export interface LinkedPosterData {
     url: string;
     reliability: string;
   }[];
+  suggestedTags?: string[];
+  suggestedColors?: string[];
 }
 
 /** A single metafield write operation */

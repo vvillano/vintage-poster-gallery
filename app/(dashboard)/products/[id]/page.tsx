@@ -10,7 +10,6 @@ import SpecificationsSection from '@/components/products/detail/SpecificationsSe
 import DescriptionSection from '@/components/products/detail/DescriptionSection';
 import ImagesSection from '@/components/products/detail/ImagesSection';
 import PricingSection from '@/components/products/detail/PricingSection';
-import TagsSection from '@/components/products/detail/TagsSection';
 import SubjectTaggingSection from '@/components/products/detail/SubjectTaggingSection';
 import MetafieldsSection from '@/components/products/detail/MetafieldsSection';
 import SeoSection from '@/components/products/detail/SeoSection';
@@ -30,6 +29,8 @@ interface FormData {
   sku: string;
   inventoryQuantity: string;
   internalTags: string[];
+  colors: string[];
+  medium: string[];
 }
 
 export default function ProductDetailPage() {
@@ -45,6 +46,9 @@ export default function ProductDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [internalTagOptions, setInternalTagOptions] = useState<{ name: string; color: string }[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ name: string }[]>([]);
+  const [colorOptions, setColorOptions] = useState<{ name: string; hexCode: string | null }[]>([]);
+  const [mediumOptions, setMediumOptions] = useState<{ name: string }[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -57,6 +61,8 @@ export default function ProductDetailPage() {
     sku: '',
     inventoryQuantity: '0',
     internalTags: [],
+    colors: [],
+    medium: [],
   });
 
   const loadProduct = useCallback(async () => {
@@ -81,6 +87,28 @@ export default function ProductDetailPage() {
         }
       }
 
+      // Parse colors from metafield JSON array
+      let parsedColors: string[] = [];
+      if (data.metafields.color) {
+        try {
+          const parsed = JSON.parse(data.metafields.color);
+          if (Array.isArray(parsed)) parsedColors = parsed;
+        } catch {
+          parsedColors = [data.metafields.color];
+        }
+      }
+
+      // Parse medium from metafield JSON array
+      let parsedMedium: string[] = [];
+      if (data.metafields.medium) {
+        try {
+          const parsed = JSON.parse(data.metafields.medium);
+          if (Array.isArray(parsed)) parsedMedium = parsed;
+        } catch {
+          parsedMedium = [data.metafields.medium];
+        }
+      }
+
       setFormData({
         title: data.title,
         bodyHtml: data.bodyHtml || '',
@@ -92,6 +120,8 @@ export default function ProductDetailPage() {
         sku: data.sku || '',
         inventoryQuantity: String(data.inventoryQuantity ?? 0),
         internalTags: parsedInternalTags,
+        colors: parsedColors,
+        medium: parsedMedium,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
@@ -105,6 +135,18 @@ export default function ProductDetailPage() {
     fetch('/api/managed-lists/internal-tags')
       .then((res) => res.ok ? res.json() : { items: [] })
       .then((data) => setInternalTagOptions(data.items.map((i: { name: string; color: string }) => ({ name: i.name, color: i.color }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/available-tags')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setTagOptions(data.items.map((i: { name: string }) => ({ name: i.name }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/colors')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setColorOptions(data.items.map((i: { name: string; hexCode: string | null }) => ({ name: i.name, hexCode: i.hexCode ?? null }))))
+      .catch(() => {});
+    fetch('/api/managed-lists/media-types')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setMediumOptions(data.items.map((i: { name: string }) => ({ name: i.name }))))
       .catch(() => {});
   }, [loadProduct]);
 
@@ -120,6 +162,16 @@ export default function ProductDetailPage() {
 
   function handleInternalTagsChange(internalTags: string[]) {
     setFormData((prev) => ({ ...prev, internalTags }));
+    setSaveMessage(null);
+  }
+
+  function handleColorsChange(colors: string[]) {
+    setFormData((prev) => ({ ...prev, colors }));
+    setSaveMessage(null);
+  }
+
+  function handleMediumChange(medium: string[]) {
+    setFormData((prev) => ({ ...prev, medium }));
     setSaveMessage(null);
   }
 
@@ -146,6 +198,24 @@ export default function ProductDetailPage() {
       }
     }
     if (JSON.stringify([...formData.internalTags].sort()) !== JSON.stringify([...origTags].sort())) return true;
+    // Compare colors (order-independent)
+    let origColors: string[] = [];
+    if (product.metafields.color) {
+      try {
+        const parsed = JSON.parse(product.metafields.color);
+        if (Array.isArray(parsed)) origColors = parsed;
+      } catch { origColors = [product.metafields.color]; }
+    }
+    if (JSON.stringify([...formData.colors].sort()) !== JSON.stringify([...origColors].sort())) return true;
+    // Compare medium (order-independent)
+    let origMedium: string[] = [];
+    if (product.metafields.medium) {
+      try {
+        const parsed = JSON.parse(product.metafields.medium);
+        if (Array.isArray(parsed)) origMedium = parsed;
+      } catch { origMedium = [product.metafields.medium]; }
+    }
+    if (JSON.stringify([...formData.medium].sort()) !== JSON.stringify([...origMedium].sort())) return true;
     return false;
   }, [formData, product]);
 
@@ -244,6 +314,44 @@ export default function ProductDetailPage() {
         payload.metafields = metafields;
       }
 
+      // Check if colors changed
+      let originalColors: string[] = [];
+      if (product.metafields.color) {
+        try {
+          const parsed = JSON.parse(product.metafields.color);
+          if (Array.isArray(parsed)) originalColors = parsed;
+        } catch { originalColors = [product.metafields.color]; }
+      }
+      if (JSON.stringify([...formData.colors].sort()) !== JSON.stringify([...originalColors].sort())) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'color',
+          value: JSON.stringify(formData.colors),
+          type: 'list.single_line_text_field',
+        });
+        payload.metafields = metafields;
+      }
+
+      // Check if medium changed
+      let originalMedium: string[] = [];
+      if (product.metafields.medium) {
+        try {
+          const parsed = JSON.parse(product.metafields.medium);
+          if (Array.isArray(parsed)) originalMedium = parsed;
+        } catch { originalMedium = [product.metafields.medium]; }
+      }
+      if (JSON.stringify([...formData.medium].sort()) !== JSON.stringify([...originalMedium].sort())) {
+        const metafields: MetafieldWrite[] = payload.metafields || [];
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'medium',
+          value: JSON.stringify(formData.medium),
+          type: 'list.single_line_text_field',
+        });
+        payload.metafields = metafields;
+      }
+
       if (Object.keys(payload).length === 0) {
         setSaveMessage('No changes to save');
         return;
@@ -274,6 +382,24 @@ export default function ProductDetailPage() {
         }
       }
 
+      // Parse updated colors
+      let updatedColors: string[] = [];
+      if (updated.metafields.color) {
+        try {
+          const parsed = JSON.parse(updated.metafields.color);
+          if (Array.isArray(parsed)) updatedColors = parsed;
+        } catch { updatedColors = [updated.metafields.color]; }
+      }
+
+      // Parse updated medium
+      let updatedMedium: string[] = [];
+      if (updated.metafields.medium) {
+        try {
+          const parsed = JSON.parse(updated.metafields.medium);
+          if (Array.isArray(parsed)) updatedMedium = parsed;
+        } catch { updatedMedium = [updated.metafields.medium]; }
+      }
+
       setFormData({
         title: updated.title,
         bodyHtml: updated.bodyHtml || '',
@@ -285,6 +411,8 @@ export default function ProductDetailPage() {
         sku: updated.sku || '',
         inventoryQuantity: String(updated.inventoryQuantity ?? 0),
         internalTags: updatedInternalTags,
+        colors: updatedColors,
+        medium: updatedMedium,
       });
       setSaveMessage('Saved successfully');
     } catch (err) {
@@ -442,14 +570,21 @@ export default function ProductDetailPage() {
           <SpecificationsSection metafields={product.metafields} />
         </ProductDetailSection>
 
-        {/* 4. Selected Tags */}
-        <ProductDetailSection title="Selected Tags">
-          <TagsSection tags={formData.tags} onChange={handleTagsChange} />
-        </ProductDetailSection>
-
-        {/* 5. Subject Tagging */}
-        <ProductDetailSection title="Subject Tagging" badge="Coming Soon">
-          <SubjectTaggingSection />
+        {/* 4. Subject Tagging (tags, colors, medium) */}
+        <ProductDetailSection title="Subject Tagging" defaultOpen>
+          <SubjectTaggingSection
+            tags={formData.tags}
+            colors={formData.colors}
+            medium={formData.medium}
+            tagOptions={tagOptions}
+            colorOptions={colorOptions}
+            mediumOptions={mediumOptions}
+            suggestedTags={product.linkedPoster?.suggestedTags}
+            suggestedColors={product.linkedPoster?.suggestedColors}
+            onTagsChange={handleTagsChange}
+            onColorsChange={handleColorsChange}
+            onMediumChange={handleMediumChange}
+          />
         </ProductDetailSection>
 
         {/* 6. Description */}

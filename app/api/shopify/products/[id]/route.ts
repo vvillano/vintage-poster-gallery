@@ -77,6 +77,8 @@ export async function GET(
           : (typeof poster.source_citations === 'string'
               ? JSON.parse(poster.source_citations)
               : []),
+        suggestedTags: raw?.suggestedTags || [],
+        suggestedColors: raw?.suggestedColors || [],
       };
 
       product.linkedPoster = linkedPoster;
