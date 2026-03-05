@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import type { ProductDetail } from '@/types/shopify-product-detail';
+import type { ProductDetail, LinkedArtistRecord } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
 import TalkingPointsCard from './TalkingPointsCard';
 import ResearchDataSection from './ResearchDataSection';
@@ -47,6 +47,7 @@ interface ProductResearchTabProps {
   onArrayFieldChange: (field: string, values: string[]) => void;
   onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
   onApplyBodyHtml: (html: string) => Promise<void>;
+  onApplyArtist: (artist: LinkedArtistRecord) => Promise<void>;
   onAnalysisComplete: () => void;
 }
 
@@ -137,20 +138,44 @@ export default function ProductResearchTab({
   onArrayFieldChange,
   onApplyMetafield,
   onApplyBodyHtml,
+  onApplyArtist,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [skepticalMode, setSkepticalMode] = useState(false);
-  const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set());
   const [applyingField, setApplyingField] = useState<string | null>(null);
   const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
+  const [artistMatch, setArtistMatch] = useState<LinkedArtistRecord | null>(null);
+  const [artistSearching, setArtistSearching] = useState(false);
+  const [artistNotFound, setArtistNotFound] = useState(false);
+  const [addingArtist, setAddingArtist] = useState(false);
 
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
   const hasResults = lp?.analysisCompleted;
   const extractedYear = lp?.estimatedDate?.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/)?.[1] || null;
+
+  // Derive "applied" state by comparing current Shopify values with AI suggestions
+  // This persists across navigation since it's based on actual product data
+  function isFieldApplied(fieldId: string): boolean {
+    if (!lp) return false;
+    const mf = product.metafields;
+    switch (fieldId) {
+      case 'artist': {
+        const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
+        return !!canonicalName && mf.artist === canonicalName;
+      }
+      case 'year': return !!extractedYear && mf.year === extractedYear;
+      case 'printer': return !!lp.printer && mf.printer === lp.printer;
+      case 'publisher': return !!lp.publisher && mf.publisher === lp.publisher;
+      case 'history': return !!lp.historicalContext && mf.history === lp.historicalContext;
+      case 'concise': return !!lp.productDescriptions?.concise && mf.conciseDescription === lp.productDescriptions.concise;
+      case 'description': return !!descriptionHtml && product.bodyHtml === descriptionHtml;
+      default: return false;
+    }
+  }
 
   // Initialize/reset description editor when descriptions change (new analysis or page load)
   const standardDesc = lp?.productDescriptions?.standard || '';
@@ -161,11 +186,86 @@ export default function ProductResearchTab({
     }
   }, [standardDesc]);
 
+  // Search managed artist list when AI identified an artist but no DB link exists
+  const aiArtistName = lp?.artist || null;
+  const linkedArtist = lp?.linkedArtist || null;
+  useEffect(() => {
+    if (!aiArtistName || linkedArtist) {
+      // No AI artist, or already linked from analysis -- no search needed
+      setArtistMatch(null);
+      setArtistNotFound(false);
+      return;
+    }
+    let cancelled = false;
+    async function searchArtist() {
+      setArtistSearching(true);
+      setArtistNotFound(false);
+      try {
+        const res = await fetch(`/api/managed-lists/artists?search=${encodeURIComponent(aiArtistName!)}`);
+        if (!res.ok) throw new Error('Search failed');
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.items && data.items.length > 0) {
+          const best = data.items[0];
+          setArtistMatch({
+            id: best.id,
+            name: best.name,
+            aliases: best.aliases || [],
+            nationality: best.nationality || null,
+            birthYear: best.birthYear || null,
+            deathYear: best.deathYear || null,
+            wikipediaUrl: best.wikipediaUrl || null,
+            bio: best.bio || null,
+            imageUrl: best.imageUrl || null,
+            verified: !!best.verified,
+          });
+          setArtistNotFound(false);
+        } else {
+          setArtistMatch(null);
+          setArtistNotFound(true);
+        }
+      } catch {
+        if (!cancelled) setArtistNotFound(true);
+      } finally {
+        if (!cancelled) setArtistSearching(false);
+      }
+    }
+    searchArtist();
+    return () => { cancelled = true; };
+  }, [aiArtistName, linkedArtist]);
+
+  // The resolved artist record: from DB link, search match, or null
+  const resolvedArtist = linkedArtist || artistMatch;
+
+  async function handleAddArtist() {
+    if (!lp?.artist || !lp.posterId) return;
+    setAddingArtist(true);
+    try {
+      const res = await fetch(`/api/posters/${lp.posterId}/artist-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          artistName: lp.artist,
+          confidence: lp.artistConfidence || 'confirmed',
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to add artist');
+      const data = await res.json();
+      if (data.artist) {
+        setArtistMatch(data.artist);
+        setArtistNotFound(false);
+      }
+    } catch {
+      // Keep artistNotFound state
+    } finally {
+      setAddingArtist(false);
+    }
+  }
+
   async function applyMetafield(fieldId: string, mf: MetafieldApply) {
     setApplyingField(fieldId);
     try {
       await onApplyMetafield(mf);
-      setAppliedFields((prev) => new Set(prev).add(fieldId));
     } catch {
       // Error handled by parent
     } finally {
@@ -319,22 +419,79 @@ export default function ProductResearchTab({
                   <span className="text-sm font-medium text-slate-800">{lp.artist || 'Unknown'}</span>
                   <ConfidenceBadge level={lp.artistConfidence} score={lp.artistConfidenceScore} />
                   <AttributionBadge basis={lp.attributionBasis} />
-                  {lp.artist && (
-                    <ApplyButton
-                      onClick={() => applyMetafield('artist', {
-                        namespace: 'jadepuma',
-                        key: 'artist',
-                        value: lp.artist!,
-                        type: 'single_line_text_field',
-                        displayLabel: 'Artist',
-                      })}
-                      applied={appliedFields.has('artist')}
-                      applying={applyingField === 'artist'}
-                    />
-                  )}
                 </div>
                 {lp.artistSource && (
                   <p className="text-xs text-slate-400 mt-1">Source: {lp.artistSource}</p>
+                )}
+
+                {/* Managed list match card */}
+                {lp.artist && (
+                  <div className="mt-2">
+                    {artistSearching && (
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400">
+                        Searching artist database...
+                      </div>
+                    )}
+                    {resolvedArtist && (
+                      <div className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium text-slate-800">{resolvedArtist.name}</span>
+                              {resolvedArtist.verified && (
+                                <span className="text-green-600 text-xs" title="Verified profile">&#x2713;</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {[
+                                resolvedArtist.nationality,
+                                resolvedArtist.birthYear && resolvedArtist.deathYear
+                                  ? `${resolvedArtist.birthYear}\u2013${resolvedArtist.deathYear}`
+                                  : resolvedArtist.birthYear
+                                    ? `b. ${resolvedArtist.birthYear}`
+                                    : null,
+                              ].filter(Boolean).join(', ') || 'No profile data'}
+                            </p>
+                            {resolvedArtist.name.toLowerCase() !== lp.artist!.toLowerCase() && (
+                              <p className="text-xs text-amber-600 mt-0.5">
+                                AI identified as: &ldquo;{lp.artist}&rdquo; (alias match)
+                              </p>
+                            )}
+                          </div>
+                          <ApplyButton
+                            onClick={async () => {
+                              setApplyingField('artist');
+                              try {
+                                await onApplyArtist(resolvedArtist);
+                              } catch { /* handled by parent */ } finally {
+                                setApplyingField(null);
+                              }
+                            }}
+                            applied={isFieldApplied('artist')}
+                            applying={applyingField === 'artist'}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {artistNotFound && !artistSearching && (
+                      <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-amber-800">Not in artist database</p>
+                            <p className="text-xs text-amber-600 mt-0.5">Will search Wikipedia for profile data</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleAddArtist}
+                            disabled={addingArtist}
+                            className="text-xs px-2.5 py-1 rounded font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {addingArtist ? 'Adding...' : 'Add Artist'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -361,7 +518,7 @@ export default function ProductResearchTab({
                           type: 'single_line_text_field',
                           displayLabel: 'Year',
                         })}
-                        applied={appliedFields.has('year')}
+                        applied={isFieldApplied('year')}
                         applying={applyingField === 'year'}
                         label={`Apply ${extractedYear}`}
                       />
@@ -428,7 +585,7 @@ export default function ProductResearchTab({
                           type: 'single_line_text_field',
                           displayLabel: 'Printer',
                         })}
-                        applied={appliedFields.has('printer')}
+                        applied={isFieldApplied('printer')}
                         applying={applyingField === 'printer'}
                       />
                     )}
@@ -450,7 +607,7 @@ export default function ProductResearchTab({
                           type: 'single_line_text_field',
                           displayLabel: 'Publisher',
                         })}
-                        applied={appliedFields.has('publisher')}
+                        applied={isFieldApplied('publisher')}
                         applying={applyingField === 'publisher'}
                       />
                     )}
@@ -509,12 +666,11 @@ export default function ProductResearchTab({
                         setApplyingField('description');
                         try {
                           await onApplyBodyHtml(descriptionHtml);
-                          setAppliedFields((prev) => new Set(prev).add('description'));
                         } catch { /* handled by parent */ } finally {
                           setApplyingField(null);
                         }
                       }}
-                      applied={appliedFields.has('description')}
+                      applied={isFieldApplied('description')}
                       applying={applyingField === 'description'}
                       label="Apply as Description"
                     />
@@ -533,7 +689,7 @@ export default function ProductResearchTab({
                         type: 'multi_line_text_field',
                         displayLabel: 'Concise Description',
                       })}
-                      applied={appliedFields.has('concise')}
+                      applied={isFieldApplied('concise')}
                       applying={applyingField === 'concise'}
                       label="Apply Concise Description"
                     />
@@ -572,7 +728,7 @@ export default function ProductResearchTab({
                           type: 'multi_line_text_field',
                           displayLabel: 'Historical Context',
                         })}
-                        applied={appliedFields.has('history')}
+                        applied={isFieldApplied('history')}
                         applying={applyingField === 'history'}
                       />
                     </div>

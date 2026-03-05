@@ -80,6 +80,20 @@ export interface ProductDetail {
   linkedPoster: LinkedPosterData | null;
 }
 
+/** Artist record from the managed artists database */
+export interface LinkedArtistRecord {
+  id: number;
+  name: string;
+  aliases: string[];
+  nationality: string | null;
+  birthYear: number | null;
+  deathYear: number | null;
+  wikipediaUrl: string | null;
+  bio: string | null;
+  imageUrl: string | null;
+  verified: boolean;
+}
+
 /** Linked poster data from the research database */
 export interface LinkedPosterData {
   posterId: number;
@@ -155,6 +169,8 @@ export interface LinkedPosterData {
     styleMatches: boolean;
     verificationNotes: string;
   } | null;
+  // Linked artist from managed database (joined via poster.artist_id)
+  linkedArtist: LinkedArtistRecord | null;
 }
 
 /** A single metafield write operation */

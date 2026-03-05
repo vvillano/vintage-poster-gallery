@@ -127,10 +127,25 @@ export async function GET(
     }
 
     const config = LIST_CONFIGS[type];
+    const searchParam = request.nextUrl.searchParams.get('search');
 
     // Build query based on table type
     let result;
-    if (type === 'available-tags' || type === 'artists' || type === 'printers' || type === 'publishers') {
+
+    // Search mode for entity types with aliases (artists, printers, publishers)
+    if (searchParam && ['artists', 'printers', 'publishers'].includes(type)) {
+      const term = `%${searchParam}%`;
+      result = await sql.query(
+        `SELECT * FROM ${config.table}
+         WHERE name ILIKE $1
+            OR EXISTS (SELECT 1 FROM unnest(aliases) AS alias WHERE alias ILIKE $1)
+         ORDER BY
+           CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
+           name ASC
+         LIMIT 10`,
+        [term, searchParam]
+      );
+    } else if (type === 'available-tags' || type === 'artists' || type === 'printers' || type === 'publishers') {
       result = await sql.query(
         `SELECT * FROM ${config.table} ORDER BY name ASC`
       );

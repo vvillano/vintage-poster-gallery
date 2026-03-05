@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { ProductDetail, ProductUpdatePayload, MetafieldWrite } from '@/types/shopify-product-detail';
+import type { ProductDetail, ProductUpdatePayload, MetafieldWrite, LinkedArtistRecord } from '@/types/shopify-product-detail';
 import ProductDetailSection from '@/components/products/detail/ProductDetailSection';
 import BasicInfoSection from '@/components/products/detail/BasicInfoSection';
 import SpecificationsSection from '@/components/products/detail/SpecificationsSection';
@@ -479,6 +479,36 @@ export default function ProductDetailPage() {
       throw err;
     } finally {
       setApplyingMetafield(null);
+    }
+  }
+
+  // Apply artist: write canonical name to Shopify metafield AND link poster.artist_id
+  async function handleApplyArtist(artist: LinkedArtistRecord): Promise<void> {
+    if (!product) return;
+    // 1. Write canonical name to Shopify metafield
+    await handleApplyMetafield({
+      namespace: 'jadepuma',
+      key: 'artist',
+      value: artist.name,
+      type: 'single_line_text_field',
+      displayLabel: 'Artist',
+    });
+    // 2. Link poster to artist record (if poster exists)
+    if (product.linkedPoster?.posterId) {
+      try {
+        await fetch(`/api/posters/${product.linkedPoster.posterId}/artist-link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artistId: artist.id }),
+        });
+        // Update product state with linked artist
+        setProduct((prev) => prev?.linkedPoster ? {
+          ...prev,
+          linkedPoster: { ...prev.linkedPoster, linkedArtist: artist },
+        } : prev);
+      } catch {
+        // Non-critical: metafield was already written
+      }
     }
   }
 
@@ -1073,6 +1103,7 @@ export default function ProductDetailPage() {
             onArrayFieldChange={handleArrayFieldChange}
             onApplyMetafield={handleApplyMetafield}
             onApplyBodyHtml={handleApplyBodyHtml}
+            onApplyArtist={handleApplyArtist}
             onAnalysisComplete={loadProduct}
           />
         )}

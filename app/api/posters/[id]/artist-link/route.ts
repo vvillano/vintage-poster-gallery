@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
+import { findOrCreateArtist } from '@/lib/auto-link';
 
 /**
  * POST /api/posters/[id]/artist-link
  * Link a poster to an artist
- * Body: { artistId: number }
+ * Body: { artistId: number } - link by known ID
+ *   OR: { artistName: string, confidence?: string } - find/create then link
  */
 export async function POST(
   request: NextRequest,
@@ -21,18 +23,33 @@ export async function POST(
     const { id } = await params;
     const posterId = parseInt(id);
     const body = await request.json();
-    const { artistId } = body;
+
+    let artistId = body.artistId;
+
+    // Find/create flow: resolve artist name to a managed list record
+    if (!artistId && body.artistName) {
+      const result = await findOrCreateArtist(body.artistName, body.confidence || 'confirmed');
+      if (!result) {
+        return NextResponse.json(
+          { error: 'Could not find or create artist record' },
+          { status: 400 }
+        );
+      }
+      artistId = result.artistId;
+    }
 
     if (!artistId) {
       return NextResponse.json(
-        { error: 'artistId is required' },
+        { error: 'artistId or artistName is required' },
         { status: 400 }
       );
     }
 
-    // Verify artist exists
+    // Fetch full artist record for response
     const artistResult = await sql`
-      SELECT id, name, verified FROM artists WHERE id = ${artistId}
+      SELECT id, name, aliases, nationality, birth_year, death_year,
+             wikipedia_url, bio, image_url, verified
+      FROM artists WHERE id = ${artistId}
     `;
 
     if (artistResult.rows.length === 0) {
@@ -57,12 +74,22 @@ export async function POST(
       );
     }
 
+    const row = artistResult.rows[0];
     return NextResponse.json({
       success: true,
       posterId,
-      artistId,
-      artistName: artistResult.rows[0].name,
-      artistVerified: artistResult.rows[0].verified,
+      artist: {
+        id: row.id,
+        name: row.name,
+        aliases: row.aliases || [],
+        nationality: row.nationality || null,
+        birthYear: row.birth_year || null,
+        deathYear: row.death_year || null,
+        wikipediaUrl: row.wikipedia_url || null,
+        bio: row.bio || null,
+        imageUrl: row.image_url || null,
+        verified: !!row.verified,
+      },
     });
   } catch (error) {
     console.error('Link artist error:', error);

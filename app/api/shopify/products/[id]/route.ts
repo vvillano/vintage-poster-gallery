@@ -28,16 +28,22 @@ export async function GET(
 
     // Enrich with linked poster data from research database
     const posterResult = await sql`
-      SELECT id, raw_ai_response, comparable_sales, artist_confidence,
-             artist_confidence_score, attribution_basis, source_citations,
-             rarity_analysis, value_insights, analysis_completed,
-             artist, estimated_date, date_confidence, date_source,
-             artist_source, printing_technique, printer,
-             printer_confidence, publisher_confidence,
-             historical_context, significance, validation_notes,
-             artist_verification
-      FROM posters
-      WHERE shopify_product_id = ${product.gid}
+      SELECT p.id, p.raw_ai_response, p.comparable_sales, p.artist_confidence,
+             p.artist_confidence_score, p.attribution_basis, p.source_citations,
+             p.rarity_analysis, p.value_insights, p.analysis_completed,
+             p.artist, p.estimated_date, p.date_confidence, p.date_source,
+             p.artist_source, p.printing_technique, p.printer,
+             p.printer_confidence, p.publisher_confidence,
+             p.historical_context, p.significance, p.validation_notes,
+             p.artist_verification, p.artist_id,
+             a.id as linked_artist_id, a.name as linked_artist_name,
+             a.aliases as linked_artist_aliases, a.nationality as linked_artist_nationality,
+             a.birth_year as linked_artist_birth_year, a.death_year as linked_artist_death_year,
+             a.wikipedia_url as linked_artist_wikipedia_url, a.bio as linked_artist_bio,
+             a.image_url as linked_artist_image_url, a.verified as linked_artist_verified
+      FROM posters p
+      LEFT JOIN artists a ON p.artist_id = a.id
+      WHERE p.shopify_product_id = ${product.gid}
       LIMIT 1
     `;
 
@@ -101,6 +107,18 @@ export async function GET(
         productDescriptions: raw?.productDescriptions || null,
         validationNotes: raw?.validationNotes || null,
         artistVerification: raw?.identification?.artistVerification || null,
+        linkedArtist: poster.linked_artist_id ? {
+          id: poster.linked_artist_id,
+          name: poster.linked_artist_name,
+          aliases: poster.linked_artist_aliases || [],
+          nationality: poster.linked_artist_nationality || null,
+          birthYear: poster.linked_artist_birth_year || null,
+          deathYear: poster.linked_artist_death_year || null,
+          wikipediaUrl: poster.linked_artist_wikipedia_url || null,
+          bio: poster.linked_artist_bio || null,
+          imageUrl: poster.linked_artist_image_url || null,
+          verified: !!poster.linked_artist_verified,
+        } : null,
       };
 
       product.linkedPoster = linkedPoster;
