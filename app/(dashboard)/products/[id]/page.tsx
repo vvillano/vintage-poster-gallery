@@ -411,6 +411,9 @@ export default function ProductDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || 'Failed to update');
+      if (data.warning) {
+        setError(data.warning);
+      }
       // Update local product state with new sales channels
       setProduct((prev) => prev ? { ...prev, salesChannels: data.salesChannels } : prev);
     } catch (err) {

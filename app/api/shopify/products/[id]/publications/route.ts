@@ -41,9 +41,18 @@ export async function POST(
     // Re-fetch to get updated publication status
     const updated = await getProductDetailGraphQL(id);
 
+    // Check if the toggle actually took effect
+    const channel = updated.salesChannels.find((ch: any) => ch.id === publicationId);
+    const toggleWorked = !channel || channel.published === publish;
+
+    if (!toggleWorked) {
+      console.warn(`Sales channel toggle failed silently. Requested publish=${publish} for ${publicationId} on product ${gid}, but got published=${channel?.published}. This usually means the app is missing the write_publications scope.`);
+    }
+
     return NextResponse.json({
       ok: true,
       salesChannels: updated.salesChannels,
+      ...(toggleWorked ? {} : { warning: 'Toggle may not have taken effect. Ensure the app has the write_publications scope in Shopify.' }),
     });
   } catch (error) {
     console.error('Toggle publication error:', error);
