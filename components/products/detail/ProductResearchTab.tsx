@@ -137,6 +137,7 @@ export default function ProductResearchTab({
                 ? (formData.itemNotes.length > 80 ? formData.itemNotes.slice(0, 80) + '...' : formData.itemNotes)
                 : null
             } />
+            <ContextField label="Description" value={formData.bodyHtml ? 'Included' : null} />
           </div>
         </div>
       </ProductDetailSection>
