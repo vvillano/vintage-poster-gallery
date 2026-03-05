@@ -7,7 +7,6 @@ import type { ProductDetail, ProductUpdatePayload, MetafieldWrite } from '@/type
 import ProductDetailSection from '@/components/products/detail/ProductDetailSection';
 import BasicInfoSection from '@/components/products/detail/BasicInfoSection';
 import SpecificationsSection from '@/components/products/detail/SpecificationsSection';
-import DescriptionSection from '@/components/products/detail/DescriptionSection';
 import ImagesSection from '@/components/products/detail/ImagesSection';
 import PricingSection from '@/components/products/detail/PricingSection';
 import SubjectTaggingSection from '@/components/products/detail/SubjectTaggingSection';
@@ -409,6 +408,11 @@ export default function ProductDetailPage() {
 
   // Direct-write a single metafield to Shopify (follows internal tags pattern)
   const [applyingMetafield, setApplyingMetafield] = useState<string | null>(null);
+  // Map metafield keys to formData fields for auto-sync after instant write
+  const metafieldFormSync: Record<string, string> = {
+    'jadepuma.artist': 'artist',
+    'specs.year': 'year',
+  };
   async function handleApplyMetafield(mf: {
     namespace: string;
     key: string;
@@ -438,10 +442,41 @@ export default function ProductDetailPage() {
       const updated: ProductDetail = await res.json();
       // Update product metafields locally WITHOUT resetting formData
       setProduct((prev) => prev ? { ...prev, metafields: updated.metafields } : prev);
+      // Sync formData for fields that map to metafields (keeps isDirty accurate)
+      const formField = metafieldFormSync[`${mf.namespace}.${mf.key}`];
+      if (formField) {
+        setFormData((prev) => ({ ...prev, [formField]: mf.value }));
+      }
       setSaveMessage(`${mf.displayLabel} applied to Shopify`);
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to apply ${mf.displayLabel}`);
       throw err; // Re-throw so caller can track errors
+    } finally {
+      setApplyingMetafield(null);
+    }
+  }
+
+  // Direct-write bodyHtml to Shopify
+  async function handleApplyBodyHtml(html: string): Promise<void> {
+    if (!product) return;
+    setApplyingMetafield('Description');
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bodyHtml: html }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || 'Failed to apply description');
+      }
+      const updated: ProductDetail = await res.json();
+      setProduct((prev) => prev ? { ...prev, bodyHtml: updated.bodyHtml, metafields: updated.metafields } : prev);
+      setFormData((prev) => ({ ...prev, bodyHtml: html }));
+      setSaveMessage('Description applied to Shopify');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to apply description');
+      throw err;
     } finally {
       setApplyingMetafield(null);
     }
@@ -997,13 +1032,6 @@ export default function ProductDetailPage() {
               />
             </ProductDetailSection>
 
-            <ProductDetailSection title="Description" defaultOpen>
-              <DescriptionSection
-                bodyHtml={formData.bodyHtml}
-                onChange={(v) => handleFieldChange('bodyHtml', v)}
-              />
-            </ProductDetailSection>
-
             <ProductDetailSection title="Pricing & Inventory" defaultOpen>
               <PricingSection
                 price={formData.price}
@@ -1044,6 +1072,7 @@ export default function ProductDetailPage() {
             onFieldChange={handleFieldChange}
             onArrayFieldChange={handleArrayFieldChange}
             onApplyMetafield={handleApplyMetafield}
+            onApplyBodyHtml={handleApplyBodyHtml}
             onAnalysisComplete={loadProduct}
           />
         )}

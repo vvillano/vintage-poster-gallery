@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProductDetail } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
@@ -46,6 +46,7 @@ interface ProductResearchTabProps {
   onFieldChange: (field: string, value: string) => void;
   onArrayFieldChange: (field: string, values: string[]) => void;
   onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
+  onApplyBodyHtml: (html: string) => Promise<void>;
   onAnalysisComplete: () => void;
 }
 
@@ -135,6 +136,7 @@ export default function ProductResearchTab({
   onFieldChange,
   onArrayFieldChange,
   onApplyMetafield,
+  onApplyBodyHtml,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -142,7 +144,7 @@ export default function ProductResearchTab({
   const [skepticalMode, setSkepticalMode] = useState(false);
   const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set());
   const [applyingField, setApplyingField] = useState<string | null>(null);
-  const [descriptionTone, setDescriptionTone] = useState<string | null>(null);
+  const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
 
   const lp = product.linkedPoster;
@@ -150,11 +152,14 @@ export default function ProductResearchTab({
   const hasResults = lp?.analysisCompleted;
   const extractedYear = lp?.estimatedDate?.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/)?.[1] || null;
 
-  // Per-field apply handlers
-  function applyToFormData(fieldId: string, field: string, value: string) {
-    onFieldChange(field, value);
-    setAppliedFields((prev) => new Set(prev).add(fieldId));
-  }
+  // Initialize/reset description editor when descriptions change (new analysis or page load)
+  const standardDesc = lp?.productDescriptions?.standard || '';
+  useEffect(() => {
+    if (standardDesc) {
+      setDescriptionTone('standard');
+      setDescriptionHtml(convertToHtmlParagraphs(standardDesc));
+    }
+  }, [standardDesc]);
 
   async function applyMetafield(fieldId: string, mf: MetafieldApply) {
     setApplyingField(fieldId);
@@ -316,7 +321,13 @@ export default function ProductResearchTab({
                   <AttributionBadge basis={lp.attributionBasis} />
                   {lp.artist && (
                     <ApplyButton
-                      onClick={() => applyToFormData('artist', 'artist', lp.artist!)}
+                      onClick={() => applyMetafield('artist', {
+                        namespace: 'jadepuma',
+                        key: 'artist',
+                        value: lp.artist!,
+                        type: 'single_line_text_field',
+                        displayLabel: 'Artist',
+                      })}
                       applied={appliedFields.has('artist')}
                       applying={applyingField === 'artist'}
                     />
@@ -343,7 +354,13 @@ export default function ProductResearchTab({
                     )}
                     {extractedYear && (
                       <ApplyButton
-                        onClick={() => applyToFormData('year', 'year', extractedYear)}
+                        onClick={() => applyMetafield('year', {
+                          namespace: 'specs',
+                          key: 'year',
+                          value: extractedYear,
+                          type: 'single_line_text_field',
+                          displayLabel: 'Year',
+                        })}
                         applied={appliedFields.has('year')}
                         applying={applyingField === 'year'}
                         label={`Apply ${extractedYear}`}
@@ -479,29 +496,29 @@ export default function ProductResearchTab({
                   })}
                 </div>
 
-                {/* Editor or placeholder */}
-                {descriptionTone ? (
-                  <>
-                    <RichTextEditor
-                      value={descriptionHtml}
-                      onChange={setDescriptionHtml}
-                      placeholder="Edit the description before applying..."
+                {/* Editor */}
+                <RichTextEditor
+                  value={descriptionHtml}
+                  onChange={setDescriptionHtml}
+                  placeholder="Select a tone above or type a description..."
+                />
+                {descriptionHtml && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <ApplyButton
+                      onClick={async () => {
+                        setApplyingField('description');
+                        try {
+                          await onApplyBodyHtml(descriptionHtml);
+                          setAppliedFields((prev) => new Set(prev).add('description'));
+                        } catch { /* handled by parent */ } finally {
+                          setApplyingField(null);
+                        }
+                      }}
+                      applied={appliedFields.has('description')}
+                      applying={applyingField === 'description'}
+                      label="Apply as Description"
                     />
-                    {descriptionHtml && (
-                      <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <ApplyButton
-                          onClick={() => applyToFormData('description', 'bodyHtml', descriptionHtml)}
-                          applied={appliedFields.has('description')}
-                          applying={applyingField === 'description'}
-                          label="Apply as Description"
-                        />
-                        <span className="text-xs text-slate-400">Sets Listing tab description</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="px-3 py-6 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm text-slate-400">
-                    Select a tone above to preview and edit
+                    <span className="text-xs text-slate-400">Saves to Shopify</span>
                   </div>
                 )}
 
