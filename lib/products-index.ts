@@ -31,6 +31,8 @@ export interface BrowseParams {
   hasImage?: string;
   tagInclude?: string;
   tagExclude?: string;
+  channelInclude?: string;
+  channelExclude?: string;
   sort?: string;
   order?: string;
   page?: number;
@@ -153,6 +155,20 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
     paramIndex++;
   }
 
+  // Sales channel include (product must be published to this channel)
+  if (params.channelInclude) {
+    conditions.push(`sales_channels ILIKE $${paramIndex}`);
+    values.push(`%${params.channelInclude}%`);
+    paramIndex++;
+  }
+
+  // Sales channel exclude (product must NOT be published to this channel)
+  if (params.channelExclude) {
+    conditions.push(`(sales_channels IS NULL OR sales_channels NOT ILIKE $${paramIndex})`);
+    values.push(`%${params.channelExclude}%`);
+    paramIndex++;
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Sorting
@@ -190,13 +206,14 @@ export async function browseProductsIndex(params: BrowseParams): Promise<IndexBr
 }
 
 export async function getFilterOptions() {
-  const [productTypes, artists, countries, platforms, tags, internalTags] = await Promise.all([
+  const [productTypes, artists, countries, platforms, tags, internalTags, channels] = await Promise.all([
     sql`SELECT DISTINCT product_type FROM products_index WHERE product_type IS NOT NULL AND product_type != '' ORDER BY product_type`,
     sql`SELECT DISTINCT artist FROM products_index WHERE artist IS NOT NULL AND artist != '' ORDER BY artist`,
     sql`SELECT DISTINCT TRIM(c) as country FROM products_index, unnest(string_to_array(country_of_origin, ',')) as c WHERE country_of_origin IS NOT NULL AND TRIM(c) != '' ORDER BY country`,
     sql`SELECT DISTINCT source_platform FROM products_index WHERE source_platform IS NOT NULL AND source_platform != '' ORDER BY source_platform`,
     sql`SELECT DISTINCT TRIM(tag) as tag FROM products_index, unnest(string_to_array(tags, ',')) as tag WHERE tags IS NOT NULL AND TRIM(tag) != '' ORDER BY tag`,
     sql`SELECT name FROM internal_tags ORDER BY display_order ASC, name ASC`,
+    sql`SELECT DISTINCT TRIM(ch) as channel FROM products_index, unnest(string_to_array(sales_channels, ',')) as ch WHERE sales_channels IS NOT NULL AND TRIM(ch) != '' ORDER BY channel`,
   ]);
 
   return {
@@ -206,6 +223,7 @@ export async function getFilterOptions() {
     platforms: platforms.rows.map((r) => r.source_platform as string),
     tags: tags.rows.map((r) => r.tag as string),
     internalTags: internalTags.rows.map((r) => r.name as string),
+    channels: channels.rows.map((r) => r.channel as string),
   };
 }
 

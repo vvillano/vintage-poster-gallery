@@ -55,6 +55,16 @@ const PRODUCTS_QUERY = `
               }
             }
           }
+          resourcePublicationsV2(first: 20) {
+            edges {
+              node {
+                isPublished
+                publication {
+                  name
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -73,6 +83,7 @@ interface GQLProduct {
   featuredImage: { url: string } | null;
   variants: { edges: { node: { sku: string | null; price: string; compareAtPrice: string | null; inventoryQuantity: number | null } }[] };
   metafields: { edges: { node: { namespace: string; key: string; value: string } }[] };
+  resourcePublicationsV2: { edges: { node: { isPublished: boolean; publication: { name: string } } }[] };
 }
 
 function parsePrice(value: string | null | undefined): number | null {
@@ -121,11 +132,12 @@ export async function POST() {
     let hasNextPage = true;
     let cursor: string | null = null;
 
-    // Ensure internal_tags column exists (added after initial migration)
+    // Ensure columns exist (added after initial migration)
     try {
       await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS internal_tags TEXT`;
+      await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS sales_channels TEXT`;
     } catch {
-      // Column may already exist; ignore
+      // Columns may already exist; ignore
     }
 
     // Clear existing data
@@ -188,8 +200,14 @@ export async function POST() {
               }
             }
 
+            // Extract published sales channels
+            const salesChannelsStr = p.resourcePublicationsV2.edges
+              .filter(e => e.node.isPublished)
+              .map(e => e.node.publication.name)
+              .join(', ') || null;
+
             const placeholders = [];
-            for (let i = 0; i < 23; i++) {
+            for (let i = 0; i < 24; i++) {
               placeholders.push(`$${paramIdx++}`);
             }
             valuePlaceholders.push(`(${placeholders.join(', ')})`);
@@ -216,6 +234,7 @@ export async function POST() {
               restoration,                                        // restoration
               totalCogs > 0 ? totalCogs : null,                   // total_cogs
               internalTagsStr,                                    // internal_tags
+              salesChannelsStr,                                   // sales_channels
               p.createdAt,                                        // shopify_created_at
               p.updatedAt,                                        // shopify_updated_at
             );
@@ -228,7 +247,7 @@ export async function POST() {
               inventory_quantity, thumbnail_url, year, artist,
               country_of_origin, source_platform, purchase_price,
               shipping, restoration, total_cogs, internal_tags,
-              shopify_created_at, shopify_updated_at
+              sales_channels, shopify_created_at, shopify_updated_at
             ) VALUES ${valuePlaceholders.join(', ')}
             ON CONFLICT (shopify_product_id) DO UPDATE SET
               title = EXCLUDED.title,
@@ -249,6 +268,7 @@ export async function POST() {
               restoration = EXCLUDED.restoration,
               total_cogs = EXCLUDED.total_cogs,
               internal_tags = EXCLUDED.internal_tags,
+              sales_channels = EXCLUDED.sales_channels,
               shopify_created_at = EXCLUDED.shopify_created_at,
               shopify_updated_at = EXCLUDED.shopify_updated_at
           `;

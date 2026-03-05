@@ -193,6 +193,34 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
           </select>
         )}
 
+        {/* Channel Include (has channel) */}
+        {filterOptions.channels.length > 0 && (
+          <select
+            value={filters.channelInclude}
+            onChange={(e) => updateFilter('channelInclude', e.target.value)}
+            className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          >
+            <option value="">Has Channel...</option>
+            {filterOptions.channels.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Channel Exclude (missing channel) */}
+        {filterOptions.channels.length > 0 && (
+          <select
+            value={filters.channelExclude}
+            onChange={(e) => updateFilter('channelExclude', e.target.value)}
+            className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          >
+            <option value="">Missing Channel...</option>
+            {filterOptions.channels.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        )}
+
         {/* Expandable filters */}
         {(showMore || hasExpandableActive) && (
           <>
@@ -240,7 +268,7 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
               key={key}
               className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium"
             >
-              {key === 'productType' ? 'Type' : key === 'hasImage' ? 'Image' : key === 'tagInclude' ? 'Has Tag' : key === 'tagExclude' ? 'Missing Tag' : key}: {key === 'hasImage' ? (value === 'yes' ? 'With Image' : 'Without Image') : value}
+              {key === 'productType' ? 'Type' : key === 'hasImage' ? 'Image' : key === 'tagInclude' ? 'Has Tag' : key === 'tagExclude' ? 'Missing Tag' : key === 'channelInclude' ? 'Has Channel' : key === 'channelExclude' ? 'Missing Channel' : key}: {key === 'hasImage' ? (value === 'yes' ? 'With Image' : 'Without Image') : value}
               <button
                 onClick={() => clearFilter(key as keyof FilterState)}
                 className="hover:text-blue-900"
@@ -252,7 +280,7 @@ export default function FilterBar({ filters, filterOptions, onChange }: FilterBa
             </span>
           ))}
           <button
-            onClick={() => onChange({ status: '', productType: '', artist: '', country: '', platform: '', tags: '', hasImage: '', tagInclude: '', tagExclude: '' })}
+            onClick={() => onChange({ status: '', productType: '', artist: '', country: '', platform: '', tags: '', hasImage: '', tagInclude: '', tagExclude: '', channelInclude: '', channelExclude: '' })}
             className="text-[11px] text-slate-500 hover:text-slate-700"
           >
             Clear all

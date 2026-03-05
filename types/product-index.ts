@@ -83,6 +83,8 @@ export interface FilterState {
   hasImage: string;
   tagInclude: string;
   tagExclude: string;
+  channelInclude: string;
+  channelExclude: string;
 }
 
 export interface FilterOptions {
@@ -92,6 +94,7 @@ export interface FilterOptions {
   platforms: string[];
   tags: string[];
   internalTags: string[];
+  channels: string[];
 }
 
 export interface SortState {

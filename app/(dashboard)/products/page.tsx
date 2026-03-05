@@ -28,6 +28,8 @@ const EMPTY_FILTERS: FilterState = {
   hasImage: '',
   tagInclude: '',
   tagExclude: '',
+  channelInclude: '',
+  channelExclude: '',
 };
 
 const EMPTY_FILTER_OPTIONS: FilterOptions = {
@@ -37,6 +39,7 @@ const EMPTY_FILTER_OPTIONS: FilterOptions = {
   platforms: [],
   tags: [],
   internalTags: [],
+  channels: [],
 };
 
 const DEFAULT_SORT: SortState = { column: 'shopify_updated_at', order: 'desc' };
@@ -119,6 +122,8 @@ function ProductsPageInner() {
     hasImage: searchParams.get('has_image') || persisted?.filters.hasImage || '',
     tagInclude: searchParams.get('tag_include') || persisted?.filters.tagInclude || '',
     tagExclude: searchParams.get('tag_exclude') || persisted?.filters.tagExclude || '',
+    channelInclude: searchParams.get('channel_include') || persisted?.filters.channelInclude || '',
+    channelExclude: searchParams.get('channel_exclude') || persisted?.filters.channelExclude || '',
   });
   const [sort, setSort] = useState<SortState>({
     column: searchParams.get('sort') || persisted?.sort.column || DEFAULT_SORT.column,
@@ -174,6 +179,8 @@ function ProductsPageInner() {
       if (opts.filters?.hasImage) params.set('has_image', opts.filters.hasImage);
       if (opts.filters?.tagInclude) params.set('tag_include', opts.filters.tagInclude);
       if (opts.filters?.tagExclude) params.set('tag_exclude', opts.filters.tagExclude);
+      if (opts.filters?.channelInclude) params.set('channel_include', opts.filters.channelInclude);
+      if (opts.filters?.channelExclude) params.set('channel_exclude', opts.filters.channelExclude);
       if (opts.sort) {
         params.set('sort', opts.sort.column);
         params.set('order', opts.sort.order);
@@ -203,6 +210,8 @@ function ProductsPageInner() {
       if (opts.filters?.hasImage) urlParams.set('has_image', opts.filters.hasImage);
       if (opts.filters?.tagInclude) urlParams.set('tag_include', opts.filters.tagInclude);
       if (opts.filters?.tagExclude) urlParams.set('tag_exclude', opts.filters.tagExclude);
+      if (opts.filters?.channelInclude) urlParams.set('channel_include', opts.filters.channelInclude);
+      if (opts.filters?.channelExclude) urlParams.set('channel_exclude', opts.filters.channelExclude);
       if (opts.sort && opts.sort.column !== DEFAULT_SORT.column) urlParams.set('sort', opts.sort.column);
       if (opts.sort && opts.sort.order !== DEFAULT_SORT.order) urlParams.set('order', opts.sort.order);
       if ((opts.page || 1) > 1) urlParams.set('page', String(opts.page));
