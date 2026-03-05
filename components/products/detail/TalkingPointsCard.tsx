@@ -4,9 +4,10 @@ import { useState } from 'react';
 
 interface TalkingPointsCardProps {
   points: string[];
+  headerAction?: React.ReactNode;
 }
 
-export default function TalkingPointsCard({ points }: TalkingPointsCardProps) {
+export default function TalkingPointsCard({ points, headerAction }: TalkingPointsCardProps) {
   const [open, setOpen] = useState(true);
 
   if (!points || points.length === 0) return null;
@@ -19,14 +20,21 @@ export default function TalkingPointsCard({ points }: TalkingPointsCardProps) {
         className="w-full flex items-center justify-between px-5 py-3 cursor-pointer"
       >
         <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wide">Talking Points</h3>
-        <svg
-          className={`w-4 h-4 text-amber-600 transition-transform ${open ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <div className="flex items-center gap-2">
+          {headerAction && (
+            <span onClick={(e) => e.stopPropagation()}>
+              {headerAction}
+            </span>
+          )}
+          <svg
+            className={`w-4 h-4 text-amber-600 transition-transform ${open ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </button>
       {open && (
         <ul className="space-y-2 px-5 pb-4">

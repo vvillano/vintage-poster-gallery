@@ -9,7 +9,7 @@ interface ProductTabsProps {
 
 const tabs: { id: ProductTab; label: string; activeClass: string }[] = [
   { id: 'listing', label: 'Listing', activeClass: 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' },
-  { id: 'research', label: 'Research', activeClass: 'bg-violet-50 text-violet-700 border-b-2 border-violet-600' },
+  { id: 'research', label: 'Research & Descriptions', activeClass: 'bg-violet-50 text-violet-700 border-b-2 border-violet-600' },
   { id: 'valuation', label: 'Valuation', activeClass: 'bg-green-50 text-green-700 border-b-2 border-green-600' },
 ];
 
