@@ -79,7 +79,6 @@ export default function ProductResearchTab({
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [additionalContext, setAdditionalContext] = useState('');
   const [skepticalMode, setSkepticalMode] = useState(false);
 
   const lp = product.linkedPoster;
@@ -94,7 +93,6 @@ export default function ProductResearchTab({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          additionalContext: additionalContext || undefined,
           skepticalMode,
           forceReanalyze: !!hasResults,
         }),
@@ -160,19 +158,6 @@ export default function ProductResearchTab({
       {/* ── Analysis Controls ── */}
       <ProductDetailSection title="AI Analysis" defaultOpen>
         <div className="pt-4 space-y-4">
-          {/* Additional Context */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Additional Context</label>
-            <textarea
-              value={additionalContext}
-              onChange={(e) => setAdditionalContext(e.target.value)}
-              placeholder="e.g., signature reads 'Yvan Petiteau', appears to be a Moulin Rouge program"
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none text-sm resize-y"
-            />
-            <p className="text-xs text-slate-400 mt-1">One-time context for this analysis. Not saved.</p>
-          </div>
-
           {/* Skeptical Mode */}
           <label className="flex items-start gap-3 cursor-pointer">
             <input
