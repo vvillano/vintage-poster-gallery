@@ -101,7 +101,7 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/shopify/products/${id}`);
+      const res = await fetch(`/api/shopify/products/${id}`, { cache: 'no-store' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.details || data.error || 'Failed to load product');
@@ -766,7 +766,8 @@ export default function ProductDetailPage() {
       }
 
       const updated: ProductDetail = await res.json();
-      setProduct(updated);
+      // Preserve linkedPoster (PUT response doesn't include poster enrichment)
+      setProduct((prev) => ({ ...updated, linkedPoster: prev?.linkedPoster || updated.linkedPoster }));
 
       // Parse updated internal tags
       let updatedInternalTags: string[] = [];
