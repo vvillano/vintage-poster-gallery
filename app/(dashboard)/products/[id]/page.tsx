@@ -889,6 +889,33 @@ export default function ProductDetailPage() {
               />
             </ProductDetailSection>
 
+            <ProductDetailSection title="Notes" defaultOpen={!!(formData.itemNotes || formData.internalNotes)}>
+              <div className="pt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Item Notes</label>
+                  <textarea
+                    value={formData.itemNotes}
+                    onChange={(e) => handleFieldChange('itemNotes', e.target.value)}
+                    placeholder="Auction listing text, provenance notes, attribution hints..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Research-relevant notes. Sent to AI analysis.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Internal Notes</label>
+                  <textarea
+                    value={formData.internalNotes}
+                    onChange={(e) => handleFieldChange('internalNotes', e.target.value)}
+                    placeholder="Private business notes, cost reminders, to-dos..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Private. Not sent to AI or customers.</p>
+                </div>
+              </div>
+            </ProductDetailSection>
+
             <ProductDetailSection title="Basic Information" defaultOpen>
               <SpecificationsSection
                 artist={formData.artist}
@@ -928,33 +955,6 @@ export default function ProductDetailPage() {
                 bodyHtml={formData.bodyHtml}
                 onChange={(v) => handleFieldChange('bodyHtml', v)}
               />
-            </ProductDetailSection>
-
-            <ProductDetailSection title="Notes" defaultOpen={!!(formData.itemNotes || formData.internalNotes)}>
-              <div className="pt-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Item Notes</label>
-                  <textarea
-                    value={formData.itemNotes}
-                    onChange={(e) => handleFieldChange('itemNotes', e.target.value)}
-                    placeholder="Auction listing text, provenance notes, attribution hints..."
-                    rows={4}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">Research-relevant notes. Sent to AI analysis.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Internal Notes</label>
-                  <textarea
-                    value={formData.internalNotes}
-                    onChange={(e) => handleFieldChange('internalNotes', e.target.value)}
-                    placeholder="Private business notes, cost reminders, to-dos..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">Private. Not sent to AI or customers.</p>
-                </div>
-              </div>
             </ProductDetailSection>
 
             <ProductDetailSection title="Pricing & Inventory" defaultOpen>
