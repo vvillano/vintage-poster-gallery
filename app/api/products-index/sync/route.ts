@@ -7,8 +7,8 @@ import { getSyncStatus } from '@/lib/products-index';
 
 export const dynamic = 'force-dynamic';
 
-// Max pages per chunk -- keeps each function call under ~45s
-const PAGES_PER_CHUNK = 15;
+// Max pages per chunk -- keeps each function call well under timeout
+const PAGES_PER_CHUNK = 5;
 
 const PRODUCTS_QUERY = `
   query getProductsForIndex($first: Int!, $after: String) {

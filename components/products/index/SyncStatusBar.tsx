@@ -47,7 +47,7 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
         const res = await fetch('/api/products-index/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined,
+          body: JSON.stringify(bodyPayload),
         });
 
         let data;
