@@ -51,7 +51,12 @@ interface ProductResearchTabProps {
   onAnalysisComplete: () => void;
 }
 
-function ConfidenceBadge({ level, score }: { level: string | null; score: number | null }) {
+function ConfidenceBadge({ level, score, onClick, isOpen }: {
+  level: string | null;
+  score: number | null;
+  onClick?: () => void;
+  isOpen?: boolean;
+}) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
     confirmed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Confirmed' },
     likely: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Likely' },
@@ -59,10 +64,34 @@ function ConfidenceBadge({ level, score }: { level: string | null; score: number
     unknown: { bg: 'bg-slate-100', text: 'text-slate-500', label: 'Unknown' },
   };
   const c = config[level || 'unknown'] || config.unknown;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>
+  const content = (
+    <>
       {c.label}
       {score != null && <span className="opacity-70">({score}%)</span>}
+      {onClick && (
+        <svg
+          className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      )}
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium cursor-pointer ${c.bg} ${c.text}`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>
+      {content}
     </span>
   );
 }
@@ -152,6 +181,8 @@ export default function ProductResearchTab({
   const [artistNotFound, setArtistNotFound] = useState(false);
   const [addingArtist, setAddingArtist] = useState(false);
   const [artistDetailOpen, setArtistDetailOpen] = useState(false);
+  const [artistVerificationOpen, setArtistVerificationOpen] = useState(false);
+  const [printerConfidenceOpen, setPrinterConfidenceOpen] = useState(false);
 
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
@@ -418,10 +449,41 @@ export default function ProductResearchTab({
                 <label className="block text-sm font-medium text-slate-500 mb-1">Artist</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-slate-800">{lp.artist || 'Unknown'}</span>
-                  <ConfidenceBadge level={lp.artistConfidence} score={lp.artistConfidenceScore} />
+                  <ConfidenceBadge
+                    level={lp.artistConfidence}
+                    score={lp.artistConfidenceScore}
+                    onClick={lp.artistVerification ? () => setArtistVerificationOpen(!artistVerificationOpen) : undefined}
+                    isOpen={artistVerificationOpen}
+                  />
                   <AttributionBadge basis={lp.attributionBasis} />
                 </div>
-                {lp.artistSource && (
+                {/* Verification detail -- expands from confidence badge click */}
+                {artistVerificationOpen && lp.artistVerification && (
+                  <div className="mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                    <div className="flex items-center gap-4 flex-wrap text-xs">
+                      {[
+                        { label: 'Signature readable', ok: lp.artistVerification.signatureReadable },
+                        { label: 'Profession verified', ok: lp.artistVerification.professionVerified },
+                        { label: 'Era matches', ok: lp.artistVerification.eraMatches },
+                        { label: 'Style matches', ok: lp.artistVerification.styleMatches },
+                      ].map((c) => (
+                        <span key={c.label} className={`inline-flex items-center gap-1 ${c.ok ? 'text-green-600' : 'text-slate-400'}`}>
+                          {c.ok ? '\u2713' : '\u2717'} {c.label}
+                        </span>
+                      ))}
+                    </div>
+                    {lp.artistVerification.signatureText && (
+                      <p className="text-xs text-slate-500">Signature: &ldquo;{lp.artistVerification.signatureText}&rdquo;</p>
+                    )}
+                    {lp.artistVerification.verificationNotes && (
+                      <p className="text-xs text-slate-400">{lp.artistVerification.verificationNotes}</p>
+                    )}
+                    {lp.artistSource && (
+                      <p className="text-xs text-slate-400">Source: {lp.artistSource}</p>
+                    )}
+                  </div>
+                )}
+                {!artistVerificationOpen && lp.artistSource && (
                   <p className="text-xs text-slate-400 mt-1">Source: {lp.artistSource}</p>
                 )}
 
@@ -532,11 +594,6 @@ export default function ProductResearchTab({
                 )}
               </div>
 
-              {/* Verification Checklist */}
-              {lp.artistVerification && (
-                <VerificationChecklist v={lp.artistVerification} />
-              )}
-
               {/* Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -611,7 +668,12 @@ export default function ProductResearchTab({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm text-slate-800">{lp.printer || '-'}</span>
                     {lp.printerConfidence && (
-                      <ConfidenceBadge level={lp.printerConfidence} score={null} />
+                      <ConfidenceBadge
+                        level={lp.printerConfidence}
+                        score={null}
+                        onClick={lp.printerVerification ? () => setPrinterConfidenceOpen(!printerConfidenceOpen) : undefined}
+                        isOpen={printerConfidenceOpen}
+                      />
                     )}
                     {lp.printer && (
                       <ApplyButton
@@ -627,6 +689,31 @@ export default function ProductResearchTab({
                       />
                     )}
                   </div>
+                  {printerConfidenceOpen && lp.printerVerification && (
+                    <div className="mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                      <div className="flex items-center gap-4 flex-wrap text-xs">
+                        {[
+                          { label: 'Marks readable', ok: lp.printerVerification.marksReadable },
+                          { label: 'History verified', ok: lp.printerVerification.historyVerified },
+                          { label: 'Location matches', ok: lp.printerVerification.locationMatches },
+                          { label: 'Style matches', ok: lp.printerVerification.styleMatches },
+                        ].map((c) => (
+                          <span key={c.label} className={`inline-flex items-center gap-1 ${c.ok ? 'text-green-600' : 'text-slate-400'}`}>
+                            {c.ok ? '\u2713' : '\u2717'} {c.label}
+                          </span>
+                        ))}
+                      </div>
+                      {lp.printerVerification.marksText && (
+                        <p className="text-xs text-slate-500">Marks: &ldquo;{lp.printerVerification.marksText}&rdquo;</p>
+                      )}
+                      {lp.printerVerification.verificationNotes && (
+                        <p className="text-xs text-slate-400">{lp.printerVerification.verificationNotes}</p>
+                      )}
+                      {lp.printerSource && (
+                        <p className="text-xs text-slate-400">Source: {lp.printerSource}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-500 mb-1">Publisher</label>
@@ -861,33 +948,6 @@ export default function ProductResearchTab({
 }
 
 /* ── Sub-components ── */
-
-function VerificationChecklist({ v }: { v: NonNullable<ProductResearchTabProps['product']['linkedPoster']>['artistVerification'] }) {
-  if (!v) return null;
-  const checks = [
-    { label: 'Signature readable', ok: v.signatureReadable },
-    { label: 'Profession verified', ok: v.professionVerified },
-    { label: 'Era matches', ok: v.eraMatches },
-    { label: 'Style matches', ok: v.styleMatches },
-  ];
-  return (
-    <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-      <div className="flex items-center gap-4 flex-wrap text-xs">
-        {checks.map((c) => (
-          <span key={c.label} className={`inline-flex items-center gap-1 ${c.ok ? 'text-green-600' : 'text-slate-400'}`}>
-            {c.ok ? '\u2713' : '\u2717'} {c.label}
-          </span>
-        ))}
-      </div>
-      {v.signatureText && (
-        <p className="text-xs text-slate-500 mt-1">Signature: &ldquo;{v.signatureText}&rdquo;</p>
-      )}
-      {v.verificationNotes && (
-        <p className="text-xs text-slate-400 mt-1">{v.verificationNotes}</p>
-      )}
-    </div>
-  );
-}
 
 function ReliabilityBadge({ level }: { level: string }) {
   const config: Record<string, { bg: string; text: string }> = {

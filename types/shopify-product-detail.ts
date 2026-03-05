@@ -149,6 +149,15 @@ export interface LinkedPosterData {
   printingTechnique: string | null;
   printer: string | null;
   printerConfidence: string | null;
+  printerSource: string | null;
+  printerVerification: {
+    marksReadable: boolean;
+    marksText: string;
+    historyVerified: boolean;
+    locationMatches: boolean;
+    styleMatches: boolean;
+    verificationNotes: string;
+  } | null;
   publisher: string | null;
   publisherConfidence: string | null;
   historicalContext: string | null;
