@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 import { getProductDetailGraphQL } from '@/lib/shopify';
-import { analyzePoster, flattenAnalysis, ShopifyAnalysisContext } from '@/lib/claude';
+import { analyzePoster, flattenAnalysis, ShopifyAnalysisContext, runWebVerification, applyWebVerification } from '@/lib/claude';
 import { updatePosterAnalysis } from '@/lib/db';
 import { autoLinkPosterEntities } from '@/lib/auto-link';
 
@@ -119,7 +119,7 @@ export async function POST(
     }
 
     // Run Claude analysis
-    const analysis = await analyzePoster(
+    let analysis = await analyzePoster(
       imageUrl,
       additionalContext || undefined,
       product.productType || undefined,
@@ -131,11 +131,31 @@ export async function POST(
 
     console.log('[product-analyze] Analysis completed');
 
+    // Web verification: cross-reference with dealer sites (skip in skeptical mode)
+    let webVerification = null;
+    try {
+      if (!skepticalMode) {
+        const webResult = await runWebVerification(imageUrl, analysis);
+        webVerification = webResult?.verification || null;
+        if (webVerification && webVerification.fieldsChanged.length > 0) {
+          console.log(`[product-analyze] Web verification changed: ${webVerification.fieldsChanged.join(', ')}`);
+          analysis = applyWebVerification(analysis, webVerification);
+        }
+      }
+    } catch (err) {
+      console.error('[product-analyze] Web verification failed (non-fatal):', err);
+    }
+
     // Save results
     const flattenedAnalysis = flattenAnalysis(analysis);
     await updatePosterAnalysis(posterId, {
       ...flattenedAnalysis,
-      rawAiResponse: analysis,
+      rawAiResponse: {
+        ...analysis,
+        _webVerification: webVerification
+          ? { performed: true, fieldsChanged: webVerification.fieldsChanged, verificationNotes: webVerification.verificationNotes, timestamp: new Date().toISOString() }
+          : { performed: false, timestamp: new Date().toISOString() },
+      },
     });
 
     // Auto-link entities

@@ -30,7 +30,7 @@ export async function GET(
     const posterResult = await sql`
       SELECT p.id, p.raw_ai_response, p.comparable_sales, p.artist_confidence,
              p.artist_confidence_score, p.attribution_basis, p.source_citations,
-             p.rarity_analysis, p.value_insights, p.analysis_completed,
+             p.rarity_analysis, p.value_insights, p.analysis_completed, p.analysis_date,
              p.artist, p.estimated_date, p.date_confidence, p.date_source,
              p.artist_source, p.printing_technique, p.printer,
              p.printer_confidence, p.printer_source, p.printer_verification,
@@ -93,6 +93,7 @@ export async function GET(
         suggestedColors: raw?.suggestedColors || [],
         // Analysis results for Research tab
         analysisCompleted: !!poster.analysis_completed,
+        analysisDate: poster.analysis_date ? new Date(poster.analysis_date).toISOString() : null,
         artist: poster.artist || null,
         estimatedDate: poster.estimated_date || null,
         dateConfidence: poster.date_confidence || null,
@@ -110,6 +111,7 @@ export async function GET(
         productDescriptions: raw?.productDescriptions || null,
         validationNotes: raw?.validationNotes || null,
         artistVerification: raw?.identification?.artistVerification || null,
+        webVerification: raw?._webVerification || null,
         linkedArtist: poster.linked_artist_id ? {
           id: poster.linked_artist_id,
           name: poster.linked_artist_name,

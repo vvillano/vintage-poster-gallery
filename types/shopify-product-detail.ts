@@ -141,6 +141,7 @@ export interface LinkedPosterData {
   suggestedColors?: string[];
   // Analysis results for Research tab
   analysisCompleted: boolean;
+  analysisDate: string | null;  // ISO timestamp of last analysis
   artist: string | null;
   estimatedDate: string | null;
   dateConfidence: string | null;
@@ -177,6 +178,13 @@ export interface LinkedPosterData {
     eraMatches: boolean;
     styleMatches: boolean;
     verificationNotes: string;
+  } | null;
+  // Web verification metadata (from _webVerification in raw_ai_response)
+  webVerification: {
+    performed: boolean;
+    fieldsChanged: string[];
+    verificationNotes?: string;
+    timestamp: string;
   } | null;
   // Linked artist from managed database (joined via poster.artist_id)
   linkedArtist: LinkedArtistRecord | null;

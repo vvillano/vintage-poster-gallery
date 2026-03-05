@@ -2,6 +2,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { PosterAnalysis, SourceCitation, SimilarProduct, ProductDescriptions, SupplementalImage, ShopifyReferenceImage } from '@/types/poster';
 import { getTagNames } from '@/lib/tags';
 import { getColorNames } from '@/lib/colors';
+import { isSerperConfigured } from '@/lib/serper';
+import { multiStageSearch } from '@/lib/multi-stage-search';
+import { parseResultsWithAI, type AttributionConsensus } from '@/lib/result-parser';
 
 /**
  * Existing data from Shopify metafields to provide as context for analysis
@@ -957,4 +960,280 @@ export function flattenAnalysis(analysis: PosterAnalysis) {
     similarProducts: analysis.similarProducts,
     suggestedTags: analysis.suggestedTags,
   };
+}
+
+// =====================
+// Web Verification
+// =====================
+
+export interface WebVerificationEvidence {
+  artistConsensus?: { value: string; weightedConfidence: number; sources: string[]; agreementCount: number };
+  dateConsensus?: { value: string; weightedConfidence: number; sources: string[] };
+  techniqueConsensus?: { value: string; weightedConfidence: number; sources: string[] };
+  knowledgeGraph?: { title?: string; description?: string };
+  topDealerTitles: { title: string; dealerName: string }[];
+  searchResultCount: number;
+}
+
+export interface WebVerificationResult {
+  artist?: string;
+  artistConfidence?: 'confirmed' | 'likely' | 'uncertain' | 'unknown';
+  artistConfidenceScore?: number;
+  artistSource?: string;
+  attributionBasis?: string;
+  estimatedDate?: string;
+  dateConfidence?: 'confirmed' | 'likely' | 'uncertain' | 'unknown';
+  dateSource?: string;
+  verificationNotes: string;
+  fieldsChanged: string[];
+  additionalSourceCitations: { claim: string; source: string; url: string; reliability: string }[];
+}
+
+/**
+ * Second-pass verification using web evidence.
+ * Uses Sonnet (not Opus) since this is textual adjudication, not visual analysis.
+ */
+export async function verifyWithWebEvidence(
+  initialAnalysis: PosterAnalysis,
+  webEvidence: WebVerificationEvidence,
+): Promise<WebVerificationResult> {
+  const { identification, technicalAnalysis } = initialAnalysis;
+
+  const prompt = `You are verifying an AI visual analysis of a vintage poster against web search evidence.
+
+## Initial AI Analysis
+- Artist: "${identification.artist}" (confidence: ${identification.artistConfidence}, score: ${identification.artistConfidenceScore}/100)
+- Attribution basis: ${identification.attributionBasis}
+- Artist source: ${identification.artistSource}
+- Signature text: "${identification.artistVerification?.signatureText || 'none visible'}"
+- Date: "${identification.estimatedDate}" (confidence: ${identification.dateConfidence})
+- Technique: "${technicalAnalysis.printingTechnique}"
+
+## Web Search Evidence (${webEvidence.searchResultCount} results found)
+
+${webEvidence.artistConsensus ? `### Artist Consensus
+- Name: "${webEvidence.artistConsensus.value}"
+- Agreement: ${webEvidence.artistConsensus.agreementCount} sources agree
+- Weighted confidence: ${(webEvidence.artistConsensus.weightedConfidence * 100).toFixed(0)}%
+- Sources: ${webEvidence.artistConsensus.sources.join(', ')}` : '### Artist Consensus\nNo consensus found.'}
+
+${webEvidence.dateConsensus ? `### Date Consensus
+- Value: "${webEvidence.dateConsensus.value}"
+- Weighted confidence: ${(webEvidence.dateConsensus.weightedConfidence * 100).toFixed(0)}%
+- Sources: ${webEvidence.dateConsensus.sources.join(', ')}` : ''}
+
+${webEvidence.techniqueConsensus ? `### Technique Consensus
+- Value: "${webEvidence.techniqueConsensus.value}"
+- Sources: ${webEvidence.techniqueConsensus.sources.join(', ')}` : ''}
+
+${webEvidence.knowledgeGraph?.title ? `### Google Knowledge Graph
+- Title: "${webEvidence.knowledgeGraph.title}"
+- Description: "${webEvidence.knowledgeGraph.description || 'N/A'}"` : ''}
+
+### Top Dealer Listings
+${webEvidence.topDealerTitles.length > 0
+  ? webEvidence.topDealerTitles.map((d, i) => `${i + 1}. "${d.title}" (${d.dealerName})`).join('\n')
+  : 'No dealer listings found.'}
+
+## Rules
+1. If 3+ reliable dealer sources agree on an artist name and the AI was uncertain (score < 60), adopt the web consensus.
+2. If the AI read a clear signature (signatureReadable = true) that matches its identification, keep the AI answer even if web disagrees.
+3. If web consensus and AI agree, boost the confidence score (add 10-15 points, cap at 95).
+4. Only change fields where web evidence is meaningfully stronger than the AI analysis.
+5. For dates, prefer specific years from dealer catalogs over AI decade estimates.
+6. NEVER use em dashes in any text output. Use commas, semicolons, or separate sentences instead.
+
+## Output
+Return JSON with ONLY changed fields (omit fields that stay the same). Always include verificationNotes and fieldsChanged.
+
+\`\`\`json
+{
+  "artist": "corrected name or omit if unchanged",
+  "artistConfidence": "confirmed|likely|uncertain|unknown or omit",
+  "artistConfidenceScore": 85,
+  "artistSource": "updated source or omit",
+  "attributionBasis": "updated basis or omit",
+  "estimatedDate": "corrected date or omit",
+  "dateConfidence": "confirmed|likely|uncertain|unknown or omit",
+  "dateSource": "updated source or omit",
+  "verificationNotes": "Brief explanation of what was verified or changed",
+  "fieldsChanged": ["artist", "artistConfidence"],
+  "additionalSourceCitations": [
+    { "claim": "Artist attribution", "source": "Dealer Name", "url": "https://...", "reliability": "high" }
+  ]
+}
+\`\`\``;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = response.content.find(b => b.type === 'text');
+  if (!text || text.type !== 'text') {
+    return { verificationNotes: 'No response from verification', fieldsChanged: [], additionalSourceCitations: [] };
+  }
+
+  // Parse JSON from response
+  const jsonMatch = text.text.match(/```json\s*([\s\S]*?)```/) || text.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return { verificationNotes: 'Could not parse verification response', fieldsChanged: [], additionalSourceCitations: [] };
+  }
+
+  const jsonStr = jsonMatch[1] || jsonMatch[0];
+  const result = JSON.parse(jsonStr) as WebVerificationResult;
+
+  // Ensure required fields
+  result.fieldsChanged = result.fieldsChanged || [];
+  result.verificationNotes = result.verificationNotes || '';
+  result.additionalSourceCitations = result.additionalSourceCitations || [];
+
+  return result;
+}
+
+/**
+ * Run web verification: search for the poster online, parse results, and verify.
+ * Returns null if Serper is not configured or no meaningful results found.
+ */
+export async function runWebVerification(
+  imageUrl: string,
+  initialAnalysis: PosterAnalysis,
+): Promise<{ verification: WebVerificationResult | null; searchStats: { resultsFound: number; creditsUsed: number; searchTime: number } }> {
+  const nullResult = { verification: null, searchStats: { resultsFound: 0, creditsUsed: 0, searchTime: 0 } };
+
+  if (!isSerperConfigured()) {
+    console.log('[web-verify] Serper not configured, skipping');
+    return nullResult;
+  }
+
+  console.log('[web-verify] Starting web verification');
+  const startTime = Date.now();
+
+  // Build search query from initial analysis
+  const { identification } = initialAnalysis;
+  const queryParts = [identification.title];
+  if (identification.artist && identification.artistConfidence !== 'unknown') {
+    queryParts.push(identification.artist);
+  }
+  queryParts.push('vintage poster');
+  const textQuery = queryParts.join(' ');
+
+  // Run multi-stage search with reduced limits (we just need attribution data, not exhaustive results)
+  const searchResponse = await multiStageSearch({
+    imageUrl,
+    query: textQuery,
+    maxLensResults: 15,
+    maxWebResults: 15,
+    maxWebQueries: 2,
+    includeWebSearch: true,
+    enableVisualVerification: false,
+  });
+
+  const searchStats = {
+    resultsFound: searchResponse.totalResults,
+    creditsUsed: searchResponse.creditsUsed,
+    searchTime: (Date.now() - startTime) / 1000,
+  };
+
+  if (searchResponse.results.length === 0) {
+    console.log('[web-verify] No search results found');
+    return { verification: null, searchStats };
+  }
+
+  console.log(`[web-verify] Found ${searchResponse.results.length} results, parsing with AI`);
+
+  // Parse results to extract consensus
+  const parsed = await parseResultsWithAI(searchResponse.results, {
+    title: identification.title,
+    artist: identification.artist,
+    date: identification.estimatedDate,
+  });
+
+  // Build web evidence from parsed results
+  const topDealerTitles: { title: string; dealerName: string }[] = [];
+  for (const r of searchResponse.results.slice(0, 10)) {
+    if (r.isKnownDealer && r.dealerName) {
+      topDealerTitles.push({ title: r.title, dealerName: r.dealerName });
+    }
+  }
+
+  const hasArtistConsensus = parsed.consensus.artist && parsed.consensus.artist.agreementCount >= 2;
+  const hasDateConsensus = parsed.consensus.date && parsed.consensus.date.weightedConfidence > 0.5;
+
+  // Skip verification if no meaningful consensus AND no dealer titles
+  if (!hasArtistConsensus && !hasDateConsensus && topDealerTitles.length === 0) {
+    console.log('[web-verify] No meaningful consensus or dealer data, skipping verification');
+    return { verification: null, searchStats };
+  }
+
+  const webEvidence: WebVerificationEvidence = {
+    artistConsensus: parsed.consensus.artist,
+    dateConsensus: parsed.consensus.date,
+    techniqueConsensus: parsed.consensus.technique,
+    knowledgeGraph: searchResponse.knowledgeGraph,
+    topDealerTitles,
+    searchResultCount: searchResponse.results.length,
+  };
+
+  console.log('[web-verify] Running Sonnet verification pass');
+  const verification = await verifyWithWebEvidence(initialAnalysis, webEvidence);
+
+  console.log(`[web-verify] Verification complete. Fields changed: ${verification.fieldsChanged.join(', ') || 'none'}`);
+  return { verification, searchStats };
+}
+
+/**
+ * Apply web verification results to an analysis object (pure function).
+ */
+export function applyWebVerification(
+  analysis: PosterAnalysis,
+  verification: WebVerificationResult,
+): PosterAnalysis {
+  // Deep clone to avoid mutation
+  const updated = JSON.parse(JSON.stringify(analysis)) as PosterAnalysis;
+
+  if (verification.artist) {
+    updated.identification.artist = verification.artist;
+  }
+  if (verification.artistConfidence) {
+    updated.identification.artistConfidence = verification.artistConfidence;
+  }
+  if (verification.artistConfidenceScore !== undefined) {
+    updated.identification.artistConfidenceScore = verification.artistConfidenceScore;
+  }
+  if (verification.artistSource) {
+    updated.identification.artistSource = verification.artistSource;
+  }
+  if (verification.attributionBasis) {
+    updated.identification.attributionBasis = verification.attributionBasis as PosterAnalysis['identification']['attributionBasis'];
+  }
+  if (verification.estimatedDate) {
+    updated.identification.estimatedDate = verification.estimatedDate;
+  }
+  if (verification.dateConfidence) {
+    updated.identification.dateConfidence = verification.dateConfidence;
+  }
+  if (verification.dateSource) {
+    updated.identification.dateSource = verification.dateSource;
+  }
+
+  // Append verification notes
+  const existingNotes = updated.validationNotes || '';
+  updated.validationNotes = existingNotes
+    ? `${existingNotes}\n\nWeb Verification: ${verification.verificationNotes}`
+    : `Web Verification: ${verification.verificationNotes}`;
+
+  // Append source citations
+  if (verification.additionalSourceCitations.length > 0) {
+    const newCitations: SourceCitation[] = verification.additionalSourceCitations.map(c => ({
+      claim: c.claim,
+      source: c.source,
+      url: c.url,
+      reliability: c.reliability as SourceCitation['reliability'],
+    }));
+    updated.sourceCitations = [...updated.sourceCitations, ...newCitations];
+  }
+
+  return updated;
 }

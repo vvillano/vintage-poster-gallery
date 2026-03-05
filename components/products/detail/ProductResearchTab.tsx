@@ -465,7 +465,11 @@ export default function ProductResearchTab({
   return (
     <div className="space-y-4">
       {/* ── Context Summary ── */}
-      <ProductDetailSection title="Context Summary" badge="What AI Receives" defaultOpen>
+      <ProductDetailSection
+        title="Context Summary"
+        badge="What AI Receives"
+        secondaryBadge={lp?.analysisDate ? `Analyzed ${new Date(lp.analysisDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${new Date(lp.analysisDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : undefined}
+      >
         <div className="pt-4">
           {isDirty && (
             <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
@@ -489,6 +493,16 @@ export default function ProductResearchTab({
                 ? (formData.itemNotes.length > 80 ? formData.itemNotes.slice(0, 80) + '...' : formData.itemNotes)
                 : null
             } />
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">How Analysis Works</h3>
+            <ol className="text-xs text-slate-500 space-y-1 list-decimal list-inside">
+              <li><span className="font-medium text-slate-600">Visual inspection</span> &ndash; Claude Opus examines the image for signatures, style, printing technique, and era markers</li>
+              <li><span className="font-medium text-slate-600">Web verification</span> &ndash; Google Lens + dealer site cross-referencing builds artist/date consensus from multiple sources</li>
+              <li><span className="font-medium text-slate-600">Conflict resolution</span> &ndash; Claude Sonnet adjudicates when web evidence disagrees with visual analysis</li>
+              <li><span className="font-medium text-slate-600">Entity linking</span> &ndash; Auto-matches identifications to known artists, printers, and publishers in our database</li>
+              <li><span className="font-medium text-slate-600">Confidence scoring</span> &ndash; Each identification gets a confidence level based on evidence strength and source agreement</li>
+            </ol>
           </div>
         </div>
       </ProductDetailSection>
@@ -579,6 +593,17 @@ export default function ProductResearchTab({
                     isOpen={artistVerificationOpen}
                   />
                   <AttributionBadge basis={lp.attributionBasis} />
+                  {lp.webVerification?.performed && (
+                    lp.webVerification.fieldsChanged.includes('artist')
+                      ? <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200" title={lp.webVerification.verificationNotes}>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          Web Verified
+                        </span>
+                      : <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-200" title={lp.webVerification.verificationNotes}>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          Web Consistent
+                        </span>
+                  )}
                 </div>
                 {/* Verification detail -- expands from confidence badge click */}
                 {artistVerificationOpen && lp.artistVerification && (

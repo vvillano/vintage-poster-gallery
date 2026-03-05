@@ -6,11 +6,13 @@ export default function ProductDetailSection({
   title,
   defaultOpen = false,
   badge,
+  secondaryBadge,
   children,
 }: {
   title: string;
   defaultOpen?: boolean;
   badge?: string;
+  secondaryBadge?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -26,6 +28,11 @@ export default function ProductDetailSection({
           {badge && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide">
               {badge}
+            </span>
+          )}
+          {secondaryBadge && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-violet-50 text-violet-500 tracking-wide">
+              {secondaryBadge}
             </span>
           )}
         </div>
