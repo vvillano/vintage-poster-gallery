@@ -280,7 +280,6 @@ export default function ProductResearchTab({
         const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
         return !!canonicalName && mf.artist === canonicalName;
       }
-      case 'date': return !!lp.estimatedDate && mf.date === lp.estimatedDate;
       case 'year': return !!extractedYear && mf.year === extractedYear;
       case 'printer': return !!lp.printer && mf.printer === lp.printer;
       case 'publisher': return !!lp.publisher && mf.publisher === lp.publisher;
@@ -709,20 +708,6 @@ export default function ProductResearchTab({
                     {lp.dateConfidence && (
                       <ConfidenceBadge level={lp.dateConfidence} score={null} />
                     )}
-                    {lp.estimatedDate && (
-                      <ApplyButton
-                        onClick={() => applyMetafield('date', {
-                          namespace: 'jadepuma',
-                          key: 'date',
-                          value: lp.estimatedDate!,
-                          type: 'single_line_text_field',
-                          displayLabel: 'Date',
-                        })}
-                        applied={isFieldApplied('date')}
-                        applying={applyingField === 'date'}
-                        label="Apply Date"
-                      />
-                    )}
                     {extractedYear && (
                       <ApplyButton
                         onClick={() => applyMetafield('year', {
@@ -734,7 +719,7 @@ export default function ProductResearchTab({
                         })}
                         applied={isFieldApplied('year')}
                         applying={applyingField === 'year'}
-                        label={`Apply Year ${extractedYear}`}
+                        label={`Apply ${extractedYear}`}
                       />
                     )}
                   </div>
