@@ -123,6 +123,80 @@ function ContextField({ label, value }: { label: string; value: string | null | 
   );
 }
 
+/**
+ * Extract a numeric year from an AI date string using business rules:
+ * - Exact year for high-confidence dates: "1967" -> 1967
+ * - Decade-start for narrowed ranges: "early 1960s" -> 1960
+ * - Late decade: "late 1950s" -> 1958
+ * - Mid-range for broad decades: "1950s" -> 1955
+ * - Spanning decades: "1940s-1950s" -> 1945
+ * Returns the numeric year string or null.
+ */
+function extractYearFromDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const s = dateStr.toLowerCase().trim();
+
+  // Exact year with high confidence: "1967", "circa 1967", "c. 1942"
+  const exactMatch = s.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/);
+
+  // Check for decade patterns first (they also contain 4-digit years)
+  // "early 1960s", "early 60s"
+  const earlyDecade = s.match(/early\s+(?:(\d{4})s|(\d{2})s)/);
+  if (earlyDecade) {
+    const decade = earlyDecade[1]
+      ? parseInt(earlyDecade[1])
+      : 1900 + parseInt(earlyDecade[2]);
+    return String(decade);
+  }
+
+  // "late 1950s", "late 50s"
+  const lateDecade = s.match(/late\s+(?:(\d{4})s|(\d{2})s)/);
+  if (lateDecade) {
+    const decade = lateDecade[1]
+      ? parseInt(lateDecade[1])
+      : 1900 + parseInt(lateDecade[2]);
+    return String(decade + 8);
+  }
+
+  // "mid-1950s", "mid 1950s"
+  const midDecade = s.match(/mid[-\s]+(?:(\d{4})s|(\d{2})s)/);
+  if (midDecade) {
+    const decade = midDecade[1]
+      ? parseInt(midDecade[1])
+      : 1900 + parseInt(midDecade[2]);
+    return String(decade + 5);
+  }
+
+  // Spanning decades: "1940s-1950s", "1940s to 1950s"
+  const spanMatch = s.match(/(\d{4})s\s*[-\u2013to]+\s*(\d{4})s/);
+  if (spanMatch) {
+    const start = parseInt(spanMatch[1]);
+    const end = parseInt(spanMatch[2]);
+    return String(Math.round((start + end) / 2));
+  }
+
+  // Plain decade: "1950s", "the 1960s"
+  const plainDecade = s.match(/\b(\d{4})s\b/);
+  if (plainDecade) {
+    return String(parseInt(plainDecade[1]) + 5);
+  }
+
+  // Short decade: "the 50s", "60s"
+  const shortDecade = s.match(/\b(\d{2})s\b/);
+  if (shortDecade) {
+    const num = parseInt(shortDecade[1]);
+    const decade = num >= 50 ? 1800 + num : 1900 + num;
+    return String(decade + 5);
+  }
+
+  // Fallback: exact year match
+  if (exactMatch) {
+    return exactMatch[1];
+  }
+
+  return null;
+}
+
 function convertToHtmlParagraphs(text: string): string {
   return text
     .split(/\n\n+/)
@@ -144,7 +218,16 @@ function ApplyButton({
   label?: string;
 }) {
   if (applied) {
-    return <span className="text-xs text-green-600 font-medium">Applied</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 01-8 0" />
+        </svg>
+        Applied
+      </span>
+    );
   }
   return (
     <button
@@ -187,7 +270,7 @@ export default function ProductResearchTab({
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
   const hasResults = lp?.analysisCompleted;
-  const extractedYear = lp?.estimatedDate?.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/)?.[1] || null;
+  const extractedYear = extractYearFromDate(lp?.estimatedDate);
 
   // Derive "applied" state by comparing current Shopify values with AI suggestions
   // This persists across navigation since it's based on actual product data
@@ -199,11 +282,20 @@ export default function ProductResearchTab({
         const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
         return !!canonicalName && mf.artist === canonicalName;
       }
+      case 'date': return !!lp.estimatedDate && mf.date === lp.estimatedDate;
       case 'year': return !!extractedYear && mf.year === extractedYear;
       case 'printer': return !!lp.printer && mf.printer === lp.printer;
       case 'publisher': return !!lp.publisher && mf.publisher === lp.publisher;
       case 'history': return !!lp.historicalContext && mf.history === lp.historicalContext;
+      case 'artistBio': return !!lp.linkedArtist?.bio && mf.artistBio === lp.linkedArtist.bio;
       case 'concise': return !!lp.productDescriptions?.concise && mf.conciseDescription === lp.productDescriptions.concise;
+      case 'medium': {
+        if (!formData.medium.length) return false;
+        try {
+          const current = mf.medium ? JSON.parse(mf.medium) : [];
+          return JSON.stringify([...formData.medium].sort()) === JSON.stringify([...current].sort());
+        } catch { return false; }
+      }
       case 'description': return !!descriptionHtml && product.bodyHtml === descriptionHtml;
       default: return false;
     }
@@ -543,7 +635,23 @@ export default function ProductResearchTab({
                         {artistDetailOpen && (
                           <div className="px-3 py-2.5 border-t border-slate-200 space-y-2">
                             {resolvedArtist.bio && (
-                              <p className="text-xs text-slate-600 leading-relaxed">{resolvedArtist.bio}</p>
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs text-slate-600 leading-relaxed">{resolvedArtist.bio}</p>
+                                  <ApplyButton
+                                    onClick={() => applyMetafield('artistBio', {
+                                      namespace: 'jadepuma',
+                                      key: 'artist_bio',
+                                      value: resolvedArtist.bio!,
+                                      type: 'multi_line_text_field',
+                                      displayLabel: 'Artist Bio',
+                                    })}
+                                    applied={isFieldApplied('artistBio')}
+                                    applying={applyingField === 'artistBio'}
+                                    label="Apply Bio"
+                                  />
+                                </div>
+                              </div>
                             )}
                             {resolvedArtist.name.toLowerCase() !== lp.artist!.toLowerCase() && (
                               <p className="text-xs text-amber-600">
@@ -603,6 +711,20 @@ export default function ProductResearchTab({
                     {lp.dateConfidence && (
                       <ConfidenceBadge level={lp.dateConfidence} score={null} />
                     )}
+                    {lp.estimatedDate && (
+                      <ApplyButton
+                        onClick={() => applyMetafield('date', {
+                          namespace: 'jadepuma',
+                          key: 'date',
+                          value: lp.estimatedDate!,
+                          type: 'single_line_text_field',
+                          displayLabel: 'Date',
+                        })}
+                        applied={isFieldApplied('date')}
+                        applying={applyingField === 'date'}
+                        label="Apply Date"
+                      />
+                    )}
                     {extractedYear && (
                       <ApplyButton
                         onClick={() => applyMetafield('year', {
@@ -614,7 +736,7 @@ export default function ProductResearchTab({
                         })}
                         applied={isFieldApplied('year')}
                         applying={applyingField === 'year'}
-                        label={`Apply ${extractedYear}`}
+                        label={`Apply Year ${extractedYear}`}
                       />
                     )}
                   </div>
@@ -656,6 +778,22 @@ export default function ProductResearchTab({
                           </button>
                         );
                       })}
+                    </div>
+                  )}
+                  {formData.medium.length > 0 && (
+                    <div className="mt-1.5">
+                      <ApplyButton
+                        onClick={() => applyMetafield('medium', {
+                          namespace: 'jadepuma',
+                          key: 'medium',
+                          value: JSON.stringify(formData.medium),
+                          type: 'list.single_line_text_field',
+                          displayLabel: 'Medium',
+                        })}
+                        applied={isFieldApplied('medium')}
+                        applying={applyingField === 'medium'}
+                        label="Apply Medium"
+                      />
                     </div>
                   )}
                 </div>
