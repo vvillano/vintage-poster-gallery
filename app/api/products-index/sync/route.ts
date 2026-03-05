@@ -150,27 +150,42 @@ export async function POST() {
       );
     }
 
-    // Paginate through all Shopify products
+    // Paginate through all Shopify products (100 per page to avoid 502s with resourcePublicationsV2)
     while (hasNextPage) {
       pageNumber++;
-      const variables: Record<string, unknown> = { first: 250 };
+      const variables: Record<string, unknown> = { first: 100 };
       if (cursor) variables.after = cursor;
 
       let data;
-      try {
-        data = await shopifyGraphQL<{
-          products: {
-            pageInfo: { hasNextPage: boolean; endCursor: string | null };
-            edges: { node: GQLProduct }[];
-          };
-        }>(PRODUCTS_QUERY, variables);
-      } catch (err) {
+      // Retry up to 2 times for transient Shopify errors (502, 503, 429)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          data = await shopifyGraphQL<{
+            products: {
+              pageInfo: { hasNextPage: boolean; endCursor: string | null };
+              edges: { node: GQLProduct }[];
+            };
+          }>(PRODUCTS_QUERY, variables);
+          break; // success
+        } catch (err) {
+          const isRetryable = String(err).includes('502') || String(err).includes('503') || String(err).includes('429');
+          if (isRetryable && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+            continue;
+          }
+          return NextResponse.json(
+            { error: 'Sync failed', details: `Shopify GraphQL error on page ${pageNumber} (${totalSynced} synced so far): ${String(err)}` },
+            { status: 500 }
+          );
+        }
+      }
+
+      if (!data) {
         return NextResponse.json(
-          { error: 'Sync failed', details: `Shopify GraphQL error on page ${pageNumber} (${totalSynced} synced so far): ${String(err)}` },
+          { error: 'Sync failed', details: `No data returned on page ${pageNumber} (${totalSynced} synced so far)` },
           { status: 500 }
         );
       }
-
       const products = data.products.edges.map((e) => e.node);
 
       if (products.length > 0) {
