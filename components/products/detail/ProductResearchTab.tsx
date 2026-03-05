@@ -151,6 +151,7 @@ export default function ProductResearchTab({
   const [artistSearching, setArtistSearching] = useState(false);
   const [artistNotFound, setArtistNotFound] = useState(false);
   const [addingArtist, setAddingArtist] = useState(false);
+  const [artistDetailOpen, setArtistDetailOpen] = useState(false);
 
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
@@ -424,25 +425,34 @@ export default function ProductResearchTab({
                   <p className="text-xs text-slate-400 mt-1">Source: {lp.artistSource}</p>
                 )}
 
-                {/* Managed list match card */}
+                {/* Managed list match */}
                 {lp.artist && (
                   <div className="mt-2">
                     {artistSearching && (
-                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400">
-                        Searching artist database...
-                      </div>
+                      <p className="text-xs text-slate-400">Searching artist database...</p>
                     )}
+
+                    {/* Resolved artist: compact row with expandable detail */}
                     {resolvedArtist && (
-                      <div className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-medium text-slate-800">{resolvedArtist.name}</span>
-                              {resolvedArtist.verified && (
-                                <span className="text-green-600 text-xs" title="Verified profile">&#x2713;</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">
+                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        {/* Compact row */}
+                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50">
+                          <button
+                            type="button"
+                            onClick={() => setArtistDetailOpen(!artistDetailOpen)}
+                            className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer text-left"
+                          >
+                            <svg
+                              className={`w-3.5 h-3.5 text-slate-400 flex-shrink-0 transition-transform ${artistDetailOpen ? 'rotate-90' : ''}`}
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <span className="text-sm font-medium text-slate-800 truncate">{resolvedArtist.name}</span>
+                            {resolvedArtist.verified && (
+                              <span className="text-green-600 text-xs flex-shrink-0" title="Verified profile">&#x2713;</span>
+                            )}
+                            <span className="text-xs text-slate-400 truncate">
                               {[
                                 resolvedArtist.nationality,
                                 resolvedArtist.birthYear && resolvedArtist.deathYear
@@ -450,14 +460,9 @@ export default function ProductResearchTab({
                                   : resolvedArtist.birthYear
                                     ? `b. ${resolvedArtist.birthYear}`
                                     : null,
-                              ].filter(Boolean).join(', ') || 'No profile data'}
-                            </p>
-                            {resolvedArtist.name.toLowerCase() !== lp.artist!.toLowerCase() && (
-                              <p className="text-xs text-amber-600 mt-0.5">
-                                AI identified as: &ldquo;{lp.artist}&rdquo; (alias match)
-                              </p>
-                            )}
-                          </div>
+                              ].filter(Boolean).join(', ')}
+                            </span>
+                          </button>
                           <ApplyButton
                             onClick={async () => {
                               setApplyingField('artist');
@@ -471,24 +476,56 @@ export default function ProductResearchTab({
                             applying={applyingField === 'artist'}
                           />
                         </div>
+
+                        {/* Expanded detail */}
+                        {artistDetailOpen && (
+                          <div className="px-3 py-2.5 border-t border-slate-200 space-y-2">
+                            {resolvedArtist.bio && (
+                              <p className="text-xs text-slate-600 leading-relaxed">{resolvedArtist.bio}</p>
+                            )}
+                            {resolvedArtist.name.toLowerCase() !== lp.artist!.toLowerCase() && (
+                              <p className="text-xs text-amber-600">
+                                AI identified as: &ldquo;{lp.artist}&rdquo; (alias match)
+                              </p>
+                            )}
+                            {resolvedArtist.aliases.length > 0 && (
+                              <p className="text-xs text-slate-400">
+                                Also known as: {resolvedArtist.aliases.join(', ')}
+                              </p>
+                            )}
+                            {resolvedArtist.wikipediaUrl && (
+                              <a
+                                href={resolvedArtist.wikipediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-violet-500 hover:underline"
+                              >
+                                Wikipedia
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    {/* Not found */}
                     {artistNotFound && !artistSearching && (
-                      <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm text-amber-800">Not in artist database</p>
-                            <p className="text-xs text-amber-600 mt-0.5">Will search Wikipedia for profile data</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleAddArtist}
-                            disabled={addingArtist}
-                            className="text-xs px-2.5 py-1 rounded font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {addingArtist ? 'Adding...' : 'Add Artist'}
-                          </button>
+                      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div>
+                          <p className="text-sm text-amber-800">Not in artist database</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Will search Wikipedia for profile data</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={handleAddArtist}
+                          disabled={addingArtist}
+                          className="text-xs px-2.5 py-1 rounded font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {addingArtist ? 'Adding...' : 'Add Artist'}
+                        </button>
                       </div>
                     )}
                   </div>
