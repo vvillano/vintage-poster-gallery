@@ -279,12 +279,18 @@ export default function ProductResearchTab({
   const hasResults = lp?.analysisCompleted;
   const extractedYear = extractYearFromDate(lp?.estimatedDate);
 
+  // Normalize HTML for comparison (TipTap may strip whitespace between tags)
+  function normalizeHtml(html: string): string {
+    return html.replace(/>\s+</g, '><').trim();
+  }
+
   // Determine which description tone is currently live in Shopify
   function getAppliedDescriptionTone(): string | null {
     if (!product.bodyHtml || !lp?.productDescriptions) return null;
+    const shopifyNorm = normalizeHtml(product.bodyHtml);
     for (const tone of DESCRIPTION_TONES) {
       const text = lp.productDescriptions[tone.id as keyof typeof lp.productDescriptions];
-      if (text && product.bodyHtml === convertToHtmlParagraphs(text)) {
+      if (text && shopifyNorm === normalizeHtml(convertToHtmlParagraphs(text))) {
         return tone.id;
       }
     }
@@ -318,7 +324,10 @@ export default function ProductResearchTab({
           return JSON.stringify([...formData.medium].sort()) === JSON.stringify([...current].sort());
         } catch { return false; }
       }
-      case 'description': return !!descriptionHtml && product.bodyHtml === descriptionHtml;
+      case 'description': {
+        if (!descriptionHtml || !product.bodyHtml) return false;
+        return normalizeHtml(descriptionHtml) === normalizeHtml(product.bodyHtml);
+      }
       default: return false;
     }
   }
