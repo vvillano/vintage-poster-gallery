@@ -147,11 +147,13 @@ export async function POST(request: NextRequest) {
 
     // First chunk: ensure columns exist
     if (isFirstChunk) {
+      const alterStart = Date.now();
       try {
         await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS internal_tags TEXT`;
         await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS sales_channels TEXT`;
+        console.log(`[sync] ALTER TABLE took ${Date.now() - alterStart}ms`);
       } catch {
-        // Columns may already exist; ignore
+        console.log(`[sync] ALTER TABLE skipped (${Date.now() - alterStart}ms)`);
       }
     }
 
@@ -160,12 +162,13 @@ export async function POST(request: NextRequest) {
 
     while (hasNextPage && pagesThisChunk < PAGES_PER_CHUNK) {
       pagesThisChunk++;
-      const variables: Record<string, unknown> = { first: 100 };
+      const variables: Record<string, unknown> = { first: 50 };
       if (cursor) variables.after = cursor;
 
       let data;
+      console.log(`[sync] Page ${pagesThisChunk}: starting Shopify call...`);
       const shopifyStart = Date.now();
-      // Retry up to 2 times for transient Shopify errors (502, 503, 429)
+      // Retry up to 2 times for transient Shopify errors (502, 503, 429, timeout)
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           data = await shopifyGraphQL<{
@@ -173,10 +176,12 @@ export async function POST(request: NextRequest) {
               pageInfo: { hasNextPage: boolean; endCursor: string | null };
               edges: { node: GQLProduct }[];
             };
-          }>(PRODUCTS_QUERY, variables);
+          }>(PRODUCTS_QUERY, variables, { timeoutMs: 30000 });
           break;
         } catch (err) {
-          const isRetryable = String(err).includes('502') || String(err).includes('503') || String(err).includes('429');
+          console.log(`[sync] Page ${pagesThisChunk}: attempt ${attempt + 1} failed: ${String(err).slice(0, 200)}`);
+          const errStr = String(err);
+          const isRetryable = errStr.includes('502') || errStr.includes('503') || errStr.includes('429') || errStr.includes('timeout');
           if (isRetryable && attempt < 2) {
             await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
             continue;
@@ -310,7 +315,7 @@ export async function POST(request: NextRequest) {
         cursor,
         syncTimestamp,
         synced: totalSynced,
-        chunkSynced: pagesThisChunk * 100,
+        chunkSynced: pagesThisChunk * 50,
       });
     }
 

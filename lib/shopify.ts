@@ -927,21 +927,37 @@ import type {
  */
 export async function shopifyGraphQL<T = any>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
+  options?: { timeoutMs?: number }
 ): Promise<T> {
   const config = await getShopifyConfig();
   if (!config) throw new Error('Shopify not configured');
 
   const url = `https://${config.shopDomain.trim()}/admin/api/${config.apiVersion}/graphql.json`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': config.accessToken,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+  const controller = new AbortController();
+  const timeoutMs = options?.timeoutMs ?? 45000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': config.accessToken,
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`Shopify GraphQL timeout after ${timeoutMs}ms`);
+    }
+    throw err;
+  }
+  clearTimeout(timer);
 
   if (!response.ok) {
     const errorText = await response.text();
