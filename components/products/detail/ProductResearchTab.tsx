@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProductDetail, LinkedArtistRecord } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
@@ -266,6 +266,8 @@ export default function ProductResearchTab({
   const [applyingField, setApplyingField] = useState<string | null>(null);
   const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
+  // Track user edits per tone so they persist when toggling between tabs
+  const descriptionEditsRef = useRef<Record<string, string>>({});
   const [artistMatch, setArtistMatch] = useState<LinkedArtistRecord | null>(null);
   const [artistSearching, setArtistSearching] = useState(false);
   const [artistNotFound, setArtistNotFound] = useState(false);
@@ -285,10 +287,17 @@ export default function ProductResearchTab({
   }
 
   // Determine which description tone is currently live in Shopify
+  // Checks both saved edits and original AI text for each tone
   function getAppliedDescriptionTone(): string | null {
     if (!product.bodyHtml || !lp?.productDescriptions) return null;
     const shopifyNorm = normalizeHtml(product.bodyHtml);
     for (const tone of DESCRIPTION_TONES) {
+      // Check saved edit first (user may have modified this tone)
+      const savedEdit = descriptionEditsRef.current[tone.id];
+      if (savedEdit && shopifyNorm === normalizeHtml(savedEdit)) {
+        return tone.id;
+      }
+      // Then check original AI text
       const text = lp.productDescriptions[tone.id as keyof typeof lp.productDescriptions];
       if (text && shopifyNorm === normalizeHtml(convertToHtmlParagraphs(text))) {
         return tone.id;
@@ -940,8 +949,12 @@ export default function ProductResearchTab({
                         type="button"
                         disabled={!text}
                         onClick={() => {
+                          // Save current edits before switching
+                          descriptionEditsRef.current[descriptionTone] = descriptionHtml;
                           setDescriptionTone(tone.id);
-                          setDescriptionHtml(text ? convertToHtmlParagraphs(text) : '');
+                          // Restore saved edits if any, otherwise use original AI text
+                          const savedEdit = descriptionEditsRef.current[tone.id];
+                          setDescriptionHtml(savedEdit !== undefined ? savedEdit : (text ? convertToHtmlParagraphs(text) : ''));
                         }}
                         className={`px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
                           descriptionTone === tone.id
