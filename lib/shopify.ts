@@ -1347,7 +1347,7 @@ export async function publishProductToChannels(
   const mutation = `
     mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
       publishablePublish(id: $id, input: $input) {
-        publishable { publishedOnCurrentPublication }
+        publishable { __typename }
         userErrors { field message }
       }
     }
@@ -1375,7 +1375,7 @@ export async function unpublishProductFromChannels(
   const mutation = `
     mutation publishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
       publishableUnpublish(id: $id, input: $input) {
-        publishable { publishedOnCurrentPublication }
+        publishable { __typename }
         userErrors { field message }
       }
     }
