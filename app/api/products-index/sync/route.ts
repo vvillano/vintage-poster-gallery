@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
@@ -6,6 +6,9 @@ import { shopifyGraphQL } from '@/lib/shopify';
 import { getSyncStatus } from '@/lib/products-index';
 
 export const dynamic = 'force-dynamic';
+
+// Max pages per chunk -- keeps each function call under ~45s
+const PAGES_PER_CHUNK = 15;
 
 const PRODUCTS_QUERY = `
   query getProductsForIndex($first: Int!, $after: String) {
@@ -94,8 +97,6 @@ function parsePrice(value: string | null | undefined): number | null {
 }
 
 function getMetafieldValue(product: GQLProduct, namespaceKey: string): string | null {
-  // Shopify 2025-01 API returns key as "namespace.key" (e.g. "jadepuma.internal_tags")
-  // Handle both formats: full "namespace.key" or just "key"
   const edge = product.metafields.edges.find((e) => {
     const fullKey = e.node.key.includes('.') ? e.node.key : `${e.node.namespace}.${e.node.key}`;
     return fullKey === namespaceKey;
@@ -117,33 +118,46 @@ function cleanListValue(value: string | null): string | null {
 
 /**
  * POST /api/products-index/sync
- * Full sync of all Shopify products into products_index table
+ *
+ * Chunked sync: processes PAGES_PER_CHUNK pages per call.
+ * Body (optional): { cursor?: string, syncTimestamp?: string, totalSynced?: number }
+ * Returns: { done: false, cursor, syncTimestamp, synced, chunkSynced }
+ *       or { done: true, synced, elapsed }
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const startTime = Date.now();
-    const syncTimestamp = new Date().toISOString();
-    let totalSynced = 0;
-    let pageNumber = 0;
-    let hasNextPage = true;
-    let cursor: string | null = null;
-
-    // Ensure columns exist (added after initial migration)
+    // Parse continuation state from body (if resuming)
+    let body: { cursor?: string; syncTimestamp?: string; totalSynced?: number } = {};
     try {
-      await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS internal_tags TEXT`;
-      await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS sales_channels TEXT`;
-    } catch {
-      // Columns may already exist; ignore
+      body = await request.json();
+    } catch { /* first call has no body */ }
+
+    const isFirstChunk = !body.cursor;
+    const syncTimestamp = body.syncTimestamp || new Date().toISOString();
+    let totalSynced = body.totalSynced || 0;
+    let cursor: string | null = body.cursor || null;
+    const startTime = Date.now();
+
+    // First chunk: ensure columns exist
+    if (isFirstChunk) {
+      try {
+        await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS internal_tags TEXT`;
+        await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS sales_channels TEXT`;
+      } catch {
+        // Columns may already exist; ignore
+      }
     }
 
-    // Paginate through all Shopify products (100 per page to avoid 502s with resourcePublicationsV2)
-    while (hasNextPage) {
-      pageNumber++;
+    let hasNextPage = true;
+    let pagesThisChunk = 0;
+
+    while (hasNextPage && pagesThisChunk < PAGES_PER_CHUNK) {
+      pagesThisChunk++;
       const variables: Record<string, unknown> = { first: 100 };
       if (cursor) variables.after = cursor;
 
@@ -157,7 +171,7 @@ export async function POST() {
               edges: { node: GQLProduct }[];
             };
           }>(PRODUCTS_QUERY, variables);
-          break; // success
+          break;
         } catch (err) {
           const isRetryable = String(err).includes('502') || String(err).includes('503') || String(err).includes('429');
           if (isRetryable && attempt < 2) {
@@ -165,7 +179,7 @@ export async function POST() {
             continue;
           }
           return NextResponse.json(
-            { error: 'Sync failed', details: `Shopify GraphQL error on page ${pageNumber} (${totalSynced} synced so far): ${String(err)}` },
+            { error: 'Sync failed', details: `Shopify GraphQL error (${totalSynced} synced so far): ${String(err)}` },
             { status: 500 }
           );
         }
@@ -173,15 +187,15 @@ export async function POST() {
 
       if (!data) {
         return NextResponse.json(
-          { error: 'Sync failed', details: `No data returned on page ${pageNumber} (${totalSynced} synced so far)` },
+          { error: 'Sync failed', details: `No data returned (${totalSynced} synced so far)` },
           { status: 500 }
         );
       }
+
       const products = data.products.edges.map((e) => e.node);
 
       if (products.length > 0) {
         try {
-          // Batch insert using multi-row VALUES
           const valuePlaceholders: string[] = [];
           const insertValues: unknown[] = [];
           let paramIdx = 1;
@@ -194,7 +208,6 @@ export async function POST() {
             const restoration = parsePrice(getMetafieldValue(p, 'jadepuma.avp_restoration'));
             const totalCogs = (purchasePrice || 0) + (shipping || 0) + (restoration || 0);
 
-            // Parse internal_tags metafield (JSON array like '["INV 2026","Ready to List"]')
             const rawInternalTags = getMetafieldValue(p, 'jadepuma.internal_tags');
             let internalTagsStr: string | null = null;
             if (rawInternalTags) {
@@ -206,7 +219,6 @@ export async function POST() {
               }
             }
 
-            // Extract published sales channels (graceful if field absent)
             let salesChannelsStr: string | null = null;
             try {
               if (p.resourcePublicationsV2?.edges) {
@@ -224,31 +236,19 @@ export async function POST() {
             valuePlaceholders.push(`(${placeholders.join(', ')})`);
 
             insertValues.push(
-              numericId,                                          // shopify_product_id
-              p.id,                                               // shopify_gid
-              p.handle,                                           // handle
-              p.title,                                            // title
-              p.status.toLowerCase(),                             // status
-              p.productType || null,                              // product_type
-              p.tags.join(', ') || null,                          // tags
-              variant?.sku || null,                                // sku
-              parsePrice(variant?.price) ?? null,                 // price
-              parsePrice(variant?.compareAtPrice) ?? null,        // compare_at_price
-              variant?.inventoryQuantity ?? null,                 // inventory_quantity
-              p.featuredImage?.url || null,                       // thumbnail_url
-              getMetafieldValue(p, 'specs.year') || null,                        // year
-              cleanListValue(getMetafieldValue(p, 'jadepuma.artist')) || null,             // artist
-              cleanListValue(getMetafieldValue(p, 'jadepuma.country_of_origin')) || null,  // country_of_origin
-              cleanListValue(getMetafieldValue(p, 'jadepuma.source_platform')) || null,    // source_platform
-              purchasePrice,                                      // purchase_price
-              shipping,                                           // shipping
-              restoration,                                        // restoration
-              totalCogs > 0 ? totalCogs : null,                   // total_cogs
-              internalTagsStr,                                    // internal_tags
-              salesChannelsStr,                                   // sales_channels
-              p.createdAt,                                        // shopify_created_at
-              p.updatedAt,                                        // shopify_updated_at
-              syncTimestamp,                                       // synced_at
+              numericId, p.id, p.handle, p.title, p.status.toLowerCase(),
+              p.productType || null, p.tags.join(', ') || null,
+              variant?.sku || null, parsePrice(variant?.price) ?? null,
+              parsePrice(variant?.compareAtPrice) ?? null,
+              variant?.inventoryQuantity ?? null, p.featuredImage?.url || null,
+              getMetafieldValue(p, 'specs.year') || null,
+              cleanListValue(getMetafieldValue(p, 'jadepuma.artist')) || null,
+              cleanListValue(getMetafieldValue(p, 'jadepuma.country_of_origin')) || null,
+              cleanListValue(getMetafieldValue(p, 'jadepuma.source_platform')) || null,
+              purchasePrice, shipping, restoration,
+              totalCogs > 0 ? totalCogs : null,
+              internalTagsStr, salesChannelsStr,
+              p.createdAt, p.updatedAt, syncTimestamp,
             );
           }
 
@@ -263,22 +263,17 @@ export async function POST() {
               synced_at
             ) VALUES ${valuePlaceholders.join(', ')}
             ON CONFLICT (shopify_product_id) DO UPDATE SET
-              title = EXCLUDED.title,
-              status = EXCLUDED.status,
-              product_type = EXCLUDED.product_type,
-              tags = EXCLUDED.tags,
-              sku = EXCLUDED.sku,
-              price = EXCLUDED.price,
+              title = EXCLUDED.title, status = EXCLUDED.status,
+              product_type = EXCLUDED.product_type, tags = EXCLUDED.tags,
+              sku = EXCLUDED.sku, price = EXCLUDED.price,
               compare_at_price = EXCLUDED.compare_at_price,
               inventory_quantity = EXCLUDED.inventory_quantity,
-              thumbnail_url = EXCLUDED.thumbnail_url,
-              year = EXCLUDED.year,
+              thumbnail_url = EXCLUDED.thumbnail_url, year = EXCLUDED.year,
               artist = EXCLUDED.artist,
               country_of_origin = EXCLUDED.country_of_origin,
               source_platform = EXCLUDED.source_platform,
               purchase_price = EXCLUDED.purchase_price,
-              shipping = EXCLUDED.shipping,
-              restoration = EXCLUDED.restoration,
+              shipping = EXCLUDED.shipping, restoration = EXCLUDED.restoration,
               total_cogs = EXCLUDED.total_cogs,
               internal_tags = EXCLUDED.internal_tags,
               sales_channels = EXCLUDED.sales_channels,
@@ -291,7 +286,7 @@ export async function POST() {
           totalSynced += products.length;
         } catch (err) {
           return NextResponse.json(
-            { error: 'Sync failed', details: `Database insert failed on page ${pageNumber} (${totalSynced} synced so far, batch of ${products.length}): ${String(err)}` },
+            { error: 'Sync failed', details: `Database insert failed (${totalSynced} synced so far, batch of ${products.length}): ${String(err)}` },
             { status: 500 }
           );
         }
@@ -301,14 +296,24 @@ export async function POST() {
       cursor = data.products.pageInfo.endCursor || null;
     }
 
-    // Remove products that no longer exist in Shopify (not touched by this sync)
+    // If more pages remain, return continuation state
+    if (hasNextPage && cursor) {
+      return NextResponse.json({
+        done: false,
+        cursor,
+        syncTimestamp,
+        synced: totalSynced,
+        chunkSynced: pagesThisChunk * 100,
+      });
+    }
+
+    // Final chunk: clean up stale rows and link posters
     try {
       await sql`DELETE FROM products_index WHERE synced_at < ${syncTimestamp}`;
     } catch {
-      // Non-fatal: stale rows remain but won't affect correctness
+      // Non-fatal
     }
 
-    // Link to local posters
     try {
       await sql`
         UPDATE products_index pi
@@ -318,16 +323,15 @@ export async function POST() {
           AND p.shopify_product_id IS NOT NULL
       `;
     } catch (err) {
-      // Non-fatal: products are synced, just linkage failed
       console.error('Failed to link local posters:', err);
     }
 
     const elapsed = Date.now() - startTime;
 
     return NextResponse.json({
+      done: true,
       success: true,
       synced: totalSynced,
-      pages: pageNumber,
       elapsed: `${(elapsed / 1000).toFixed(1)}s`,
     });
   } catch (error) {

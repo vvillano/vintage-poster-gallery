@@ -21,6 +21,7 @@ function formatTimeAgo(dateStr: string): string {
 
 export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatusBarProps) {
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -28,24 +29,56 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
     setSyncing(true);
     setSyncResult(null);
     setSyncError(null);
+    setSyncProgress(null);
+
+    const startTime = Date.now();
+    let cursor: string | undefined;
+    let syncTimestamp: string | undefined;
+    let totalSynced = 0;
 
     try {
-      const res = await fetch('/api/products-index/sync', { method: 'POST' });
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error(`Sync failed (server returned non-JSON). Status: ${res.status}. This may be a timeout -- try again.`);
+      // Loop through chunks until done
+      while (true) {
+        const bodyPayload: Record<string, unknown> = {};
+        if (cursor) bodyPayload.cursor = cursor;
+        if (syncTimestamp) bodyPayload.syncTimestamp = syncTimestamp;
+        if (totalSynced > 0) bodyPayload.totalSynced = totalSynced;
+
+        const res = await fetch('/api/products-index/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined,
+        });
+
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(`Sync failed (server returned non-JSON). Status: ${res.status}. This may be a timeout -- try again.`);
+        }
+
+        if (!res.ok) {
+          throw new Error(data.details || data.error || 'Sync failed');
+        }
+
+        if (data.done) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          setSyncResult(`Synced ${data.synced} products in ${elapsed}s`);
+          setSyncProgress(null);
+          onSyncComplete();
+          return;
+        }
+
+        // Continue with next chunk
+        cursor = data.cursor;
+        syncTimestamp = data.syncTimestamp;
+        totalSynced = data.synced;
+        setSyncProgress(`${totalSynced.toLocaleString()} products synced...`);
       }
-      if (!res.ok) {
-        const msg = data.details || data.error || 'Sync failed';
-        throw new Error(msg);
-      }
-      setSyncResult(`Synced ${data.synced} products in ${data.elapsed}`);
-      onSyncComplete();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sync failed';
       setSyncError(message);
+      setSyncProgress(null);
     } finally {
       setSyncing(false);
     }
@@ -61,6 +94,7 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
       {syncStatus?.isEmpty && (
         <span className="text-amber-600">No products indexed. Run a sync to populate.</span>
       )}
+      {syncProgress && <span className="text-blue-600">{syncProgress}</span>}
       {syncResult && <span className="text-green-600">{syncResult}</span>}
       {syncError && (
         <span className="text-red-600 break-all text-xs">{syncError}</span>
