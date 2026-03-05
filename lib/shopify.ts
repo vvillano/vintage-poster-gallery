@@ -1004,7 +1004,7 @@ const PRODUCT_DETAIL_QUERY = `
           fullName
         }
       }
-      resourcePublicationsV2(first: 20) {
+      resourcePublicationsV2(first: 20, onlyPublished: false) {
         edges {
           node {
             isPublished
