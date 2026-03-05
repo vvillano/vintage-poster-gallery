@@ -1343,10 +1343,11 @@ export async function deleteShopifyProductGraphQL(productGid: string): Promise<s
 export async function publishProductToChannels(
   productGid: string,
   publicationIds: string[]
-): Promise<void> {
+): Promise<{ publishable: any }> {
   const mutation = `
     mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
       publishablePublish(id: $id, input: $input) {
+        publishable { publishedOnCurrentPublication }
         userErrors { field message }
       }
     }
@@ -1360,6 +1361,8 @@ export async function publishProductToChannels(
   if (data.publishablePublish.userErrors?.length > 0) {
     throw new Error(data.publishablePublish.userErrors.map((e: any) => e.message).join(', '));
   }
+
+  return { publishable: data.publishablePublish.publishable };
 }
 
 /**
@@ -1368,10 +1371,11 @@ export async function publishProductToChannels(
 export async function unpublishProductFromChannels(
   productGid: string,
   publicationIds: string[]
-): Promise<void> {
+): Promise<{ publishable: any }> {
   const mutation = `
     mutation publishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
       publishableUnpublish(id: $id, input: $input) {
+        publishable { publishedOnCurrentPublication }
         userErrors { field message }
       }
     }
@@ -1385,6 +1389,8 @@ export async function unpublishProductFromChannels(
   if (data.publishableUnpublish.userErrors?.length > 0) {
     throw new Error(data.publishableUnpublish.userErrors.map((e: any) => e.message).join(', '));
   }
+
+  return { publishable: data.publishableUnpublish.publishable };
 }
 
 /**

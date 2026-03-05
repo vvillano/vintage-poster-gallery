@@ -32,10 +32,16 @@ export async function POST(
 
     const gid = id.startsWith('gid://') ? id : `gid://shopify/Product/${id}`;
 
+    let mutationResult;
     if (publish) {
-      await publishProductToChannels(gid, [publicationId]);
+      mutationResult = await publishProductToChannels(gid, [publicationId]);
     } else {
-      await unpublishProductFromChannels(gid, [publicationId]);
+      mutationResult = await unpublishProductFromChannels(gid, [publicationId]);
+    }
+
+    // If publishable is null, Shopify didn't find the resource or app lacks access
+    if (!mutationResult.publishable) {
+      console.warn(`publishable was null for ${gid}. The app may lack access to this publication.`);
     }
 
     // Re-fetch to get updated publication status
@@ -43,16 +49,21 @@ export async function POST(
 
     // Check if the toggle actually took effect
     const channel = updated.salesChannels.find((ch: any) => ch.id === publicationId);
-    const toggleWorked = !channel || channel.published === publish;
+    // For publish: the channel MUST be in the list and marked published
+    // For unpublish: the channel should be absent or marked unpublished
+    const toggleWorked = publish
+      ? (channel?.published === true)
+      : (!channel || channel.published === false);
 
     if (!toggleWorked) {
-      console.warn(`Sales channel toggle failed silently. Requested publish=${publish} for ${publicationId} on product ${gid}, but got published=${channel?.published}. This usually means the app is missing the write_publications scope.`);
+      const detail = `publish=${publish}, publishable=${JSON.stringify(mutationResult.publishable)}, channelFound=${!!channel}, channelPublished=${channel?.published}`;
+      console.warn(`Sales channel toggle failed silently for ${gid}. ${detail}`);
     }
 
     return NextResponse.json({
       ok: true,
       salesChannels: updated.salesChannels,
-      ...(toggleWorked ? {} : { warning: 'Toggle may not have taken effect. Ensure the app has the write_publications scope in Shopify.' }),
+      ...(toggleWorked ? {} : { warning: 'Toggle did not take effect. Check Vercel logs for details.' }),
     });
   } catch (error) {
     console.error('Toggle publication error:', error);

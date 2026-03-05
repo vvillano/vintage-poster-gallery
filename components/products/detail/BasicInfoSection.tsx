@@ -205,7 +205,6 @@ export default function BasicInfoSection({
 
 function SalesChannelsField({
   salesChannels,
-  productStatus,
   onToggle,
 }: {
   salesChannels: { id: string; name: string; published: boolean }[];
@@ -213,7 +212,6 @@ function SalesChannelsField({
   onToggle: (publicationId: string, publish: boolean) => Promise<void>;
 }) {
   const [toggling, setToggling] = useState<string | null>(null);
-  const isDraft = productStatus.toLowerCase() === 'draft';
 
   async function handleToggle(ch: { id: string; name: string; published: boolean }) {
     setToggling(ch.id);
@@ -234,9 +232,6 @@ function SalesChannelsField({
           </span>
         )}
       </label>
-      {isDraft && (
-        <p className="text-xs text-amber-600 mb-1">Set status to Active before publishing to sales channels.</p>
-      )}
       <div className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
         {salesChannels.length === 0 ? (
           <span className="text-slate-400">No sales channels</span>
@@ -246,11 +241,9 @@ function SalesChannelsField({
               <button
                 key={ch.id}
                 type="button"
-                disabled={isDraft || toggling !== null}
+                disabled={toggling !== null}
                 onClick={() => handleToggle(ch)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  isDraft ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                } ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                   ch.published
                     ? 'bg-green-100 text-green-700 hover:bg-green-200'
                     : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
