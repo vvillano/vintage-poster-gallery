@@ -32,9 +32,9 @@ export async function GET(
              artist_confidence_score, attribution_basis, source_citations,
              rarity_analysis, value_insights, analysis_completed,
              artist, estimated_date, date_confidence, date_source,
-             artist_source, printing_technique, printer, publisher,
+             artist_source, printing_technique, printer,
              historical_context, significance, validation_notes,
-             product_descriptions, artist_verification
+             artist_verification
       FROM posters
       WHERE shopify_product_id = ${product.gid}
       LIMIT 1
@@ -92,7 +92,7 @@ export async function GET(
         artistSource: poster.artist_source || null,
         printingTechnique: poster.printing_technique || null,
         printer: poster.printer || null,
-        publisher: poster.publisher || null,
+        publisher: raw?.technicalAnalysis?.publisher || null,
         historicalContext: poster.historical_context || null,
         culturalSignificance: poster.significance || null,
         productDescriptions: raw?.productDescriptions || null,
