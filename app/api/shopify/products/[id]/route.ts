@@ -30,7 +30,11 @@ export async function GET(
     const posterResult = await sql`
       SELECT id, raw_ai_response, comparable_sales, artist_confidence,
              artist_confidence_score, attribution_basis, source_citations,
-             rarity_analysis, value_insights
+             rarity_analysis, value_insights, analysis_completed,
+             artist, estimated_date, date_confidence, date_source,
+             artist_source, printing_technique, printer, publisher,
+             historical_context, significance, validation_notes,
+             product_descriptions, artist_verification
       FROM posters
       WHERE shopify_product_id = ${product.gid}
       LIMIT 1
@@ -79,6 +83,21 @@ export async function GET(
               : []),
         suggestedTags: raw?.suggestedTags || [],
         suggestedColors: raw?.suggestedColors || [],
+        // Analysis results for Research tab
+        analysisCompleted: !!poster.analysis_completed,
+        artist: poster.artist || null,
+        estimatedDate: poster.estimated_date || null,
+        dateConfidence: poster.date_confidence || null,
+        dateSource: poster.date_source || null,
+        artistSource: poster.artist_source || null,
+        printingTechnique: poster.printing_technique || null,
+        printer: poster.printer || null,
+        publisher: poster.publisher || null,
+        historicalContext: poster.historical_context || null,
+        culturalSignificance: poster.significance || null,
+        productDescriptions: raw?.productDescriptions || null,
+        validationNotes: raw?.validationNotes || null,
+        artistVerification: raw?.identification?.artistVerification || null,
       };
 
       product.linkedPoster = linkedPoster;

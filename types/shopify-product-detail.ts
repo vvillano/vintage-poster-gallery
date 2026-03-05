@@ -124,6 +124,34 @@ export interface LinkedPosterData {
   }[];
   suggestedTags?: string[];
   suggestedColors?: string[];
+  // Analysis results for Research tab
+  analysisCompleted: boolean;
+  artist: string | null;
+  estimatedDate: string | null;
+  dateConfidence: string | null;
+  dateSource: string | null;
+  artistSource: string | null;
+  printingTechnique: string | null;
+  printer: string | null;
+  publisher: string | null;
+  historicalContext: string | null;
+  culturalSignificance: string | null;
+  productDescriptions: {
+    standard: string;
+    scholarly: string;
+    concise: string;
+    enthusiastic: string;
+    immersive: string;
+  } | null;
+  validationNotes: string | null;
+  artistVerification: {
+    signatureReadable: boolean;
+    signatureText: string;
+    professionVerified: boolean;
+    eraMatches: boolean;
+    styleMatches: boolean;
+    verificationNotes: string;
+  } | null;
 }
 
 /** A single metafield write operation */

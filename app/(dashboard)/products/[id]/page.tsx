@@ -14,10 +14,9 @@ import SubjectTaggingSection from '@/components/products/detail/SubjectTaggingSe
 import MetafieldsSection from '@/components/products/detail/MetafieldsSection';
 import SeoSection from '@/components/products/detail/SeoSection';
 import AcquisitionSection from '@/components/products/detail/AcquisitionSection';
-import ResearchDataSection from '@/components/products/detail/ResearchDataSection';
 import DeleteProductModal from '@/components/products/detail/DeleteProductModal';
-import TalkingPointsCard from '@/components/products/detail/TalkingPointsCard';
 import ProductTabs, { type ProductTab } from '@/components/products/detail/ProductTabs';
+import ProductResearchTab from '@/components/products/detail/ProductResearchTab';
 import { computeAutoTags, parseYear } from '@/lib/auto-tags';
 import type { SizeTagRule, DateTagRule } from '@/lib/auto-tags';
 
@@ -513,21 +512,6 @@ export default function ProductDetailPage() {
   }, [isDirty]);
 
   // Talking points: prefer linked poster data, fall back to metafield
-  const talkingPoints = useMemo(() => {
-    if (product?.linkedPoster?.talkingPoints?.length) {
-      return product.linkedPoster.talkingPoints;
-    }
-    if (product?.metafields.talkingPoints) {
-      try {
-        const parsed = JSON.parse(product.metafields.talkingPoints);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  }, [product?.linkedPoster, product?.metafields.talkingPoints]);
-
   async function handleSave() {
     if (!product) return;
 
@@ -991,31 +975,13 @@ export default function ProductDetailPage() {
 
         {/* ============ RESEARCH TAB ============ */}
         {activeTab === 'research' && (
-          <div className="space-y-4">
-            {/* Talking Points */}
-            {talkingPoints.length > 0 && (
-              <TalkingPointsCard points={talkingPoints} />
-            )}
-
-            {/* Research Data (from linked poster / metafields) */}
-            <ProductDetailSection title="Research Data" badge="Read-Only" defaultOpen>
-              <ResearchDataSection metafields={product.metafields} />
-            </ProductDetailSection>
-
-            {/* Placeholder for future AI analysis */}
-            <div className="bg-violet-50 border border-violet-200 rounded-lg p-6 text-center">
-              <div className="text-violet-400 mb-2">
-                <svg className="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-medium text-violet-700 mb-1">AI Analysis</h3>
-              <p className="text-xs text-violet-500">
-                Full AI research capabilities coming soon. This tab will include artist identification,
-                date analysis, product descriptions, historical context, and source citations.
-              </p>
-            </div>
-          </div>
+          <ProductResearchTab
+            product={product}
+            formData={formData}
+            isDirty={isDirty}
+            onFieldChange={handleFieldChange}
+            onAnalysisComplete={loadProduct}
+          />
         )}
 
         {/* ============ VALUATION TAB ============ */}
