@@ -43,6 +43,7 @@ interface FormData {
   conditionDetails: string;
   colors: string[];
   medium: string[];
+  itemNotes: string;
 }
 
 export default function ProductDetailPage() {
@@ -95,6 +96,7 @@ export default function ProductDetailPage() {
     conditionDetails: '',
     colors: [],
     medium: [],
+    itemNotes: '',
   });
 
   const loadProduct = useCallback(async () => {
@@ -174,6 +176,7 @@ export default function ProductDetailPage() {
         conditionDetails: data.metafields.conditionDetails || '',
         colors: parsedColors,
         medium: parsedMedium,
+        itemNotes: data.metafields.itemNotes || '',
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
@@ -437,6 +440,7 @@ export default function ProductDetailPage() {
     if (formData.width !== (product.metafields.width || '')) return true;
     if (formData.condition !== (product.metafields.condition || '')) return true;
     if (formData.conditionDetails !== (product.metafields.conditionDetails || '')) return true;
+    if (formData.itemNotes !== (product.metafields.itemNotes || '')) return true;
     // Compare country of origin (order-independent)
     let origCountries: string[] = [];
     if (product.metafields.countryOfOrigin) {
@@ -575,6 +579,7 @@ export default function ProductDetailPage() {
         { formValue: formData.width, origValue: product.metafields.width, namespace: 'specs', key: 'width', type: 'number_decimal' },
         { formValue: formData.condition, origValue: product.metafields.condition, namespace: 'jadepuma', key: 'condition', type: 'single_line_text_field' },
         { formValue: formData.conditionDetails, origValue: product.metafields.conditionDetails, namespace: 'jadepuma', key: 'condition_details', type: 'multi_line_text_field' },
+        { formValue: formData.itemNotes, origValue: product.metafields.itemNotes, namespace: 'jadepuma', key: 'item_notes', type: 'multi_line_text_field' },
       ];
       for (const check of metafieldChecks) {
         if (check.formValue !== (check.origValue || '')) {
@@ -720,6 +725,7 @@ export default function ProductDetailPage() {
         conditionDetails: updated.metafields.conditionDetails || '',
         colors: updatedColors,
         medium: updatedMedium,
+        itemNotes: updated.metafields.itemNotes || '',
       });
       setSaveMessage('Saved successfully');
     } catch (err) {
@@ -931,6 +937,19 @@ export default function ProductDetailPage() {
                 bodyHtml={formData.bodyHtml}
                 onChange={(v) => handleFieldChange('bodyHtml', v)}
               />
+            </ProductDetailSection>
+
+            <ProductDetailSection title="Item Notes" defaultOpen={!!formData.itemNotes}>
+              <div className="pt-4">
+                <textarea
+                  value={formData.itemNotes}
+                  onChange={(e) => handleFieldChange('itemNotes', e.target.value)}
+                  placeholder="Auction listing text, provenance notes, attribution hints..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-y"
+                />
+                <p className="text-xs text-slate-400 mt-1">Research-relevant notes. This context is sent to AI analysis when researching this product.</p>
+              </div>
             </ProductDetailSection>
 
             <ProductDetailSection title="Pricing & Inventory" defaultOpen>
