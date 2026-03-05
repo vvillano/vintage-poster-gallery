@@ -143,6 +143,8 @@ export async function POST(request: NextRequest) {
     let cursor: string | null = body.cursor || null;
     const startTime = Date.now();
 
+    console.log(`[sync] Chunk start: isFirst=${isFirstChunk}, cursor=${cursor ? 'yes' : 'no'}, totalSynced=${totalSynced}, pagesPerChunk=${PAGES_PER_CHUNK}`);
+
     // First chunk: ensure columns exist
     if (isFirstChunk) {
       try {
@@ -162,6 +164,7 @@ export async function POST(request: NextRequest) {
       if (cursor) variables.after = cursor;
 
       let data;
+      const shopifyStart = Date.now();
       // Retry up to 2 times for transient Shopify errors (502, 503, 429)
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -191,6 +194,8 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+
+      console.log(`[sync] Page ${pagesThisChunk}: Shopify call took ${Date.now() - shopifyStart}ms, got ${data.products.edges.length} products`);
 
       const products = data.products.edges.map((e) => e.node);
 
@@ -282,7 +287,9 @@ export async function POST(request: NextRequest) {
               synced_at = EXCLUDED.synced_at
           `;
 
+          const dbStart = Date.now();
           await sql.query(insertQuery, insertValues);
+          console.log(`[sync] Page ${pagesThisChunk}: DB insert took ${Date.now() - dbStart}ms for ${products.length} products`);
           totalSynced += products.length;
         } catch (err) {
           return NextResponse.json(
@@ -355,7 +362,7 @@ export async function GET() {
     }
 
     const status = await getSyncStatus();
-    return NextResponse.json(status);
+    return NextResponse.json({ ...status, _syncVersion: 'chunked-v2' });
   } catch (error) {
     console.error('Sync status error:', error);
     return NextResponse.json(
