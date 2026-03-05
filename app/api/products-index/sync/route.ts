@@ -200,11 +200,16 @@ export async function POST() {
               }
             }
 
-            // Extract published sales channels
-            const salesChannelsStr = p.resourcePublicationsV2.edges
-              .filter(e => e.node.isPublished)
-              .map(e => e.node.publication.name)
-              .join(', ') || null;
+            // Extract published sales channels (graceful if field absent)
+            let salesChannelsStr: string | null = null;
+            try {
+              if (p.resourcePublicationsV2?.edges) {
+                salesChannelsStr = p.resourcePublicationsV2.edges
+                  .filter(e => e.node.isPublished)
+                  .map(e => e.node.publication.name)
+                  .join(', ') || null;
+              }
+            } catch { /* field may not be available */ }
 
             const placeholders = [];
             for (let i = 0; i < 24; i++) {

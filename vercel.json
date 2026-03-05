@@ -4,7 +4,7 @@
       "maxDuration": 120
     },
     "app/api/products-index/sync/route.ts": {
-      "maxDuration": 120
+      "maxDuration": 300
     }
   }
 }

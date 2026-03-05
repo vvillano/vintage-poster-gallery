@@ -31,7 +31,12 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
 
     try {
       const res = await fetch('/api/products-index/sync', { method: 'POST' });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Sync failed (server returned non-JSON). Status: ${res.status}. This may be a timeout -- try again.`);
+      }
       if (!res.ok) {
         const msg = data.details || data.error || 'Sync failed';
         throw new Error(msg);
