@@ -1,10 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { ProductDetail } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
 import TalkingPointsCard from './TalkingPointsCard';
 import ResearchDataSection from './ResearchDataSection';
+
+const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
+  ssr: false,
+  loading: () => <div className="border border-slate-300 rounded-lg min-h-[200px] bg-slate-50 animate-pulse" />,
+});
+
+const DESCRIPTION_TONES = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'scholarly', label: 'Scholarly' },
+  { id: 'concise', label: 'Concise' },
+  { id: 'enthusiastic', label: 'Enthusiastic' },
+  { id: 'immersive', label: 'Immersive' },
+] as const;
 
 interface MetafieldApply {
   namespace: string;
@@ -28,6 +42,7 @@ interface ProductResearchTabProps {
     itemNotes: string;
   };
   isDirty: boolean;
+  mediumOptions: { name: string }[];
   onFieldChange: (field: string, value: string) => void;
   onArrayFieldChange: (field: string, values: string[]) => void;
   onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
@@ -116,6 +131,7 @@ export default function ProductResearchTab({
   product,
   formData,
   isDirty,
+  mediumOptions,
   onFieldChange,
   onArrayFieldChange,
   onApplyMetafield,
@@ -126,6 +142,8 @@ export default function ProductResearchTab({
   const [skepticalMode, setSkepticalMode] = useState(false);
   const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set());
   const [applyingField, setApplyingField] = useState<string | null>(null);
+  const [descriptionTone, setDescriptionTone] = useState<string | null>(null);
+  const [descriptionHtml, setDescriptionHtml] = useState('');
 
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
@@ -165,6 +183,16 @@ export default function ProductResearchTab({
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.details || data.error || 'Analysis failed');
+      }
+      // Auto-write talking points to Shopify
+      if (data.analysis?.talkingPoints?.length) {
+        onApplyMetafield({
+          namespace: 'custom',
+          key: 'talking_points',
+          value: JSON.stringify(data.analysis.talkingPoints),
+          type: 'json',
+          displayLabel: 'Talking Points',
+        }).catch(() => {}); // Non-critical
       }
       onAnalysisComplete();
     } catch (err) {
@@ -328,21 +356,40 @@ export default function ProductResearchTab({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-500 mb-1">Printing Technique</label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-slate-800">{lp.printingTechnique || '-'}</span>
-                    {lp.printingTechnique && (
-                      <ApplyButton
-                        onClick={() => {
-                          if (!formData.medium.includes(lp.printingTechnique!)) {
-                            onArrayFieldChange('medium', [...formData.medium, lp.printingTechnique!]);
-                          }
-                          setAppliedFields((prev) => new Set(prev).add('technique'));
-                        }}
-                        applied={appliedFields.has('technique') || formData.medium.includes(lp.printingTechnique!)}
-                        applying={applyingField === 'technique'}
-                      />
-                    )}
-                  </div>
+                  <span className="text-sm text-slate-800">{lp.printingTechnique || '-'}</span>
+                  {mediumOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {mediumOptions.map((opt) => {
+                        const selected = formData.medium.some((m) => m.toLowerCase() === opt.name.toLowerCase());
+                        const isMatch = lp.printingTechnique
+                          ? opt.name.toLowerCase().includes(lp.printingTechnique.toLowerCase())
+                            || lp.printingTechnique.toLowerCase().includes(opt.name.toLowerCase())
+                          : false;
+                        return (
+                          <button
+                            key={opt.name}
+                            type="button"
+                            onClick={() => {
+                              if (selected) {
+                                onArrayFieldChange('medium', formData.medium.filter((m) => m.toLowerCase() !== opt.name.toLowerCase()));
+                              } else {
+                                onArrayFieldChange('medium', [...formData.medium, opt.name]);
+                              }
+                            }}
+                            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                              selected
+                                ? 'bg-violet-600 text-white'
+                                : isMatch
+                                  ? 'bg-violet-100 text-violet-700 ring-1 ring-violet-300'
+                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            }`}
+                          >
+                            {opt.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -398,43 +445,86 @@ export default function ProductResearchTab({
 
           {/* Talking Points */}
           {lp.talkingPoints.length > 0 && (
-            <TalkingPointsCard
-              points={lp.talkingPoints}
-              headerAction={
-                <ApplyButton
-                  onClick={() => applyMetafield('talkingPoints', {
-                    namespace: 'custom',
-                    key: 'talking_points',
-                    value: JSON.stringify(lp.talkingPoints),
-                    type: 'json',
-                    displayLabel: 'Talking Points',
-                  })}
-                  applied={appliedFields.has('talkingPoints')}
-                  applying={applyingField === 'talkingPoints'}
-                />
-              }
-            />
+            <TalkingPointsCard points={lp.talkingPoints} />
           )}
 
           {/* Product Descriptions */}
           {lp.productDescriptions && (
-            <ProductDescriptionsDisplay
-              descriptions={lp.productDescriptions}
-              onApplyAsDescription={(tone, html) => {
-                applyToFormData(`description-${tone}`, 'bodyHtml', html);
-              }}
-              onApplyConcise={(text) => {
-                applyMetafield('concise', {
-                  namespace: 'jadepuma',
-                  key: 'concise_description',
-                  value: text,
-                  type: 'multi_line_text_field',
-                  displayLabel: 'Concise Description',
-                });
-              }}
-              appliedFields={appliedFields}
-              applyingField={applyingField}
-            />
+            <ProductDetailSection title="Product Descriptions" defaultOpen>
+              <div className="pt-4">
+                {/* Tone pills */}
+                <div className="flex gap-1 mb-3">
+                  {DESCRIPTION_TONES.map((tone) => {
+                    const text = lp.productDescriptions![tone.id as keyof typeof lp.productDescriptions];
+                    return (
+                      <button
+                        key={tone.id}
+                        type="button"
+                        disabled={!text}
+                        onClick={() => {
+                          setDescriptionTone(tone.id);
+                          setDescriptionHtml(text ? convertToHtmlParagraphs(text) : '');
+                        }}
+                        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                          descriptionTone === tone.id
+                            ? 'bg-violet-100 text-violet-700'
+                            : !text
+                              ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                              : 'text-slate-500 hover:bg-slate-100'
+                        }`}
+                      >
+                        {tone.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Editor or placeholder */}
+                {descriptionTone ? (
+                  <>
+                    <RichTextEditor
+                      value={descriptionHtml}
+                      onChange={setDescriptionHtml}
+                      placeholder="Edit the description before applying..."
+                    />
+                    {descriptionHtml && (
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <ApplyButton
+                          onClick={() => applyToFormData('description', 'bodyHtml', descriptionHtml)}
+                          applied={appliedFields.has('description')}
+                          applying={applyingField === 'description'}
+                          label="Apply as Description"
+                        />
+                        <span className="text-xs text-slate-400">Sets Listing tab description</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="px-3 py-6 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm text-slate-400">
+                    Select a tone above to preview and edit
+                  </div>
+                )}
+
+                {/* Concise Description metafield */}
+                {lp.productDescriptions.concise && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <ApplyButton
+                      onClick={() => applyMetafield('concise', {
+                        namespace: 'jadepuma',
+                        key: 'concise_description',
+                        value: lp.productDescriptions!.concise,
+                        type: 'multi_line_text_field',
+                        displayLabel: 'Concise Description',
+                      })}
+                      applied={appliedFields.has('concise')}
+                      applying={applyingField === 'concise'}
+                      label="Apply Concise Description"
+                    />
+                    <span className="text-xs text-slate-400">Writes to Shopify metafield</span>
+                  </div>
+                )}
+              </div>
+            </ProductDetailSection>
           )}
 
           {/* Historical Context */}
@@ -586,79 +676,6 @@ function VerificationChecklist({ v }: { v: NonNullable<ProductResearchTabProps['
         <p className="text-xs text-slate-400 mt-1">{v.verificationNotes}</p>
       )}
     </div>
-  );
-}
-
-function ProductDescriptionsDisplay({
-  descriptions,
-  onApplyAsDescription,
-  onApplyConcise,
-  appliedFields,
-  applyingField,
-}: {
-  descriptions: NonNullable<NonNullable<ProductResearchTabProps['product']['linkedPoster']>['productDescriptions']>;
-  onApplyAsDescription: (tone: string, html: string) => void;
-  onApplyConcise: (text: string) => void;
-  appliedFields: Set<string>;
-  applyingField: string | null;
-}) {
-  const [activeTone, setActiveTone] = useState<keyof typeof descriptions>('standard');
-  const tones: { id: keyof typeof descriptions; label: string }[] = [
-    { id: 'standard', label: 'Standard' },
-    { id: 'concise', label: 'Concise' },
-    { id: 'scholarly', label: 'Scholarly' },
-    { id: 'enthusiastic', label: 'Enthusiastic' },
-    { id: 'immersive', label: 'Immersive' },
-  ];
-  const activeText = descriptions[activeTone];
-  const activeToneLabel = tones.find((t) => t.id === activeTone)?.label || activeTone;
-
-  return (
-    <ProductDetailSection title="Product Descriptions" defaultOpen>
-      <div className="pt-4">
-        <div className="flex gap-1 mb-3">
-          {tones.map((tone) => (
-            <button
-              key={tone.id}
-              type="button"
-              onClick={() => setActiveTone(tone.id)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
-                activeTone === tone.id
-                  ? 'bg-violet-100 text-violet-700'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              {tone.label}
-            </button>
-          ))}
-        </div>
-        <div className="px-3 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 whitespace-pre-wrap min-h-[100px]">
-          {activeText || 'No description generated.'}
-        </div>
-        {activeText && (
-          <div className="flex flex-wrap items-center gap-2 mt-3">
-            <ApplyButton
-              onClick={() => onApplyAsDescription(activeTone as string, convertToHtmlParagraphs(activeText))}
-              applied={appliedFields.has(`description-${activeTone}`)}
-              applying={applyingField === `description-${activeTone}`}
-              label={`Apply ${activeToneLabel} as Description`}
-            />
-            <span className="text-xs text-slate-400">Sets Listing tab description</span>
-          </div>
-        )}
-        {descriptions.concise && (
-          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-slate-100">
-            <ApplyButton
-              onClick={() => onApplyConcise(descriptions.concise)}
-              applied={appliedFields.has('concise')}
-              applying={applyingField === 'concise'}
-              label="Apply Concise Description"
-            />
-            <span className="text-xs text-slate-400">Writes to Shopify metafield</span>
-          </div>
-        )}
-      </div>
-    </ProductDetailSection>
   );
 }
 

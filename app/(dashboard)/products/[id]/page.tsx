@@ -1001,7 +1001,6 @@ export default function ProductDetailPage() {
               <DescriptionSection
                 bodyHtml={formData.bodyHtml}
                 onChange={(v) => handleFieldChange('bodyHtml', v)}
-                product={product || undefined}
               />
             </ProductDetailSection>
 
@@ -1041,6 +1040,7 @@ export default function ProductDetailPage() {
             product={product}
             formData={formData}
             isDirty={isDirty}
+            mediumOptions={mediumOptions}
             onFieldChange={handleFieldChange}
             onArrayFieldChange={handleArrayFieldChange}
             onApplyMetafield={handleApplyMetafield}
