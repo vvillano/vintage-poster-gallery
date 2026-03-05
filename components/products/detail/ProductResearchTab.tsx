@@ -15,12 +15,9 @@ interface ProductResearchTabProps {
     year: string;
     countryOfOrigin: string[];
     medium: string[];
-    condition: string;
-    conditionDetails: string;
     height: string;
     width: string;
     itemNotes: string;
-    bodyHtml: string;
   };
   isDirty: boolean;
   onFieldChange: (field: string, value: string) => void;
@@ -126,7 +123,6 @@ export default function ProductResearchTab({
             <ContextField label="Year" value={formData.year} />
             <ContextField label="Country" value={formData.countryOfOrigin.join(', ') || null} />
             <ContextField label="Medium" value={formData.medium.join(', ') || null} />
-            <ContextField label="Condition" value={formData.condition} />
             <ContextField label="Dimensions" value={
               formData.height || formData.width
                 ? `${formData.height || '?'}" x ${formData.width || '?'}"`
@@ -137,7 +133,6 @@ export default function ProductResearchTab({
                 ? (formData.itemNotes.length > 80 ? formData.itemNotes.slice(0, 80) + '...' : formData.itemNotes)
                 : null
             } />
-            <ContextField label="Description" value={formData.bodyHtml ? 'Included' : null} />
           </div>
         </div>
       </ProductDetailSection>

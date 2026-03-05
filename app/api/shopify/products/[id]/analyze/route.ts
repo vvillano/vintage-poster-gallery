@@ -95,15 +95,15 @@ export async function POST(
     }
 
     // Build context from product metafields
+    // Exclude condition/conditionDetails/bodyHtml -- condition is about physical
+    // state (relevant to valuation, not identification), and bodyHtml is often
+    // just boilerplate condition text that could mislead the AI.
     const shopifyContext: ShopifyAnalysisContext | undefined =
       skepticalMode ? undefined : {
         artist: forceReanalyze ? undefined : product.metafields.artist,
         estimatedDate: forceReanalyze ? undefined : product.metafields.year,
-        condition: product.metafields.condition,
-        conditionDetails: product.metafields.conditionDetails,
         title: product.title,
         itemNotes: product.metafields.itemNotes,
-        bodyHtml: product.bodyHtml,
         printingTechnique: forceReanalyze ? undefined : product.metafields.medium,
       };
 
