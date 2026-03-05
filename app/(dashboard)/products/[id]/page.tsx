@@ -312,6 +312,8 @@ export default function ProductDetailPage() {
 
     if (newAutoTags.length > 0) {
       setFormData(prev => ({ ...prev, tags: [...prev.tags, ...newAutoTags] }));
+      // Also update product baseline so isDirty doesn't trigger from auto-tags
+      setProduct(prev => prev ? { ...prev, tags: [...prev.tags, ...newAutoTags] } : prev);
     }
     setAutoTagsApplied(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
