@@ -127,6 +127,7 @@ export async function POST() {
     }
 
     const startTime = Date.now();
+    const syncTimestamp = new Date().toISOString();
     let totalSynced = 0;
     let pageNumber = 0;
     let hasNextPage = true;
@@ -138,16 +139,6 @@ export async function POST() {
       await sql`ALTER TABLE products_index ADD COLUMN IF NOT EXISTS sales_channels TEXT`;
     } catch {
       // Columns may already exist; ignore
-    }
-
-    // Clear existing data
-    try {
-      await sql`DELETE FROM products_index`;
-    } catch (err) {
-      return NextResponse.json(
-        { error: 'Sync failed', details: `Failed to clear products_index table. Has the migration been run? Error: ${String(err)}` },
-        { status: 500 }
-      );
     }
 
     // Paginate through all Shopify products (100 per page to avoid 502s with resourcePublicationsV2)
@@ -227,7 +218,7 @@ export async function POST() {
             } catch { /* field may not be available */ }
 
             const placeholders = [];
-            for (let i = 0; i < 24; i++) {
+            for (let i = 0; i < 25; i++) {
               placeholders.push(`$${paramIdx++}`);
             }
             valuePlaceholders.push(`(${placeholders.join(', ')})`);
@@ -257,6 +248,7 @@ export async function POST() {
               salesChannelsStr,                                   // sales_channels
               p.createdAt,                                        // shopify_created_at
               p.updatedAt,                                        // shopify_updated_at
+              syncTimestamp,                                       // synced_at
             );
           }
 
@@ -267,7 +259,8 @@ export async function POST() {
               inventory_quantity, thumbnail_url, year, artist,
               country_of_origin, source_platform, purchase_price,
               shipping, restoration, total_cogs, internal_tags,
-              sales_channels, shopify_created_at, shopify_updated_at
+              sales_channels, shopify_created_at, shopify_updated_at,
+              synced_at
             ) VALUES ${valuePlaceholders.join(', ')}
             ON CONFLICT (shopify_product_id) DO UPDATE SET
               title = EXCLUDED.title,
@@ -290,7 +283,8 @@ export async function POST() {
               internal_tags = EXCLUDED.internal_tags,
               sales_channels = EXCLUDED.sales_channels,
               shopify_created_at = EXCLUDED.shopify_created_at,
-              shopify_updated_at = EXCLUDED.shopify_updated_at
+              shopify_updated_at = EXCLUDED.shopify_updated_at,
+              synced_at = EXCLUDED.synced_at
           `;
 
           await sql.query(insertQuery, insertValues);
@@ -305,6 +299,13 @@ export async function POST() {
 
       hasNextPage = data.products.pageInfo.hasNextPage;
       cursor = data.products.pageInfo.endCursor || null;
+    }
+
+    // Remove products that no longer exist in Shopify (not touched by this sync)
+    try {
+      await sql`DELETE FROM products_index WHERE synced_at < ${syncTimestamp}`;
+    } catch {
+      // Non-fatal: stale rows remain but won't affect correctness
     }
 
     // Link to local posters
