@@ -412,7 +412,11 @@ export default function ProductDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || 'Failed to update');
       if (data.warning) {
-        setError(data.warning);
+        const dbg = data.debug;
+        const details = dbg
+          ? ` [publishable=${dbg.publishableReturned}, status=${dbg.productStatus}, channels=${dbg.totalChannelsOnProduct}]`
+          : '';
+        setError(data.warning + details);
       }
       // Update local product state with new sales channels
       setProduct((prev) => prev ? { ...prev, salesChannels: data.salesChannels } : prev);

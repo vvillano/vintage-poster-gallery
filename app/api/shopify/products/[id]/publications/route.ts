@@ -56,14 +56,30 @@ export async function POST(
       : (!channel || channel.published === false);
 
     if (!toggleWorked) {
-      const detail = `publish=${publish}, publishable=${JSON.stringify(mutationResult.publishable)}, channelFound=${!!channel}, channelPublished=${channel?.published}`;
-      console.warn(`Sales channel toggle failed silently for ${gid}. ${detail}`);
+      const debug = {
+        productGid: gid,
+        requestedPublish: publish,
+        publicationId,
+        publishableReturned: mutationResult.publishable !== null,
+        publishableValue: mutationResult.publishable,
+        channelFoundAfterRefetch: !!channel,
+        channelPublishedAfterRefetch: channel?.published ?? null,
+        totalChannelsOnProduct: updated.salesChannels.length,
+        productStatus: updated.status,
+      };
+      console.warn('Sales channel toggle failed silently:', JSON.stringify(debug));
+
+      return NextResponse.json({
+        ok: true,
+        salesChannels: updated.salesChannels,
+        warning: 'Toggle did not take effect.',
+        debug,
+      });
     }
 
     return NextResponse.json({
       ok: true,
       salesChannels: updated.salesChannels,
-      ...(toggleWorked ? {} : { warning: 'Toggle did not take effect. Check Vercel logs for details.' }),
     });
   } catch (error) {
     console.error('Toggle publication error:', error);
