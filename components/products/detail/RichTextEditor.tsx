@@ -191,18 +191,18 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       {/* Editor */}
       <EditorContent editor={editor} />
 
-      {/* Placeholder hint when empty */}
-      {!value && placeholder && (
-        <style>{`
-          .tiptap p.is-editor-empty:first-child::before {
-            content: '${placeholder.replace(/'/g, "\\'")}';
-            float: left;
-            color: #94a3b8;
-            pointer-events: none;
-            height: 0;
-          }
-        `}</style>
-      )}
+      {/* Editor paragraph spacing + placeholder */}
+      <style>{`
+        .tiptap p { margin-bottom: 0.75em; }
+        .tiptap p:last-child { margin-bottom: 0; }
+        ${!value && placeholder ? `.tiptap p.is-editor-empty:first-child::before {
+          content: '${placeholder.replace(/'/g, "\\'")}';
+          float: left;
+          color: #94a3b8;
+          pointer-events: none;
+          height: 0;
+        }` : ''}
+      `}</style>
     </div>
   );
 }
