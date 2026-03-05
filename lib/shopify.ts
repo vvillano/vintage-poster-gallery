@@ -1029,7 +1029,7 @@ const PRODUCT_DETAIL_QUERY = `
         "jadepuma.artist_bio",
         "jadepuma.reference_images", "jadepuma.restoration_candidate",
         "jadepuma.primary_collection", "jadepuma.internal_tags",
-        "custom.talking_points",
+        "custom.talking_points", "custom.history",
         "specs.year", "specs.height", "specs.width"
       ]) {
         edges {
@@ -1092,6 +1092,7 @@ function mapGraphQLToProductDetail(product: any): ProductDetail {
     'jadepuma.primary_collection': 'primaryCollection',
     'jadepuma.internal_tags': 'internalTags',
     'custom.talking_points': 'talkingPoints',
+    'custom.history': 'history',
     'specs.year': 'year',
     'specs.height': 'height',
     'specs.width': 'width',

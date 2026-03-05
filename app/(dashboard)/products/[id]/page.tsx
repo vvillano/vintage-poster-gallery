@@ -402,6 +402,51 @@ export default function ProductDetailPage() {
     setSaveMessage(null);
   }
 
+  function handleArrayFieldChange(field: string, values: string[]) {
+    setFormData((prev) => ({ ...prev, [field]: values }));
+    setSaveMessage(null);
+  }
+
+  // Direct-write a single metafield to Shopify (follows internal tags pattern)
+  const [applyingMetafield, setApplyingMetafield] = useState<string | null>(null);
+  async function handleApplyMetafield(mf: {
+    namespace: string;
+    key: string;
+    value: string;
+    type: string;
+    displayLabel: string;
+  }): Promise<void> {
+    if (!product) return;
+    setApplyingMetafield(mf.displayLabel);
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: mf.namespace,
+            key: mf.key,
+            value: mf.value,
+            type: mf.type,
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || `Failed to apply ${mf.displayLabel}`);
+      }
+      const updated: ProductDetail = await res.json();
+      // Update product metafields locally WITHOUT resetting formData
+      setProduct((prev) => prev ? { ...prev, metafields: updated.metafields } : prev);
+      setSaveMessage(`${mf.displayLabel} applied to Shopify`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to apply ${mf.displayLabel}`);
+      throw err; // Re-throw so caller can track errors
+    } finally {
+      setApplyingMetafield(null);
+    }
+  }
+
   async function handleSalesChannelToggle(publicationId: string, publish: boolean) {
     if (!product) return;
     try {
@@ -956,6 +1001,7 @@ export default function ProductDetailPage() {
               <DescriptionSection
                 bodyHtml={formData.bodyHtml}
                 onChange={(v) => handleFieldChange('bodyHtml', v)}
+                product={product || undefined}
               />
             </ProductDetailSection>
 
@@ -996,6 +1042,8 @@ export default function ProductDetailPage() {
             formData={formData}
             isDirty={isDirty}
             onFieldChange={handleFieldChange}
+            onArrayFieldChange={handleArrayFieldChange}
+            onApplyMetafield={handleApplyMetafield}
             onAnalysisComplete={loadProduct}
           />
         )}

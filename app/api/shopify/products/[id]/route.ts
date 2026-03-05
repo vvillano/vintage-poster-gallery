@@ -33,6 +33,7 @@ export async function GET(
              rarity_analysis, value_insights, analysis_completed,
              artist, estimated_date, date_confidence, date_source,
              artist_source, printing_technique, printer,
+             printer_confidence, publisher_confidence,
              historical_context, significance, validation_notes,
              artist_verification
       FROM posters
@@ -92,7 +93,9 @@ export async function GET(
         artistSource: poster.artist_source || null,
         printingTechnique: poster.printing_technique || null,
         printer: poster.printer || null,
+        printerConfidence: poster.printer_confidence || null,
         publisher: raw?.technicalAnalysis?.publisher || null,
+        publisherConfidence: poster.publisher_confidence || null,
         historicalContext: poster.historical_context || null,
         culturalSignificance: poster.significance || null,
         productDescriptions: raw?.productDescriptions || null,

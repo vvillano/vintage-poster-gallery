@@ -1,10 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ProductDetail } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
 import TalkingPointsCard from './TalkingPointsCard';
 import ResearchDataSection from './ResearchDataSection';
+
+interface MetafieldApply {
+  namespace: string;
+  key: string;
+  value: string;
+  type: string;
+  displayLabel: string;
+}
 
 interface ProductResearchTabProps {
   product: ProductDetail;
@@ -21,6 +29,8 @@ interface ProductResearchTabProps {
   };
   isDirty: boolean;
   onFieldChange: (field: string, value: string) => void;
+  onArrayFieldChange: (field: string, values: string[]) => void;
+  onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
   onAnalysisComplete: () => void;
 }
 
@@ -67,20 +77,175 @@ function ContextField({ label, value }: { label: string; value: string | null | 
   );
 }
 
+function isHighConfidence(level: string | null | undefined): boolean {
+  return level === 'confirmed' || level === 'likely';
+}
+
+function convertToHtmlParagraphs(text: string): string {
+  return text
+    .split(/\n\n+/)
+    .filter((p) => p.trim())
+    .map((p) => `<p>${p.trim()}</p>`)
+    .join('\n');
+}
+
+// Fields available for batch apply
+const APPLY_FIELDS = {
+  // Category A: populate formData, user saves via Save button
+  artist: { label: 'Artist', category: 'identification' as const, type: 'formData' as const },
+  year: { label: 'Year', category: 'identification' as const, type: 'formData' as const },
+  medium: { label: 'Technique', category: 'identification' as const, type: 'formData' as const },
+  description: { label: 'Description', category: 'content' as const, type: 'formData' as const },
+  // Category B: direct write to Shopify
+  printer: { label: 'Printer', category: 'identification' as const, type: 'metafield' as const },
+  publisher: { label: 'Publisher', category: 'identification' as const, type: 'metafield' as const },
+  conciseDescription: { label: 'Concise Description', category: 'content' as const, type: 'metafield' as const },
+  talkingPoints: { label: 'Talking Points', category: 'content' as const, type: 'metafield' as const },
+  history: { label: 'Historical Context', category: 'content' as const, type: 'metafield' as const },
+  artistBio: { label: 'Artist Bio', category: 'content' as const, type: 'metafield' as const },
+} as const;
+
+type ApplyFieldKey = keyof typeof APPLY_FIELDS;
+
 export default function ProductResearchTab({
   product,
   formData,
   isDirty,
   onFieldChange,
+  onArrayFieldChange,
+  onApplyMetafield,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [skepticalMode, setSkepticalMode] = useState(false);
+  const [checkedFields, setCheckedFields] = useState<Record<string, boolean>>({});
+  const [applyingBatch, setApplyingBatch] = useState(false);
+  const [applyResults, setApplyResults] = useState<Record<string, 'success' | 'error'>>({});
+  const [descriptionTone, setDescriptionTone] = useState<'standard' | 'scholarly' | 'concise' | 'enthusiastic' | 'immersive'>('standard');
 
   const lp = product.linkedPoster;
   const hasImages = product.images && product.images.length > 0;
   const hasResults = lp?.analysisCompleted;
+
+  // Initialize checkboxes based on confidence when analysis results are available
+  useEffect(() => {
+    if (!lp?.analysisCompleted) return;
+    const initial: Record<string, boolean> = {};
+    if (lp.artist) initial.artist = isHighConfidence(lp.artistConfidence);
+    if (lp.estimatedDate) initial.year = isHighConfidence(lp.dateConfidence);
+    if (lp.printingTechnique) initial.medium = true; // generated content
+    if (lp.printer) initial.printer = isHighConfidence(lp.printerConfidence);
+    if (lp.publisher) initial.publisher = isHighConfidence(lp.publisherConfidence);
+    if (lp.productDescriptions) initial.description = true;
+    if (lp.productDescriptions?.concise) initial.conciseDescription = true;
+    if (lp.talkingPoints.length > 0) initial.talkingPoints = true;
+    if (lp.historicalContext) initial.history = true;
+    // Artist bio from raw response
+    const raw = (product.linkedPoster as any)?._raw;
+    const artistBioText = lp.artistVerification?.verificationNotes || product.metafields.artistBio;
+    if (artistBioText) initial.artistBio = isHighConfidence(lp.artistConfidence);
+    setCheckedFields(initial);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lp?.analysisCompleted]);
+
+  // Get available fields (only those with data)
+  function getAvailableFields(): { key: ApplyFieldKey; value: string | null; confidence: string | null }[] {
+    if (!lp) return [];
+    const fields: { key: ApplyFieldKey; value: string | null; confidence: string | null }[] = [];
+    if (lp.artist) fields.push({ key: 'artist', value: lp.artist, confidence: lp.artistConfidence });
+    if (lp.estimatedDate) fields.push({ key: 'year', value: lp.estimatedDate, confidence: lp.dateConfidence });
+    if (lp.printingTechnique) fields.push({ key: 'medium', value: lp.printingTechnique, confidence: null });
+    if (lp.printer) fields.push({ key: 'printer', value: lp.printer, confidence: lp.printerConfidence });
+    if (lp.publisher) fields.push({ key: 'publisher', value: lp.publisher, confidence: lp.publisherConfidence });
+    if (lp.productDescriptions) fields.push({ key: 'description', value: '(selected tone)', confidence: null });
+    if (lp.productDescriptions?.concise) fields.push({ key: 'conciseDescription', value: lp.productDescriptions.concise.slice(0, 60) + '...', confidence: null });
+    if (lp.talkingPoints.length > 0) fields.push({ key: 'talkingPoints', value: `${lp.talkingPoints.length} items`, confidence: null });
+    if (lp.historicalContext) fields.push({ key: 'history', value: lp.historicalContext.slice(0, 60) + '...', confidence: null });
+    if (product.metafields.artistBio || lp.artistVerification?.verificationNotes) {
+      fields.push({ key: 'artistBio', value: 'AI-generated bio', confidence: lp.artistConfidence });
+    }
+    return fields;
+  }
+
+  async function handleBatchApply() {
+    if (!lp) return;
+    setApplyingBatch(true);
+    const results: Record<string, 'success' | 'error'> = {};
+
+    // Category A: formData updates (synchronous)
+    if (checkedFields.artist && lp.artist) {
+      onFieldChange('artist', lp.artist);
+      results.artist = 'success';
+    }
+    if (checkedFields.year && lp.estimatedDate) {
+      const yearMatch = lp.estimatedDate.match(/\b(1[5-9]\d\d|20[0-2]\d)\b/);
+      onFieldChange('year', yearMatch ? yearMatch[1] : lp.estimatedDate);
+      results.year = 'success';
+    }
+    if (checkedFields.medium && lp.printingTechnique) {
+      if (!formData.medium.includes(lp.printingTechnique)) {
+        onArrayFieldChange('medium', [...formData.medium, lp.printingTechnique]);
+      }
+      results.medium = 'success';
+    }
+    if (checkedFields.description && lp.productDescriptions) {
+      const text = lp.productDescriptions[descriptionTone];
+      if (text) {
+        onFieldChange('bodyHtml', convertToHtmlParagraphs(text));
+        results.description = 'success';
+      }
+    }
+
+    // Category B: direct Shopify writes (parallel)
+    const metafieldWrites: { key: ApplyFieldKey; mf: MetafieldApply }[] = [];
+    if (checkedFields.printer && lp.printer) {
+      metafieldWrites.push({ key: 'printer', mf: { namespace: 'jadepuma', key: 'printer', value: lp.printer, type: 'single_line_text_field', displayLabel: 'Printer' } });
+    }
+    if (checkedFields.publisher && lp.publisher) {
+      metafieldWrites.push({ key: 'publisher', mf: { namespace: 'jadepuma', key: 'publisher', value: lp.publisher, type: 'single_line_text_field', displayLabel: 'Publisher' } });
+    }
+    if (checkedFields.conciseDescription && lp.productDescriptions?.concise) {
+      metafieldWrites.push({ key: 'conciseDescription', mf: { namespace: 'jadepuma', key: 'concise_description', value: lp.productDescriptions.concise, type: 'multi_line_text_field', displayLabel: 'Concise Description' } });
+    }
+    if (checkedFields.talkingPoints && lp.talkingPoints.length > 0) {
+      metafieldWrites.push({ key: 'talkingPoints', mf: { namespace: 'custom', key: 'talking_points', value: JSON.stringify(lp.talkingPoints), type: 'json', displayLabel: 'Talking Points' } });
+    }
+    if (checkedFields.history && lp.historicalContext) {
+      metafieldWrites.push({ key: 'history', mf: { namespace: 'custom', key: 'history', value: lp.historicalContext, type: 'multi_line_text_field', displayLabel: 'Historical Context' } });
+    }
+    if (checkedFields.artistBio) {
+      const bioText = product.metafields.artistBio || lp.artistVerification?.verificationNotes;
+      if (bioText) {
+        metafieldWrites.push({ key: 'artistBio', mf: { namespace: 'jadepuma', key: 'artist_bio', value: bioText, type: 'multi_line_text_field', displayLabel: 'Artist Bio' } });
+      }
+    }
+
+    // Execute metafield writes in parallel
+    await Promise.all(
+      metafieldWrites.map(async ({ key, mf }) => {
+        try {
+          await onApplyMetafield(mf);
+          results[key] = 'success';
+        } catch {
+          results[key] = 'error';
+        }
+      })
+    );
+
+    setApplyResults(results);
+    setApplyingBatch(false);
+
+    // Show summary
+    const successCount = Object.values(results).filter((r) => r === 'success').length;
+    const formDataCount = ['artist', 'year', 'medium', 'description'].filter((k) => results[k] === 'success').length;
+    const shopifyCount = successCount - formDataCount;
+    const errorCount = Object.values(results).filter((r) => r === 'error').length;
+
+    if (errorCount > 0) {
+      setAnalysisError(`Applied ${successCount} fields, ${errorCount} failed.`);
+    }
+  }
 
   async function handleRunAnalysis() {
     setAnalyzing(true);
@@ -204,6 +369,144 @@ export default function ProductResearchTab({
           )}
         </div>
       </ProductDetailSection>
+
+      {/* ── Apply Results ── */}
+      {hasResults && lp && (() => {
+        const available = getAvailableFields();
+        const identFields = available.filter((f) => APPLY_FIELDS[f.key].category === 'identification');
+        const contentFields = available.filter((f) => APPLY_FIELDS[f.key].category === 'content');
+        const checkedCount = available.filter((f) => checkedFields[f.key]).length;
+        const hasApplyResults = Object.keys(applyResults).length > 0;
+        const formDataApplied = ['artist', 'year', 'medium', 'description'].filter((k) => applyResults[k] === 'success').length;
+        const shopifyApplied = Object.entries(applyResults).filter(([k, v]) => v === 'success' && !['artist', 'year', 'medium', 'description'].includes(k)).length;
+
+        return available.length > 0 ? (
+          <ProductDetailSection title="Apply Results" badge={hasApplyResults ? undefined : `${checkedCount} selected`} defaultOpen>
+            <div className="pt-4 space-y-4">
+              {/* Identification group */}
+              {identFields.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identification</h4>
+                  <div className="space-y-1.5">
+                    {identFields.map((f) => (
+                      <label key={f.key} className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={!!checkedFields[f.key]}
+                          onChange={(e) => setCheckedFields((prev) => ({ ...prev, [f.key]: e.target.checked }))}
+                          disabled={applyingBatch}
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        />
+                        <span className="text-sm text-slate-700 flex-1">
+                          <span className="font-medium">{APPLY_FIELDS[f.key].label}:</span>{' '}
+                          <span className="text-slate-500">{f.value}</span>
+                        </span>
+                        {f.confidence && (
+                          <ConfidenceBadge level={f.confidence} score={null} />
+                        )}
+                        {applyResults[f.key] === 'success' && (
+                          <span className="text-xs text-green-600 font-medium">Applied</span>
+                        )}
+                        {applyResults[f.key] === 'error' && (
+                          <span className="text-xs text-red-600 font-medium">Failed</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Content group */}
+              {contentFields.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Content</h4>
+                  <div className="space-y-1.5">
+                    {contentFields.map((f) => (
+                      <label key={f.key} className={`flex items-center gap-3 ${f.key === 'description' ? '' : 'cursor-pointer'} group`}>
+                        <input
+                          type="checkbox"
+                          checked={!!checkedFields[f.key]}
+                          onChange={(e) => setCheckedFields((prev) => ({ ...prev, [f.key]: e.target.checked }))}
+                          disabled={applyingBatch}
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        />
+                        <span className="text-sm text-slate-700 flex-1">
+                          <span className="font-medium">{APPLY_FIELDS[f.key].label}</span>
+                          {f.key !== 'description' && (
+                            <span className="text-slate-500">: {f.value}</span>
+                          )}
+                        </span>
+                        {/* Tone selector for description */}
+                        {f.key === 'description' && (
+                          <select
+                            value={descriptionTone}
+                            onChange={(e) => setDescriptionTone(e.target.value as typeof descriptionTone)}
+                            disabled={applyingBatch}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600"
+                          >
+                            <option value="standard">Standard</option>
+                            <option value="scholarly">Scholarly</option>
+                            <option value="concise">Concise</option>
+                            <option value="enthusiastic">Enthusiastic</option>
+                            <option value="immersive">Immersive</option>
+                          </select>
+                        )}
+                        {applyResults[f.key] === 'success' && (
+                          <span className="text-xs text-green-600 font-medium">Applied</span>
+                        )}
+                        {applyResults[f.key] === 'error' && (
+                          <span className="text-xs text-red-600 font-medium">Failed</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Apply button + summary */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleBatchApply}
+                  disabled={applyingBatch || checkedCount === 0}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    applyingBatch || checkedCount === 0
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-violet-600 text-white hover:bg-violet-700 cursor-pointer'
+                  }`}
+                >
+                  {applyingBatch ? (
+                    <span className="inline-flex items-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Applying...
+                    </span>
+                  ) : `Apply Selected (${checkedCount})`}
+                </button>
+                {!hasApplyResults && checkedCount > 0 && (
+                  <span className="text-xs text-slate-400">
+                    Listing tab fields will need Save. Others write directly to Shopify.
+                  </span>
+                )}
+              </div>
+
+              {/* Post-apply summary */}
+              {hasApplyResults && (
+                <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700">
+                  {formDataApplied > 0 && (
+                    <span>{formDataApplied} field{formDataApplied > 1 ? 's' : ''} updated on Listing tab (click Save to push to Shopify). </span>
+                  )}
+                  {shopifyApplied > 0 && (
+                    <span>{shopifyApplied} field{shopifyApplied > 1 ? 's' : ''} written directly to Shopify.</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </ProductDetailSection>
+        ) : null;
+      })()}
 
       {/* ── Results ── */}
       {hasResults && lp && (
@@ -350,7 +653,7 @@ export default function ProductResearchTab({
 
           {/* Validation Notes */}
           {lp.validationNotes && (
-            <ProductDetailSection title="Validation Notes" defaultOpen={false}>
+            <ProductDetailSection title="Validation Notes" defaultOpen={!!lp.validationNotes}>
               <div className="pt-4">
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{lp.validationNotes}</p>
               </div>

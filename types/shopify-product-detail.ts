@@ -30,6 +30,7 @@ export interface ProductMetafields {
   internalTags?: string;
   // custom namespace
   talkingPoints?: string;
+  history?: string;
   // specs namespace
   year?: string;
   height?: string;
@@ -133,7 +134,9 @@ export interface LinkedPosterData {
   artistSource: string | null;
   printingTechnique: string | null;
   printer: string | null;
+  printerConfidence: string | null;
   publisher: string | null;
+  publisherConfidence: string | null;
   historicalContext: string | null;
   culturalSignificance: string | null;
   productDescriptions: {
