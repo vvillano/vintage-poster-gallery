@@ -264,6 +264,7 @@ export default function ProductResearchTab({
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [skepticalMode, setSkepticalMode] = useState(false);
   const [applyingField, setApplyingField] = useState<string | null>(null);
+  const [showLiveConcise, setShowLiveConcise] = useState(false);
   const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
   // Track user edits per tone so they persist when toggling between tabs
@@ -1078,11 +1079,20 @@ export default function ProductResearchTab({
                     </div>
                     {product.metafields.conciseDescription && (
                       <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mb-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowLiveConcise(v => !v)}
+                          className="flex items-center gap-1.5 text-xs text-green-600 font-medium hover:text-green-700 transition-colors"
+                        >
                           <ShopifyIcon />
                           Live Concise Description
-                        </div>
-                        <p className="text-xs text-slate-600">{product.metafields.conciseDescription}</p>
+                          <svg className={`w-3 h-3 transition-transform ${showLiveConcise ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {showLiveConcise && (
+                          <p className="text-xs text-slate-600 mt-1">{product.metafields.conciseDescription}</p>
+                        )}
                       </div>
                     )}
                   </div>
