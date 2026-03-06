@@ -23,6 +23,8 @@ export const config = {
     '/api/posters/:path*',
     '/api/dashboard/:path*',
     '/api/admin/:path*',
-    '/api/products-index/:path*',
+    '/api/products-index/sync/:path*',
+    '/api/products-index/browse/:path*',
+    '/api/products-index/filters/:path*',
   ],
 };
