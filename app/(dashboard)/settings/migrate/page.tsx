@@ -35,6 +35,13 @@ interface SerperStatus {
 const MIGRATIONS: MigrationConfig[] = [
   // Newest first
   {
+    id: 'sync-state',
+    name: 'Sync State (Cron Jobs)',
+    description: 'Creates the sync_state table for tracking automated product index sync progress. Enables incremental (every 10 min) and full (every 2 hours) background syncs via Vercel Cron Jobs.',
+    endpoint: '/api/migrate/sync-state',
+    successLink: { href: '/products', label: 'Go to Products' },
+  },
+  {
     id: 'seed-date-tags',
     name: 'Seed Date Tags',
     description: 'Seeds all 24 date tag ranges: decade-level (1900-1909 through 2020-2029), quarter-century (1900-1924 through 2000-2024), century-level (Pre 1700, 1700s, 1800s), and 2000+ catch-all. Clears existing date tags first. Overlapping ranges apply correctly (e.g., 1941 matches both 1940-1949 and 1925-1949).',
