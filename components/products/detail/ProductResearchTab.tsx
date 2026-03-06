@@ -342,13 +342,36 @@ export default function ProductResearchTab({
   }
 
   // Initialize/reset description editor when descriptions change (new analysis or page load)
+  // If a tone is already applied to Shopify, start on that tone; otherwise default to standard
   const standardDesc = lp?.productDescriptions?.standard || '';
+  const descriptionsJson = lp?.productDescriptions ? JSON.stringify(lp.productDescriptions) : '';
   useEffect(() => {
-    if (standardDesc) {
-      setDescriptionTone('standard');
-      setDescriptionHtml(convertToHtmlParagraphs(standardDesc));
+    if (!lp?.productDescriptions) return;
+    const descs = lp.productDescriptions;
+
+    // Check if any tone is already live in Shopify
+    if (product.bodyHtml) {
+      const shopifyNorm = product.bodyHtml.replace(/>\s+</g, '><').trim();
+      for (const tone of DESCRIPTION_TONES) {
+        const text = descs[tone.id as keyof typeof descs];
+        if (text) {
+          const toneHtml = convertToHtmlParagraphs(text);
+          if (shopifyNorm === toneHtml.replace(/>\s+</g, '><').trim()) {
+            setDescriptionTone(tone.id);
+            setDescriptionHtml(toneHtml);
+            return;
+          }
+        }
+      }
     }
-  }, [standardDesc]);
+
+    // No tone matched -- default to standard
+    if (descs.standard) {
+      setDescriptionTone('standard');
+      setDescriptionHtml(convertToHtmlParagraphs(descs.standard));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descriptionsJson]);
 
   // Search managed artist list when AI identified an artist but no DB link exists
   const aiArtistName = lp?.artist || null;
