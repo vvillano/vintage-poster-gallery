@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sql } from '@vercel/postgres';
 import { getSyncStatus } from '@/lib/products-index';
+import { getSyncState } from '@/lib/cron-sync';
 import {
   fetchProductsPage,
   upsertProducts,
@@ -164,8 +165,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const status = await getSyncStatus();
-    return NextResponse.json({ ...status, _syncVersion: 'chunked-v2' });
+    const [status, cronState] = await Promise.all([
+      getSyncStatus(),
+      getSyncState().catch(() => null),
+    ]);
+
+    return NextResponse.json({
+      ...status,
+      cron: cronState ? {
+        status: cronState.status,
+        lastFullSyncAt: cronState.last_full_sync_completed_at,
+        lastIncrementalAt: cronState.last_incremental_at,
+        lastCronRunAt: cronState.last_cron_run_at,
+        fullSyncProgress: cronState.status === 'full_in_progress' ? cronState.full_sync_total_synced : null,
+        error: cronState.error_message,
+      } : null,
+    });
   } catch (error) {
     console.error('Sync status error:', error);
     return NextResponse.json(

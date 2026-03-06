@@ -84,6 +84,8 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
     }
   }
 
+  const cron = syncStatus?.cron;
+
   return (
     <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
       {syncStatus && !syncStatus.isEmpty && syncStatus.lastSyncedAt && (
@@ -118,6 +120,26 @@ export default function SyncStatusBar({ syncStatus, onSyncComplete }: SyncStatus
           </>
         )}
       </button>
+
+      {/* Cron sync status */}
+      {cron && (
+        <div className="flex items-center gap-2 text-xs text-slate-400 border-l border-slate-200 pl-3 ml-1">
+          {cron.status === 'full_in_progress' && cron.fullSyncProgress != null && (
+            <span className="text-blue-500">
+              Full sync in progress ({cron.fullSyncProgress.toLocaleString()} synced)
+            </span>
+          )}
+          {cron.status === 'idle' && cron.lastFullSyncAt && (
+            <span>Full: {formatTimeAgo(cron.lastFullSyncAt)}</span>
+          )}
+          {cron.lastIncrementalAt && (
+            <span>Incremental: {formatTimeAgo(cron.lastIncrementalAt)}</span>
+          )}
+          {cron.error && (
+            <span className="text-red-400" title={cron.error}>Cron error</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

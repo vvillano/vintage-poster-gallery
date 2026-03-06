@@ -114,8 +114,18 @@ export interface IndexBrowseResponse {
   pagination: IndexPagination;
 }
 
+export interface CronSyncInfo {
+  status: 'idle' | 'full_in_progress';
+  lastFullSyncAt: string | null;
+  lastIncrementalAt: string | null;
+  lastCronRunAt: string | null;
+  fullSyncProgress: number | null;
+  error: string | null;
+}
+
 export interface SyncStatus {
   lastSyncedAt: string | null;
   totalProducts: number;
   isEmpty: boolean;
+  cron?: CronSyncInfo | null;
 }
