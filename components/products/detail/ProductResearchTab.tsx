@@ -342,14 +342,13 @@ export default function ProductResearchTab({
   }
 
   // Initialize/reset description editor when descriptions change (new analysis or page load)
-  // If a tone is already applied to Shopify, start on that tone; otherwise default to standard
-  const standardDesc = lp?.productDescriptions?.standard || '';
+  // If a tone is already applied to Shopify, start on that tone; if edited, show "live" tab
   const descriptionsJson = lp?.productDescriptions ? JSON.stringify(lp.productDescriptions) : '';
   useEffect(() => {
     if (!lp?.productDescriptions) return;
     const descs = lp.productDescriptions;
 
-    // Check if any tone is already live in Shopify
+    // Check if any AI tone matches what's live in Shopify
     if (product.bodyHtml) {
       const shopifyNorm = product.bodyHtml.replace(/>\s+</g, '><').trim();
       for (const tone of DESCRIPTION_TONES) {
@@ -363,9 +362,14 @@ export default function ProductResearchTab({
           }
         }
       }
+
+      // No AI tone matched but there IS a live description -- show "live" tab
+      setDescriptionTone('live');
+      setDescriptionHtml(product.bodyHtml);
+      return;
     }
 
-    // No tone matched -- default to standard
+    // No live description -- default to standard
     if (descs.standard) {
       setDescriptionTone('standard');
       setDescriptionHtml(convertToHtmlParagraphs(descs.standard));
@@ -964,6 +968,32 @@ export default function ProductResearchTab({
               <div className="pt-4">
                 {/* Tone pills */}
                 <div className="flex gap-1 mb-3">
+                  {/* Live (Shopify) tab */}
+                  {product.bodyHtml && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        descriptionEditsRef.current[descriptionTone] = descriptionHtml;
+                        setDescriptionTone('live');
+                        const savedEdit = descriptionEditsRef.current['live'];
+                        setDescriptionHtml(savedEdit !== undefined ? savedEdit : product.bodyHtml!);
+                      }}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                        descriptionTone === 'live'
+                          ? 'bg-green-100 text-green-700'
+                          : 'text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                      </svg>
+                      Live
+                    </button>
+                  )}
+                  {product.bodyHtml && (
+                    <div className="w-px bg-slate-200 mx-0.5" />
+                  )}
+                  {/* AI tone tabs */}
                   {DESCRIPTION_TONES.map((tone) => {
                     const text = lp.productDescriptions![tone.id as keyof typeof lp.productDescriptions];
                     return (
@@ -1002,9 +1032,17 @@ export default function ProductResearchTab({
                 {descriptionHtml && (
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     {(() => {
-                      const currentToneLabel = DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom';
+                      const currentToneLabel = descriptionTone === 'live' ? 'Live' : (DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom');
                       const isApplied = isFieldApplied('description');
-                      return (
+                      const isLiveTab = descriptionTone === 'live';
+                      return isLiveTab && isApplied ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          {appliedDescToneLabel ? `${appliedDescToneLabel} Description Applied` : 'Description Applied'}
+                        </span>
+                      ) : (
                         <ApplyButton
                           onClick={async () => {
                             setApplyingField('description');
