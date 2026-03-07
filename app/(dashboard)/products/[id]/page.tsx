@@ -655,6 +655,11 @@ export default function ProductDetailPage() {
         // Non-critical: metafield was already written
       }
     }
+    // 3. Update "Artist: X" tag with canonical name
+    const canonicalTag = `Artist: ${artist.name}`;
+    const updatedTags = formData.tags.filter(t => !t.toLowerCase().startsWith('artist:'));
+    updatedTags.push(canonicalTag);
+    handleApplyTags(updatedTags);
   }
 
   async function handleSalesChannelToggle(publicationId: string, publish: boolean) {
