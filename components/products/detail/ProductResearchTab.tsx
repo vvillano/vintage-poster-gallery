@@ -1406,7 +1406,7 @@ export default function ProductResearchTab({
                         <p className="text-xs text-slate-400 mt-0.5">
                           {cite.source}
                           {cite.url && cite.url !== '#' && (
-                            <> &middot; <a href={cite.url} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
+                            <> &middot; <a href={cite.url.startsWith('http') ? cite.url : `https://${cite.url}`} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
                           )}
                         </p>
                       </div>
