@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProductDetail, LinkedArtistRecord } from '@/types/shopify-product-detail';
 import ProductDetailSection from './ProductDetailSection';
@@ -319,6 +319,7 @@ export default function ProductResearchTab({
   const hasImages = product.images && product.images.length > 0;
   const hasResults = lp?.analysisCompleted;
   const extractedYear = extractYearFromDate(lp?.estimatedDate);
+  const mediumOptionNames = useMemo(() => new Set(mediumOptions.map(m => m.name.toLowerCase())), [mediumOptions]);
 
   // Normalize HTML for comparison (TipTap may strip whitespace between tags)
   function normalizeHtml(html: string): string {
@@ -1636,7 +1637,7 @@ export default function ProductResearchTab({
             <div className="flex flex-wrap gap-1.5">
               {/* Unmatched tags (from Shopify, not in managed list) */}
               {formData.tags
-                .filter(t => !tagOptions.some(o => o.name.toLowerCase() === t.toLowerCase()) && !autoTags.some(a => a.toLowerCase() === t.toLowerCase()))
+                .filter(t => !tagOptions.some(o => o.name.toLowerCase() === t.toLowerCase()) && !autoTags.some(a => a.toLowerCase() === t.toLowerCase()) && !mediumOptionNames.has(t.toLowerCase()) && !t.toLowerCase().startsWith('artist:'))
                 .map((tag) => (
                   <span
                     key={`locked-${tag}`}
@@ -1650,7 +1651,7 @@ export default function ProductResearchTab({
               {(tagSearch.trim()
                 ? tagOptions.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))
                 : tagOptions
-              ).map((opt) => {
+              ).filter(t => !mediumOptionNames.has(t.name.toLowerCase())).map((opt) => {
                 const isSelected = formData.tags.some(t => t.toLowerCase() === opt.name.toLowerCase());
                 const isSuggested = suggestedTags.some(t => t.toLowerCase() === opt.name.toLowerCase());
                 return (

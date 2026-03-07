@@ -632,6 +632,20 @@ export default function ProductDetailPage() {
       if (!res.ok) return;
       const updated: ProductDetail = await res.json();
       setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, medium: updated.metafields.medium } } : prev);
+
+      // Sync medium values as product tags (add new, remove deselected)
+      const mediumLower = new Set(medium.map(m => m.toLowerCase()));
+      const allMediumNames = mediumOptions.map(m => m.name.toLowerCase());
+      // Remove any medium tags not in the new selection, add any that are
+      let updatedTags = formData.tags.filter(t => !allMediumNames.includes(t.toLowerCase()) || mediumLower.has(t.toLowerCase()));
+      for (const m of medium) {
+        if (!updatedTags.some(t => t.toLowerCase() === m.toLowerCase())) {
+          updatedTags.push(m);
+        }
+      }
+      if (JSON.stringify(updatedTags.sort()) !== JSON.stringify(formData.tags.sort())) {
+        handleApplyTags(updatedTags);
+      }
     } catch { /* silent */ }
   }
 
