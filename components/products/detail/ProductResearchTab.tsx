@@ -518,7 +518,7 @@ export default function ProductResearchTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           artistName: lp.artist,
-          confidence: lp.artistConfidence || 'confirmed',
+          confidence: 'confirmed', // User explicitly clicked Add Artist
         }),
       });
       if (!res.ok) throw new Error('Failed to add artist');
