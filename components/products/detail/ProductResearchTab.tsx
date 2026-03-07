@@ -306,8 +306,9 @@ export default function ProductResearchTab({
   const [showLiveConcise, setShowLiveConcise] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
-  const [descriptionTone, setDescriptionTone] = useState('standard');
-  const [descriptionHtml, setDescriptionHtml] = useState('');
+  // Default to 'live' tab when Shopify has a description, otherwise 'standard'
+  const [descriptionTone, setDescriptionTone] = useState(product.bodyHtml ? 'live' : 'standard');
+  const [descriptionHtml, setDescriptionHtml] = useState(product.bodyHtml || '');
   const [descriptionDirty, setDescriptionDirty] = useState(false);
   // Track user edits per tone so they persist when toggling between tabs
   const descriptionEditsRef = useRef<Record<string, string>>({});
@@ -1375,8 +1376,12 @@ export default function ProductResearchTab({
                       const currentToneLabel = descriptionTone === 'live' ? 'Live' : (DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom');
                       const isApplied = isFieldApplied('description');
                       const isLiveTab = descriptionTone === 'live';
-                      // Hide apply controls on Live tab unless user has edited
-                      if (isLiveTab && !descriptionDirty) return null;
+                      // Hide apply controls on Live tab unless content actually differs from Shopify
+                      if (isLiveTab) {
+                        const normalize = (h: string) => h.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
+                        const liveMatches = product.bodyHtml && normalize(descriptionHtml) === normalize(product.bodyHtml);
+                        if (liveMatches || !descriptionDirty) return null;
+                      }
                       return isLiveTab && isApplied ? (
                         <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
                           <ShopifyIcon />
