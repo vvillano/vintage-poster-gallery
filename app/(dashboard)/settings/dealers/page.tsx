@@ -29,7 +29,13 @@ const DEALER_TYPES: { value: DealerType; label: string }[] = [
   { value: 'gallery', label: 'Gallery' },
   { value: 'marketplace', label: 'Marketplace' },
   { value: 'aggregator', label: 'Aggregator' },
-  { value: 'museum', label: 'Museum/Institution' },
+  { value: 'museum', label: 'Museum / Institution' },
+  { value: 'library', label: 'Library / Archive' },
+  { value: 'archive', label: 'Digital Archive' },
+  { value: 'academic', label: 'Academic / Journal' },
+  { value: 'dealer', label: 'Dealer' },
+  { value: 'bookstore', label: 'Bookstore' },
+  { value: 'individual', label: 'Individual Seller' },
 ];
 
 const REGIONS: { value: DealerRegion; label: string }[] = [

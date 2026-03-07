@@ -12,6 +12,13 @@ export type DealerType =
   | 'marketplace'
   | 'aggregator'
   | 'museum'
+  | 'library'       // Library or archive (Library of Congress, etc.)
+  | 'archive'       // Digital archive or research database
+  | 'academic'      // Academic institution or journal
+  | 'dealer'        // Generic dealer (from sellers system)
+  | 'bookstore'     // Bookstore (from sellers system)
+  | 'individual'    // Individual/private seller (from sellers system)
+  | 'other'         // Other (from sellers system)
   | 'reproduction'; // Sites that only sell reproductions - exclude from results
 
 // Category for filtering by purpose (Research vs Valuation)
@@ -124,6 +131,13 @@ export const DEALER_TYPE_LABELS: Record<DealerType, string> = {
   marketplace: 'Marketplace',
   aggregator: 'Aggregator',
   museum: 'Museum/Institution',
+  library: 'Library / Archive',
+  archive: 'Digital Archive',
+  academic: 'Academic / Journal',
+  dealer: 'Dealer',
+  bookstore: 'Bookstore',
+  individual: 'Individual Seller',
+  other: 'Other',
   reproduction: 'Reproduction Only (excluded)',
 };
 
@@ -147,6 +161,13 @@ export const DEALER_TYPE_TO_CATEGORY: Record<DealerType, DealerCategory> = {
   marketplace: 'platform',
   aggregator: 'platform',
   museum: 'research',
+  library: 'research',
+  archive: 'research',
+  academic: 'research',
+  dealer: 'dealer',
+  bookstore: 'dealer',
+  individual: 'dealer',
+  other: 'dealer',
   reproduction: 'platform', // Will be excluded via excludeFromResults flag
 };
 
@@ -367,13 +388,60 @@ export function getDefaultsForDealerType(type: DealerType): Partial<CreateDealer
     case 'museum':
       return {
         category,
-        reliabilityTier: 3,
+        reliabilityTier: 1,
+        attributionWeight: 0.95,
+        pricingWeight: 0.5,
+        canResearch: true,
+        canPrice: false,
+        canProcure: false,
+        canBeSource: false,
+      };
+    case 'library':
+      return {
+        category,
+        reliabilityTier: 1,
         attributionWeight: 0.9,
         pricingWeight: 0.5,
         canResearch: true,
         canPrice: false,
         canProcure: false,
         canBeSource: false,
+      };
+    case 'archive':
+      return {
+        category,
+        reliabilityTier: 2,
+        attributionWeight: 0.85,
+        pricingWeight: 0.5,
+        canResearch: true,
+        canPrice: false,
+        canProcure: false,
+        canBeSource: false,
+      };
+    case 'academic':
+      return {
+        category,
+        reliabilityTier: 2,
+        attributionWeight: 0.9,
+        pricingWeight: 0.5,
+        canResearch: true,
+        canPrice: false,
+        canProcure: false,
+        canBeSource: false,
+      };
+    case 'dealer':
+    case 'bookstore':
+    case 'individual':
+    case 'other':
+      return {
+        category,
+        reliabilityTier: type === 'individual' ? 5 : 3,
+        attributionWeight: type === 'individual' ? 0.6 : 0.7,
+        pricingWeight: type === 'individual' ? 0.6 : 0.7,
+        canResearch: type !== 'individual',
+        canPrice: true,
+        canProcure: true,
+        canBeSource: true,
       };
     case 'marketplace':
       return {
