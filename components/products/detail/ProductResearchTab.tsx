@@ -359,7 +359,7 @@ export default function ProductResearchTab({
         const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
         return !!canonicalName && mf.artist === canonicalName;
       }
-      case 'year': return !!lp && !!extractedYear && mf.year === extractedYear;
+      case 'year': return !!mf.year; // Any existing Shopify year counts as "applied" — use Year Override to change
       case 'printer': return !!lp?.printer && mf.printer === lp.printer;
       case 'publisher': return !!lp?.publisher && mf.publisher === lp.publisher;
       case 'history': return !!lp?.historicalContext && mf.history === lp.historicalContext;
