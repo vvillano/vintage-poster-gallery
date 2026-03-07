@@ -300,6 +300,7 @@ export default function ProductResearchTab({
   const [tagSearch, setTagSearch] = useState('');
   const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
+  const [descriptionDirty, setDescriptionDirty] = useState(false);
   // Track user edits per tone so they persist when toggling between tabs
   const descriptionEditsRef = useRef<Record<string, string>>({});
   const [artistMatch, setArtistMatch] = useState<LinkedArtistRecord | null>(null);
@@ -1169,6 +1170,7 @@ export default function ProductResearchTab({
                       onClick={() => {
                         descriptionEditsRef.current[descriptionTone] = descriptionHtml;
                         setDescriptionTone('live');
+                        setDescriptionDirty(false);
                         const savedEdit = descriptionEditsRef.current['live'];
                         setDescriptionHtml(savedEdit !== undefined ? savedEdit : product.bodyHtml!);
                       }}
@@ -1197,6 +1199,7 @@ export default function ProductResearchTab({
                           // Save current edits before switching
                           descriptionEditsRef.current[descriptionTone] = descriptionHtml;
                           setDescriptionTone(tone.id);
+                          setDescriptionDirty(false);
                           // Restore saved edits if any, otherwise use original AI text
                           const savedEdit = descriptionEditsRef.current[tone.id];
                           setDescriptionHtml(savedEdit !== undefined ? savedEdit : (text ? convertToHtmlParagraphs(text) : ''));
@@ -1218,7 +1221,7 @@ export default function ProductResearchTab({
                 {/* Editor */}
                 <RichTextEditor
                   value={descriptionHtml}
-                  onChange={setDescriptionHtml}
+                  onChange={(html) => { setDescriptionHtml(html); setDescriptionDirty(true); }}
                   placeholder="Select a tone above or type a description..."
                 />
                 {descriptionHtml && (
@@ -1227,8 +1230,8 @@ export default function ProductResearchTab({
                       const currentToneLabel = descriptionTone === 'live' ? 'Live' : (DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom');
                       const isApplied = isFieldApplied('description');
                       const isLiveTab = descriptionTone === 'live';
-                      // No apply controls needed on Live tab without AI analysis
-                      if (isLiveTab && !lp?.productDescriptions) return null;
+                      // Hide apply controls on Live tab without AI unless user has edited
+                      if (isLiveTab && !lp?.productDescriptions && !descriptionDirty) return null;
                       return isLiveTab && isApplied ? (
                         <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
                           <ShopifyIcon />
@@ -1246,7 +1249,7 @@ export default function ProductResearchTab({
                           }}
                           applied={isApplied}
                           applying={applyingField === 'description'}
-                          label={`Apply ${currentToneLabel} as Description`}
+                          label={isLiveTab ? 'Apply to Shopify' : `Apply ${currentToneLabel} as Description`}
                           appliedLabel={`${appliedDescToneLabel || currentToneLabel} Description`}
                         />
                       );
