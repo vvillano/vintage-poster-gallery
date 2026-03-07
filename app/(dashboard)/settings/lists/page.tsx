@@ -269,6 +269,8 @@ function ManagedListsContent() {
     matchType?: string;
   }>>([]);
   const [mergingDupeId, setMergingDupeId] = useState<number | null>(null);
+  const [syncingColors, setSyncingColors] = useState(false);
+  const [colorSyncResult, setColorSyncResult] = useState<string | null>(null);
   const editingRowRef = useRef<HTMLDivElement>(null);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
@@ -500,6 +502,21 @@ function ManagedListsContent() {
       setError(err instanceof Error ? err.message : 'Failed to merge');
     } finally {
       setMergingDupeId(null);
+    }
+  }
+
+  async function handleSyncColorsToShopify() {
+    setSyncingColors(true);
+    setColorSyncResult(null);
+    try {
+      const res = await fetch('/api/shopify/metafields/update-color-choices', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      setColorSyncResult(`Synced ${data.updated.length} colors to Shopify (was ${data.previous.length})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync colors');
+    } finally {
+      setSyncingColors(false);
     }
   }
 
@@ -897,6 +914,25 @@ function ManagedListsContent() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Sync Colors to Shopify */}
+              {activeList === 'colors' && (
+                <div className="p-4 border-b border-slate-200 flex items-center gap-3">
+                  <button
+                    onClick={handleSyncColorsToShopify}
+                    disabled={syncingColors}
+                    className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {syncingColors ? 'Syncing...' : 'Sync Colors to Shopify'}
+                  </button>
+                  <span className="text-xs text-slate-500">
+                    Updates Shopify metafield to accept all colors in this list
+                  </span>
+                  {colorSyncResult && (
+                    <span className="text-xs text-green-600 font-medium">{colorSyncResult}</span>
+                  )}
                 </div>
               )}
 
