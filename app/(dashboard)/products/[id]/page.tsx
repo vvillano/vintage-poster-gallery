@@ -247,9 +247,44 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product) return;
     if (product.images.length === 0) return;
+
+    // Auto-apply suggested colors to Shopify when no colors exist yet
+    function autoApplyColors(colors: string[]) {
+      // Skip if Shopify already has colors
+      const current = product!.metafields.color;
+      if (current) {
+        try {
+          const parsed = JSON.parse(current);
+          if (Array.isArray(parsed) && parsed.length > 0) return;
+        } catch { return; }
+      }
+      // Write directly to Shopify
+      setFormData((prev) => ({ ...prev, colors }));
+      fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: 'jadepuma',
+            key: 'color',
+            value: JSON.stringify(colors),
+            type: 'list.single_line_text_field',
+          }],
+        }),
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((updated) => {
+          if (updated) {
+            setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, color: updated.metafields.color } } : prev);
+          }
+        })
+        .catch(() => {});
+    }
+
     // Skip if already have suggestions (from linked poster or previous detection)
     if (product.linkedPoster?.suggestedColors?.length) {
       setSuggestedColors(product.linkedPoster.suggestedColors);
+      autoApplyColors(product.linkedPoster.suggestedColors);
       return;
     }
     if (suggestedColors.length > 0) return;
@@ -264,6 +299,7 @@ export default function ProductDetailPage() {
       .then((data) => {
         if (data?.suggestedColors?.length) {
           setSuggestedColors(data.suggestedColors);
+          autoApplyColors(data.suggestedColors);
         }
       })
       .catch(() => {})
@@ -385,26 +421,6 @@ export default function ProductDetailPage() {
     setFormData((prev) => ({ ...prev, [field]: values }));
     setSaveMessage(null);
   }
-
-  // Auto-apply suggested colors when they arrive and no colors exist in Shopify
-  useEffect(() => {
-    if (suggestedColors.length === 0) return;
-    if (!product) return;
-    // Only auto-apply when Shopify has no colors set
-    const currentColors = product.metafields.color;
-    if (currentColors) {
-      try {
-        const parsed = JSON.parse(currentColors);
-        if (Array.isArray(parsed) && parsed.length > 0) return;
-      } catch {
-        return; // Has some value, don't overwrite
-      }
-    }
-    // Only auto-apply when formData has no colors (avoid re-applying on re-renders)
-    if (formData.colors.length > 0) return;
-    handleColorsAutoApply(suggestedColors);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestedColors, product?.id]);
 
   // Auto-apply colors: update formData AND immediately write to Shopify
   async function handleColorsAutoApply(colors: string[]) {
