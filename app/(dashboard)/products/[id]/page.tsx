@@ -370,6 +370,98 @@ export default function ProductDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, sizeTagRules, dateTagRules]);
 
+  // Reconcile artist tag on load: check "Artist: X" tag against artist DB
+  const [artistReconciled, setArtistReconciled] = useState(false);
+  useEffect(() => {
+    if (artistReconciled) return;
+    if (!product) return;
+
+    async function reconcileArtist() {
+      let canonicalName: string | null = null;
+
+      // Path A: linkedArtist exists — canonical name already known
+      if (product!.linkedPoster?.linkedArtist) {
+        canonicalName = product!.linkedPoster.linkedArtist.name;
+      } else {
+        // Path B: extract artist name from tag or metafield, search DB
+        const artistTag = product!.tags.find(t => t.toLowerCase().startsWith('artist:'));
+        const tagArtistName = artistTag ? artistTag.replace(/^artist:\s*/i, '').trim() : null;
+        const metafieldArtist = product!.metafields.artist || null;
+        const searchName = tagArtistName || metafieldArtist;
+
+        if (!searchName) return; // No artist info — nothing to reconcile
+
+        try {
+          const res = await fetch(`/api/managed-lists/artists?search=${encodeURIComponent(searchName)}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.items?.length > 0) {
+            const match = data.items[0];
+            const searchLower = searchName.toLowerCase();
+            const nameMatch = match.name.toLowerCase() === searchLower;
+            const aliasMatch = match.aliases?.some((a: string) => a.toLowerCase() === searchLower);
+            if (nameMatch || aliasMatch) {
+              canonicalName = match.name;
+            }
+          }
+        } catch { return; }
+      }
+
+      if (!canonicalName) return;
+
+      // Determine what needs updating
+      const currentTags = [...formData.tags];
+      const expectedTag = `Artist: ${canonicalName}`;
+      const hasCorrectTag = currentTags.some(t => t === expectedTag);
+      const currentMetafield = product!.metafields.artist || '';
+      const metafieldNeedsUpdate = currentMetafield && currentMetafield !== canonicalName;
+      const tagNeedsUpdate = !hasCorrectTag && (currentMetafield || currentTags.some(t => t.toLowerCase().startsWith('artist:')));
+
+      if (!tagNeedsUpdate && !metafieldNeedsUpdate) return; // Already correct
+
+      // Build updated tags
+      const updatedTags = currentTags.filter(t => !t.toLowerCase().startsWith('artist:'));
+      updatedTags.push(expectedTag);
+
+      // Build PUT payload (single call handles both tags + metafields)
+      const payload: Record<string, unknown> = { tags: updatedTags };
+      if (metafieldNeedsUpdate) {
+        payload.metafields = [{
+          namespace: 'jadepuma',
+          key: 'artist',
+          value: canonicalName,
+          type: 'single_line_text_field',
+        }];
+      }
+
+      try {
+        const res = await fetch(`/api/shopify/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) return;
+        const updated: ProductDetail = await res.json();
+
+        // Update BOTH formData and product baseline (isDirty stays false)
+        setFormData(prev => ({
+          ...prev,
+          tags: [...updated.tags],
+          artist: updated.metafields.artist || prev.artist,
+        }));
+        setProduct(prev => prev ? {
+          ...prev,
+          tags: updated.tags,
+          metafields: { ...prev.metafields, artist: updated.metafields.artist },
+        } : prev);
+      } catch { /* silent */ }
+    }
+
+    reconcileArtist();
+    setArtistReconciled(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
   function handleFieldChange(field: string, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setSaveMessage(null);
