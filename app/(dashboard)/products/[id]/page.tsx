@@ -747,7 +747,7 @@ export default function ProductDetailPage() {
       }
       const updated: ProductDetail = await res.json();
       setProduct((prev) => prev ? { ...prev, bodyHtml: updated.bodyHtml, metafields: updated.metafields } : prev);
-      setFormData((prev) => ({ ...prev, bodyHtml: html }));
+      setFormData((prev) => ({ ...prev, bodyHtml: updated.bodyHtml || '' }));
       setSaveMessage('Description applied to Shopify');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to apply description');
