@@ -58,6 +58,7 @@ interface ProductResearchTabProps {
   onApplyBodyHtml: (html: string) => Promise<void>;
   onApplyArtist: (artist: LinkedArtistRecord) => Promise<void>;
   onApplyTags: (tags: string[]) => Promise<void>;
+  onColorsAutoApply: (colors: string[]) => void;
   onAnalysisComplete: () => void;
 }
 
@@ -287,6 +288,7 @@ export default function ProductResearchTab({
   onApplyBodyHtml,
   onApplyArtist,
   onApplyTags,
+  onColorsAutoApply,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -1397,97 +1399,40 @@ export default function ProductResearchTab({
             )}
           </div>
 
-          {/* Colors */}
+          {/* Colors (auto-apply) */}
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5">
               <label className="block text-sm font-medium text-slate-700">Colors</label>
-              {formData.colors.length > 0 && (
-                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
-                  {formData.colors.length}
-                </span>
+              {suggestingColors && (
+                <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
               )}
             </div>
 
-            {/* AI Suggested colors */}
-            {suggestingColors && (
-              <div className="flex items-center gap-2 mb-2 text-xs text-amber-700">
-                <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
-                Detecting colors from image...
-              </div>
-            )}
-            {!suggestingColors && suggestedColors.length > 0 && (
-              <div className="mb-2">
-                <div className="text-xs text-amber-700 font-medium mb-1">AI Suggested</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {suggestedColors.map((colorName) => {
-                    const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
-                    const isSelected = formData.colors.some(c => c.toLowerCase() === colorName.toLowerCase());
-                    const textColor = opt?.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
-                    return (
-                      <button
-                        key={`suggested-${colorName}`}
-                        type="button"
-                        onClick={() => {
-                          const name = opt?.name || colorName;
-                          if (isSelected) {
-                            onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== name.toLowerCase()));
-                          } else {
-                            onArrayFieldChange('colors', [...formData.colors, name]);
-                          }
-                        }}
-                        className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
-                          isSelected
-                            ? 'ring-2 ring-violet-400 border-violet-500'
-                            : 'border-amber-400'
-                        } ${textColor}`}
-                        style={{ backgroundColor: opt?.hexCode || '#f1f5f9' }}
-                      >
-                        {colorName}
-                        {isSelected && <span className="ml-1">&#10003;</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Selected colors (when palette is collapsed) */}
-            {!showAllColors && (
-              <div className="flex flex-wrap gap-1.5">
-                {formData.colors
-                  .filter(c => !colorOptions.some(o => o.name.toLowerCase() === c.toLowerCase()))
-                  .map((c) => (
-                    <span
-                      key={`locked-${c}`}
-                      className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
-                      title="Shopify color (not in managed list)"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                {colorOptions
-                  .filter((opt) => formData.colors.some(c => c.toLowerCase() === opt.name.toLowerCase())
-                    && !suggestedColors.some(s => s.toLowerCase() === opt.name.toLowerCase()))
-                  .map((opt) => {
-                    const textColor = opt.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
-                    return (
-                      <button
-                        key={opt.name}
-                        type="button"
-                        onClick={() => onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== opt.name.toLowerCase()))}
-                        className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ring-2 ring-violet-400 border-violet-500 ${textColor}`}
-                        style={{ backgroundColor: opt.hexCode || '#f1f5f9' }}
-                      >
-                        {opt.name}
-                      </button>
-                    );
-                  })}
+            {/* Compact selected color dots */}
+            {formData.colors.length > 0 && !showAllColors && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                {formData.colors.map((colorName) => {
+                  const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
+                  return (
+                    <button
+                      key={colorName}
+                      type="button"
+                      onClick={() => {
+                        const next = formData.colors.filter(c => c.toLowerCase() !== colorName.toLowerCase());
+                        onColorsAutoApply(next);
+                      }}
+                      title={`${colorName} (click to remove)`}
+                      className="w-6 h-6 rounded-full border-2 border-violet-400 ring-2 ring-violet-200 transition-all hover:ring-red-300 hover:border-red-400 cursor-pointer"
+                      style={{ backgroundColor: opt?.hexCode || '#94a3b8' }}
+                    />
+                  );
+                })}
               </div>
             )}
 
             {/* Full color palette (expandable) */}
             {showAllColors && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
                 {formData.colors
                   .filter(c => !colorOptions.some(o => o.name.toLowerCase() === c.toLowerCase()))
                   .map((c) => (
@@ -1508,11 +1453,10 @@ export default function ProductResearchTab({
                       key={opt.name}
                       type="button"
                       onClick={() => {
-                        if (isSelected) {
-                          onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== opt.name.toLowerCase()));
-                        } else {
-                          onArrayFieldChange('colors', [...formData.colors, opt.name]);
-                        }
+                        const next = isSelected
+                          ? formData.colors.filter(c => c.toLowerCase() !== opt.name.toLowerCase())
+                          : [...formData.colors, opt.name];
+                        onColorsAutoApply(next);
                       }}
                       className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
                         isSelected
@@ -1533,27 +1477,10 @@ export default function ProductResearchTab({
             <button
               type="button"
               onClick={() => setShowAllColors(!showAllColors)}
-              className="mt-1.5 text-xs text-violet-500 hover:text-violet-700 transition"
+              className="text-xs text-violet-500 hover:text-violet-700 transition"
             >
               {showAllColors ? 'Hide palette' : 'Show all colors'}
             </button>
-
-            {formData.colors.length > 0 && (
-              <div className="mt-1.5">
-                <ApplyButton
-                  onClick={() => applyMetafield('colors', {
-                    namespace: 'jadepuma',
-                    key: 'color',
-                    value: JSON.stringify(formData.colors),
-                    type: 'list.single_line_text_field',
-                    displayLabel: 'Colors',
-                  })}
-                  applied={isFieldApplied('colors')}
-                  applying={applyingField === 'colors'}
-                  label="Apply Colors"
-                />
-              </div>
-            )}
           </div>
 
           {/* Subject Tags */}

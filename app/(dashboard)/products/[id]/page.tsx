@@ -386,6 +386,30 @@ export default function ProductDetailPage() {
     setSaveMessage(null);
   }
 
+  // Auto-apply colors: update formData AND immediately write to Shopify
+  async function handleColorsAutoApply(colors: string[]) {
+    setFormData((prev) => ({ ...prev, colors }));
+    setSaveMessage(null);
+    if (!product) return;
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: 'jadepuma',
+            key: 'color',
+            value: JSON.stringify(colors),
+            type: 'list.single_line_text_field',
+          }],
+        }),
+      });
+      if (!res.ok) return; // Silent fail for auto-apply
+      const updated: ProductDetail = await res.json();
+      setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, color: updated.metafields.color } } : prev);
+    } catch { /* silent */ }
+  }
+
   // Direct-write a single metafield to Shopify (follows internal tags pattern)
   const [applyingMetafield, setApplyingMetafield] = useState<string | null>(null);
   // Map metafield keys to formData fields for auto-sync after instant write
@@ -988,6 +1012,22 @@ export default function ProductDetailPage() {
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 mb-3">
         <h2 className="font-semibold text-slate-900 mb-3">Images</h2>
         <ImagesSection images={product.images} />
+        {formData.colors.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
+            <span className="text-xs text-slate-400 mr-1">Colors:</span>
+            {formData.colors.map((colorName) => {
+              const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
+              return (
+                <span
+                  key={colorName}
+                  title={colorName}
+                  className="w-5 h-5 rounded-full border border-slate-300 inline-block"
+                  style={{ backgroundColor: opt?.hexCode || '#94a3b8' }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Tab Navigation */}
@@ -1109,6 +1149,7 @@ export default function ProductDetailPage() {
             onApplyBodyHtml={handleApplyBodyHtml}
             onApplyArtist={handleApplyArtist}
             onApplyTags={handleApplyTags}
+            onColorsAutoApply={handleColorsAutoApply}
             onAnalysisComplete={loadProduct}
           />
         )}
