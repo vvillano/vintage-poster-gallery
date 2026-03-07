@@ -365,7 +365,10 @@ export default function ProductResearchTab({
         const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
         return !!canonicalName && mf.artist === canonicalName;
       }
-      case 'year': return !!mf.year; // Any existing Shopify year counts as "applied" — use Year Override to change
+      case 'year': {
+        if (!mf.year || !extractedYear) return false;
+        return mf.year === extractedYear;
+      }
       case 'printer': return !!lp?.printer && mf.printer === lp.printer;
       case 'publisher': return !!lp?.publisher && mf.publisher === lp.publisher;
       case 'history': return !!lp?.historicalContext && mf.history === lp.historicalContext;
@@ -900,7 +903,7 @@ export default function ProductResearchTab({
 
               {/* Manual Artist input */}
               <div className="border-t border-slate-100 pt-3 mt-1">
-                <label className="block text-xs font-medium text-slate-400 mb-1">{lp?.artist ? 'Artist Override' : 'Set Artist'}</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">{product.metafields.artist ? 'Shopify Artist' : 'Set Artist'}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -1037,7 +1040,7 @@ export default function ProductResearchTab({
 
               {/* Manual Year override */}
               <div className="border-t border-slate-100 pt-3 mt-1">
-                <label className="block text-xs font-medium text-slate-400 mb-1">{lp ? 'Year Override' : 'Set Year'}</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">{product.metafields.year ? 'Shopify Year' : 'Set Year'}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -1394,11 +1397,16 @@ export default function ProductResearchTab({
             </ProductDetailSection>
           )}
 
-          {/* Source Citations */}
-          {lp.sourceCitations.length > 0 && (
+          {/* Source Citations (filter out our own site to avoid self-referential validation) */}
+          {lp.sourceCitations.length > 0 && (() => {
+            const filteredCitations = lp.sourceCitations.filter((cite) => {
+              const src = (cite.source || '').toLowerCase() + ' ' + (cite.url || '').toLowerCase();
+              return !src.includes('authenticvintageposters') && !src.includes('authentic vintage posters');
+            });
+            return filteredCitations.length > 0 ? (
             <ProductDetailSection title="Source Citations" defaultOpen>
               <div className="pt-4 space-y-2">
-                {lp.sourceCitations.map((cite, i) => (
+                {filteredCitations.map((cite, i) => (
                   <div key={i} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -1416,7 +1424,8 @@ export default function ProductResearchTab({
                 ))}
               </div>
             </ProductDetailSection>
-          )}
+            ) : null;
+          })()}
 
           {/* Validation Notes */}
           {lp.validationNotes && (
