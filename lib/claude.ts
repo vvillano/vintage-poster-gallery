@@ -127,7 +127,7 @@ function buildShopifyContextSection(context: ShopifyAnalysisContext, skepticalMo
 
   // In skeptical mode, EXCLUDE all research notes to prevent confirmation bias
   // In normal mode, use itemNotes (research-relevant) but NOT auctionDescription (business notes)
-  const hasItemNotes = !skepticalMode && context.itemNotes && context.itemNotes.length > 30;
+  const hasItemNotes = !skepticalMode && context.itemNotes && context.itemNotes.trim().length > 0;
   if (hasItemNotes) {
     parts.push(`- Research Notes: "${context.itemNotes}"`);
   }
