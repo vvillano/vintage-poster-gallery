@@ -37,17 +37,27 @@ interface ProductResearchTabProps {
     year: string;
     countryOfOrigin: string[];
     medium: string[];
+    colors: string[];
+    tags: string[];
     height: string;
     width: string;
     itemNotes: string;
   };
   isDirty: boolean;
   mediumOptions: { name: string }[];
+  countryOptions: string[];
+  colorOptions: { name: string; hexCode: string | null }[];
+  tagOptions: { name: string }[];
+  suggestedColors: string[];
+  suggestingColors: boolean;
+  suggestedTags: string[];
+  autoTags: string[];
   onFieldChange: (field: string, value: string) => void;
   onArrayFieldChange: (field: string, values: string[]) => void;
   onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
   onApplyBodyHtml: (html: string) => Promise<void>;
   onApplyArtist: (artist: LinkedArtistRecord) => Promise<void>;
+  onApplyTags: (tags: string[]) => Promise<void>;
   onAnalysisComplete: () => void;
 }
 
@@ -206,6 +216,17 @@ function convertToHtmlParagraphs(text: string): string {
   return parts.map((p) => `<p>${p.trim()}</p>`).join('\n');
 }
 
+function getContrastTextColor(hexColor: string | null): string {
+  if (!hexColor) return 'text-slate-700';
+  const hex = hexColor.replace('#', '');
+  if (hex.length !== 6) return 'text-slate-700';
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? 'text-slate-900' : 'text-white';
+}
+
 // Inline Apply button shown next to each AI result field
 function ShopifyIcon() {
   return (
@@ -253,11 +274,19 @@ export default function ProductResearchTab({
   formData,
   isDirty,
   mediumOptions,
+  countryOptions,
+  colorOptions,
+  tagOptions,
+  suggestedColors,
+  suggestingColors,
+  suggestedTags,
+  autoTags,
   onFieldChange,
   onArrayFieldChange,
   onApplyMetafield,
   onApplyBodyHtml,
   onApplyArtist,
+  onApplyTags,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -265,6 +294,8 @@ export default function ProductResearchTab({
   const [skepticalMode, setSkepticalMode] = useState(false);
   const [applyingField, setApplyingField] = useState<string | null>(null);
   const [showLiveConcise, setShowLiveConcise] = useState(false);
+  const [showAllColors, setShowAllColors] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
   const [descriptionTone, setDescriptionTone] = useState('standard');
   const [descriptionHtml, setDescriptionHtml] = useState('');
   // Track user edits per tone so they persist when toggling between tabs
@@ -314,25 +345,48 @@ export default function ProductResearchTab({
   // Derive "applied" state by comparing current Shopify values with AI suggestions
   // This persists across navigation since it's based on actual product data
   function isFieldApplied(fieldId: string): boolean {
-    if (!lp) return false;
     const mf = product.metafields;
     switch (fieldId) {
       case 'artist': {
+        if (!lp) return false;
         const canonicalName = lp.linkedArtist?.name || artistMatch?.name || lp.artist;
         return !!canonicalName && mf.artist === canonicalName;
       }
-      case 'year': return !!extractedYear && mf.year === extractedYear;
-      case 'printer': return !!lp.printer && mf.printer === lp.printer;
-      case 'publisher': return !!lp.publisher && mf.publisher === lp.publisher;
-      case 'history': return !!lp.historicalContext && mf.history === lp.historicalContext;
-      case 'artistBio': return !!lp.linkedArtist?.bio && mf.artistBio === lp.linkedArtist.bio;
-      case 'concise': return !!lp.productDescriptions?.concise && mf.conciseDescription === lp.productDescriptions.concise;
+      case 'year': return !!lp && !!extractedYear && mf.year === extractedYear;
+      case 'printer': return !!lp?.printer && mf.printer === lp.printer;
+      case 'publisher': return !!lp?.publisher && mf.publisher === lp.publisher;
+      case 'history': return !!lp?.historicalContext && mf.history === lp.historicalContext;
+      case 'artistBio': return !!lp?.linkedArtist?.bio && mf.artistBio === lp.linkedArtist.bio;
+      case 'concise': return !!lp?.productDescriptions?.concise && mf.conciseDescription === lp.productDescriptions.concise;
       case 'medium': {
         if (!formData.medium.length) return false;
         try {
           const current = mf.medium ? JSON.parse(mf.medium) : [];
           return JSON.stringify([...formData.medium].sort()) === JSON.stringify([...current].sort());
         } catch { return false; }
+      }
+      case 'country': {
+        if (!formData.countryOfOrigin.length) return false;
+        try {
+          const current = mf.countryOfOrigin ? JSON.parse(mf.countryOfOrigin) : [];
+          return JSON.stringify([...formData.countryOfOrigin].sort()) === JSON.stringify([...current].sort());
+        } catch { return false; }
+      }
+      case 'colors': {
+        if (!formData.colors.length) return false;
+        try {
+          const current = mf.color ? JSON.parse(mf.color) : [];
+          return JSON.stringify([...formData.colors].sort()) === JSON.stringify([...current].sort());
+        } catch { return false; }
+      }
+      case 'tags': {
+        return JSON.stringify([...formData.tags].sort()) === JSON.stringify([...product.tags].sort());
+      }
+      case 'artist-manual': {
+        return !!formData.artist && mf.artist === formData.artist;
+      }
+      case 'year-manual': {
+        return !!formData.year && mf.year === formData.year;
       }
       case 'description': {
         if (!descriptionHtml || !product.bodyHtml) return false;
@@ -523,6 +577,14 @@ export default function ProductResearchTab({
             <ContextField label="Dimensions" value={
               formData.height || formData.width
                 ? `${formData.height || '?'}" x ${formData.width || '?'}"`
+                : null
+            } />
+            <ContextField label="Colors" value={formData.colors.join(', ') || null} />
+            <ContextField label="Tags" value={
+              formData.tags.length > 0
+                ? (formData.tags.length > 5
+                    ? `${formData.tags.slice(0, 5).join(', ')} +${formData.tags.length - 5} more`
+                    : formData.tags.join(', '))
                 : null
             } />
             <ContextField label="Item Notes" value={
@@ -795,6 +857,39 @@ export default function ProductResearchTab({
                 )}
               </div>
 
+              {/* Manual Artist override */}
+              <div className="border-t border-slate-100 pt-3 mt-1">
+                <label className="block text-xs font-medium text-slate-400 mb-1">Artist Override</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.artist}
+                    onChange={(e) => onFieldChange('artist', e.target.value)}
+                    className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none text-sm"
+                    placeholder="Enter artist name..."
+                  />
+                  {formData.artist && (
+                    <ApplyButton
+                      onClick={() => applyMetafield('artist-manual', {
+                        namespace: 'jadepuma',
+                        key: 'artist',
+                        value: formData.artist,
+                        type: 'single_line_text_field',
+                        displayLabel: 'Artist',
+                      })}
+                      applied={isFieldApplied('artist-manual')}
+                      applying={applyingField === 'artist-manual'}
+                      label="Apply"
+                    />
+                  )}
+                </div>
+                {product.metafields.artist && product.metafields.artist !== formData.artist && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-green-600">
+                    <ShopifyIcon /> Live: {product.metafields.artist}
+                  </div>
+                )}
+              </div>
+
               {/* Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -876,6 +971,39 @@ export default function ProductResearchTab({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Manual Year override */}
+              <div className="border-t border-slate-100 pt-3 mt-1">
+                <label className="block text-xs font-medium text-slate-400 mb-1">Year Override</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.year}
+                    onChange={(e) => onFieldChange('year', e.target.value)}
+                    className="w-32 px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none text-sm"
+                    placeholder="e.g. 1965"
+                  />
+                  {formData.year && (
+                    <ApplyButton
+                      onClick={() => applyMetafield('year-manual', {
+                        namespace: 'specs',
+                        key: 'year',
+                        value: formData.year,
+                        type: 'single_line_text_field',
+                        displayLabel: 'Year',
+                      })}
+                      applied={isFieldApplied('year-manual')}
+                      applying={applyingField === 'year-manual'}
+                      label="Apply"
+                    />
+                  )}
+                </div>
+                {product.metafields.year && product.metafields.year !== formData.year && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-green-600">
+                    <ShopifyIcon /> Live: {product.metafields.year}
+                  </div>
+                )}
               </div>
 
               {/* Printer / Publisher */}
@@ -1204,6 +1332,340 @@ export default function ProductResearchTab({
           </ProductDetailSection>
         </>
       )}
+
+      {/* ── Research Fields (always visible) ── */}
+      <ProductDetailSection title="Research Fields" defaultOpen>
+        <div className="pt-4 space-y-5">
+
+          {/* Country of Origin */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="block text-sm font-medium text-slate-700">Country of Origin</label>
+              {formData.countryOfOrigin.length > 0 && (
+                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                  {formData.countryOfOrigin.length}
+                </span>
+              )}
+            </div>
+            <div className="px-3 py-2 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
+              {countryOptions.map((country) => {
+                const isSelected = formData.countryOfOrigin.some(c => c.toLowerCase() === country.toLowerCase());
+                return (
+                  <button
+                    key={country}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        onArrayFieldChange('countryOfOrigin', formData.countryOfOrigin.filter(c => c.toLowerCase() !== country.toLowerCase()));
+                      } else {
+                        onArrayFieldChange('countryOfOrigin', [...formData.countryOfOrigin, country]);
+                      }
+                    }}
+                    className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {country}
+                  </button>
+                );
+              })}
+              {formData.countryOfOrigin
+                .filter(c => !countryOptions.some(o => o.toLowerCase() === c.toLowerCase()))
+                .map(country => (
+                  <span key={country} className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400" title="Not in managed list">
+                    {country}
+                  </span>
+                ))}
+            </div>
+            {formData.countryOfOrigin.length > 0 && (
+              <div className="mt-1.5">
+                <ApplyButton
+                  onClick={() => applyMetafield('country', {
+                    namespace: 'jadepuma',
+                    key: 'country_of_origin',
+                    value: JSON.stringify(formData.countryOfOrigin),
+                    type: 'list.single_line_text_field',
+                    displayLabel: 'Country of Origin',
+                  })}
+                  applied={isFieldApplied('country')}
+                  applying={applyingField === 'country'}
+                  label="Apply Country"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Colors */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="block text-sm font-medium text-slate-700">Colors</label>
+              {formData.colors.length > 0 && (
+                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                  {formData.colors.length}
+                </span>
+              )}
+            </div>
+
+            {/* AI Suggested colors */}
+            {suggestingColors && (
+              <div className="flex items-center gap-2 mb-2 text-xs text-amber-700">
+                <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
+                Detecting colors from image...
+              </div>
+            )}
+            {!suggestingColors && suggestedColors.length > 0 && (
+              <div className="mb-2">
+                <div className="text-xs text-amber-700 font-medium mb-1">AI Suggested</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestedColors.map((colorName) => {
+                    const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
+                    const isSelected = formData.colors.some(c => c.toLowerCase() === colorName.toLowerCase());
+                    const textColor = opt?.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
+                    return (
+                      <button
+                        key={`suggested-${colorName}`}
+                        type="button"
+                        onClick={() => {
+                          const name = opt?.name || colorName;
+                          if (isSelected) {
+                            onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== name.toLowerCase()));
+                          } else {
+                            onArrayFieldChange('colors', [...formData.colors, name]);
+                          }
+                        }}
+                        className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
+                          isSelected
+                            ? 'ring-2 ring-violet-400 border-violet-500'
+                            : 'border-amber-400'
+                        } ${textColor}`}
+                        style={{ backgroundColor: opt?.hexCode || '#f1f5f9' }}
+                      >
+                        {colorName}
+                        {isSelected && <span className="ml-1">&#10003;</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Selected colors (when palette is collapsed) */}
+            {!showAllColors && (
+              <div className="flex flex-wrap gap-1.5">
+                {formData.colors
+                  .filter(c => !colorOptions.some(o => o.name.toLowerCase() === c.toLowerCase()))
+                  .map((c) => (
+                    <span
+                      key={`locked-${c}`}
+                      className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
+                      title="Shopify color (not in managed list)"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                {colorOptions
+                  .filter((opt) => formData.colors.some(c => c.toLowerCase() === opt.name.toLowerCase())
+                    && !suggestedColors.some(s => s.toLowerCase() === opt.name.toLowerCase()))
+                  .map((opt) => {
+                    const textColor = opt.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
+                    return (
+                      <button
+                        key={opt.name}
+                        type="button"
+                        onClick={() => onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== opt.name.toLowerCase()))}
+                        className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ring-2 ring-violet-400 border-violet-500 ${textColor}`}
+                        style={{ backgroundColor: opt.hexCode || '#f1f5f9' }}
+                      >
+                        {opt.name}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Full color palette (expandable) */}
+            {showAllColors && (
+              <div className="flex flex-wrap gap-1.5">
+                {formData.colors
+                  .filter(c => !colorOptions.some(o => o.name.toLowerCase() === c.toLowerCase()))
+                  .map((c) => (
+                    <span
+                      key={`locked-${c}`}
+                      className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
+                      title="Shopify color (not in managed list)"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                {colorOptions.map((opt) => {
+                  const isSelected = formData.colors.some(c => c.toLowerCase() === opt.name.toLowerCase());
+                  const isSuggested = suggestedColors.some(s => s.toLowerCase() === opt.name.toLowerCase());
+                  const textColor = opt.hexCode ? getContrastTextColor(opt.hexCode) : 'text-slate-700';
+                  return (
+                    <button
+                      key={opt.name}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          onArrayFieldChange('colors', formData.colors.filter(c => c.toLowerCase() !== opt.name.toLowerCase()));
+                        } else {
+                          onArrayFieldChange('colors', [...formData.colors, opt.name]);
+                        }
+                      }}
+                      className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
+                        isSelected
+                          ? 'ring-2 ring-violet-400 border-violet-500'
+                          : isSuggested
+                            ? 'border-amber-400'
+                            : 'border-transparent'
+                      } ${textColor}`}
+                      style={{ backgroundColor: opt.hexCode || '#f1f5f9' }}
+                    >
+                      {opt.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowAllColors(!showAllColors)}
+              className="mt-1.5 text-xs text-violet-500 hover:text-violet-700 transition"
+            >
+              {showAllColors ? 'Hide palette' : 'Show all colors'}
+            </button>
+
+            {formData.colors.length > 0 && (
+              <div className="mt-1.5">
+                <ApplyButton
+                  onClick={() => applyMetafield('colors', {
+                    namespace: 'jadepuma',
+                    key: 'color',
+                    value: JSON.stringify(formData.colors),
+                    type: 'list.single_line_text_field',
+                    displayLabel: 'Colors',
+                  })}
+                  applied={isFieldApplied('colors')}
+                  applying={applyingField === 'colors'}
+                  label="Apply Colors"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Subject Tags */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="block text-sm font-medium text-slate-700">Subject Tags</label>
+              {formData.tags.length > 0 && (
+                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                  {formData.tags.length}
+                </span>
+              )}
+            </div>
+
+            {/* Auto Tags */}
+            {autoTags.length > 0 && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <label className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Auto Tags</label>
+                  <span className="text-xs text-emerald-600 font-normal">(applied from dimensions & date)</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {autoTags.map((tag) => {
+                    const isSelected = formData.tags.some(t => t.toLowerCase() === tag.toLowerCase());
+                    return (
+                      <span
+                        key={`auto-${tag}`}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-emerald-50 border border-emerald-300 text-emerald-700'
+                        }`}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        {tag}
+                        {isSelected && <span>&#10003;</span>}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={(e) => setTagSearch(e.target.value)}
+              placeholder="Filter tags..."
+              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm mb-2 outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            />
+
+            <div className="flex flex-wrap gap-1.5">
+              {/* Unmatched tags (from Shopify, not in managed list) */}
+              {formData.tags
+                .filter(t => !tagOptions.some(o => o.name.toLowerCase() === t.toLowerCase()) && !autoTags.some(a => a.toLowerCase() === t.toLowerCase()))
+                .map((tag) => (
+                  <span
+                    key={`locked-${tag}`}
+                    className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
+                    title="Shopify tag (not in managed list)"
+                  >
+                    {tag}
+                  </span>
+                ))}
+
+              {(tagSearch.trim()
+                ? tagOptions.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+                : tagOptions
+              ).map((opt) => {
+                const isSelected = formData.tags.some(t => t.toLowerCase() === opt.name.toLowerCase());
+                const isSuggested = suggestedTags.some(t => t.toLowerCase() === opt.name.toLowerCase());
+                return (
+                  <button
+                    key={opt.name}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        onArrayFieldChange('tags', formData.tags.filter(t => t.toLowerCase() !== opt.name.toLowerCase()));
+                      } else {
+                        onArrayFieldChange('tags', [...formData.tags, opt.name]);
+                      }
+                    }}
+                    className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-violet-600 text-white'
+                        : isSuggested
+                          ? 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {opt.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-1.5">
+              <ApplyButton
+                onClick={() => {
+                  setApplyingField('tags');
+                  onApplyTags(formData.tags).catch(() => {}).finally(() => setApplyingField(null));
+                }}
+                applied={isFieldApplied('tags')}
+                applying={applyingField === 'tags'}
+                label="Apply Tags"
+              />
+            </div>
+          </div>
+
+        </div>
+      </ProductDetailSection>
 
       {/* No results yet placeholder */}
       {!hasResults && !analyzing && (

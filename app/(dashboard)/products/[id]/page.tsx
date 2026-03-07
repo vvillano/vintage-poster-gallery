@@ -9,7 +9,7 @@ import BasicInfoSection from '@/components/products/detail/BasicInfoSection';
 import SpecificationsSection from '@/components/products/detail/SpecificationsSection';
 import ImagesSection from '@/components/products/detail/ImagesSection';
 import PricingSection from '@/components/products/detail/PricingSection';
-import SubjectTaggingSection from '@/components/products/detail/SubjectTaggingSection';
+// SubjectTaggingSection moved to Research tab
 import MetafieldsSection from '@/components/products/detail/MetafieldsSection';
 import SeoSection from '@/components/products/detail/SeoSection';
 import AcquisitionSection from '@/components/products/detail/AcquisitionSection';
@@ -346,16 +346,6 @@ export default function ProductDetailPage() {
     }
   }
 
-  function handleCountryChange(countryOfOrigin: string[]) {
-    setFormData((prev) => ({ ...prev, countryOfOrigin }));
-    setSaveMessage(null);
-  }
-
-  function handleTagsChange(tags: string[]) {
-    setFormData((prev) => ({ ...prev, tags }));
-    setSaveMessage(null);
-  }
-
   // Immediate-apply: Internal Tags save directly to Shopify on change
   const [savingInternalTag, setSavingInternalTag] = useState<string | null>(null);
   async function handleInternalTagsChange(internalTags: string[], toggledTag?: string) {
@@ -391,16 +381,6 @@ export default function ProductDetailPage() {
     }
   }
 
-  function handleColorsChange(colors: string[]) {
-    setFormData((prev) => ({ ...prev, colors }));
-    setSaveMessage(null);
-  }
-
-  function handleMediumChange(medium: string[]) {
-    setFormData((prev) => ({ ...prev, medium }));
-    setSaveMessage(null);
-  }
-
   function handleArrayFieldChange(field: string, values: string[]) {
     setFormData((prev) => ({ ...prev, [field]: values }));
     setSaveMessage(null);
@@ -412,7 +392,11 @@ export default function ProductDetailPage() {
   const metafieldFormSync: Record<string, string> = {
     'jadepuma.artist': 'artist',
     'specs.year': 'year',
+    'jadepuma.country_of_origin': 'countryOfOrigin',
+    'jadepuma.color': 'colors',
+    'jadepuma.medium': 'medium',
   };
+  const arrayFormFields = new Set(['countryOfOrigin', 'colors', 'medium']);
   async function handleApplyMetafield(mf: {
     namespace: string;
     key: string;
@@ -445,7 +429,16 @@ export default function ProductDetailPage() {
       // Sync formData for fields that map to metafields (keeps isDirty accurate)
       const formField = metafieldFormSync[`${mf.namespace}.${mf.key}`];
       if (formField) {
-        setFormData((prev) => ({ ...prev, [formField]: mf.value }));
+        if (arrayFormFields.has(formField)) {
+          try {
+            const parsed = JSON.parse(mf.value);
+            if (Array.isArray(parsed)) {
+              setFormData((prev) => ({ ...prev, [formField]: parsed }));
+            }
+          } catch { /* ignore */ }
+        } else {
+          setFormData((prev) => ({ ...prev, [formField]: mf.value }));
+        }
       }
       setSaveMessage(`${mf.displayLabel} applied to Shopify`);
     } catch (err) {
@@ -476,6 +469,32 @@ export default function ProductDetailPage() {
       setSaveMessage('Description applied to Shopify');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to apply description');
+      throw err;
+    } finally {
+      setApplyingMetafield(null);
+    }
+  }
+
+  // Direct-write tags to Shopify (tags are a product field, not a metafield)
+  async function handleApplyTags(tags: string[]): Promise<void> {
+    if (!product) return;
+    setApplyingMetafield('Tags');
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || 'Failed to apply tags');
+      }
+      const updated: ProductDetail = await res.json();
+      setProduct((prev) => prev ? { ...prev, tags: updated.tags } : prev);
+      setFormData((prev) => ({ ...prev, tags: [...updated.tags] }));
+      setSaveMessage('Tags applied to Shopify');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to apply tags');
       throw err;
     } finally {
       setApplyingMetafield(null);
@@ -1029,37 +1048,14 @@ export default function ProductDetailPage() {
               </div>
             </ProductDetailSection>
 
-            <ProductDetailSection title="Basic Information" defaultOpen>
+            <ProductDetailSection title="Physical Attributes" defaultOpen>
               <SpecificationsSection
-                artist={formData.artist}
-                year={formData.year}
-                countryOfOrigin={formData.countryOfOrigin}
                 height={formData.height}
                 width={formData.width}
                 condition={formData.condition}
                 conditionDetails={formData.conditionDetails}
                 conditionOptions={conditionOptions}
-                countryOptions={countryOptions}
-                colors={formData.colors}
-                medium={formData.medium}
-                colorOptions={colorOptions}
-                mediumOptions={mediumOptions}
-                suggestedColors={suggestedColors}
-                suggestingColors={suggestingColors}
                 onChange={handleFieldChange}
-                onCountryChange={handleCountryChange}
-                onColorsChange={handleColorsChange}
-                onMediumChange={handleMediumChange}
-              />
-            </ProductDetailSection>
-
-            <ProductDetailSection title="Subject Tagging" defaultOpen>
-              <SubjectTaggingSection
-                tags={formData.tags}
-                tagOptions={tagOptions}
-                suggestedTags={product.linkedPoster?.suggestedTags}
-                autoTags={autoTagResult.allAutoTags}
-                onTagsChange={handleTagsChange}
               />
             </ProductDetailSection>
 
@@ -1100,11 +1096,19 @@ export default function ProductDetailPage() {
             formData={formData}
             isDirty={isDirty}
             mediumOptions={mediumOptions}
+            countryOptions={countryOptions}
+            colorOptions={colorOptions}
+            tagOptions={tagOptions}
+            suggestedColors={suggestedColors}
+            suggestingColors={suggestingColors}
+            suggestedTags={product.linkedPoster?.suggestedTags || []}
+            autoTags={autoTagResult.allAutoTags}
             onFieldChange={handleFieldChange}
             onArrayFieldChange={handleArrayFieldChange}
             onApplyMetafield={handleApplyMetafield}
             onApplyBodyHtml={handleApplyBodyHtml}
             onApplyArtist={handleApplyArtist}
+            onApplyTags={handleApplyTags}
             onAnalysisComplete={loadProduct}
           />
         )}
