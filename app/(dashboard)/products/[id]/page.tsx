@@ -526,14 +526,43 @@ export default function ProductDetailPage() {
   }
 
   // Direct-write bodyHtml to Shopify
-  async function handleApplyBodyHtml(html: string): Promise<void> {
+  async function handleApplyBodyHtml(html: string, appendMetadata?: boolean): Promise<void> {
     if (!product) return;
     setApplyingMetafield('Description');
+
+    // Append Size, Artist, Condition when applying AI-generated descriptions
+    let finalHtml = html;
+    if (appendMetadata) {
+      const appendParts: string[] = [];
+      const height = product.metafields.height;
+      const width = product.metafields.width;
+      if (height && width) {
+        appendParts.push(`<p><strong>Size:</strong> ${height}" x ${width}"</p>`);
+      } else if (height) {
+        appendParts.push(`<p><strong>Size:</strong> ${height}" H</p>`);
+      } else if (width) {
+        appendParts.push(`<p><strong>Size:</strong> ${width}" W</p>`);
+      }
+      if (product.metafields.artist) {
+        appendParts.push(`<p><strong>Artist:</strong> ${product.metafields.artist}</p>`);
+      }
+      const condition = product.metafields.condition;
+      const conditionDetails = product.metafields.conditionDetails;
+      if (condition && conditionDetails) {
+        appendParts.push(`<p><strong>Condition:</strong> ${condition}, ${conditionDetails}</p>`);
+      } else if (condition) {
+        appendParts.push(`<p><strong>Condition:</strong> ${condition}</p>`);
+      }
+      if (appendParts.length > 0) {
+        finalHtml += '\n<br>\n' + appendParts.join('\n');
+      }
+    }
+
     try {
       const res = await fetch(`/api/shopify/products/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bodyHtml: html }),
+        body: JSON.stringify({ bodyHtml: finalHtml }),
       });
       if (!res.ok) {
         const data = await res.json();

@@ -55,7 +55,7 @@ interface ProductResearchTabProps {
   onFieldChange: (field: string, value: string) => void;
   onArrayFieldChange: (field: string, values: string[]) => void;
   onApplyMetafield: (mf: MetafieldApply) => Promise<void>;
-  onApplyBodyHtml: (html: string) => Promise<void>;
+  onApplyBodyHtml: (html: string, appendMetadata?: boolean) => Promise<void>;
   onApplyArtist: (artist: LinkedArtistRecord) => Promise<void>;
   onApplyTags: (tags: string[]) => Promise<void>;
   onColorsAutoApply: (colors: string[]) => void;
@@ -1227,8 +1227,8 @@ export default function ProductResearchTab({
                       const currentToneLabel = descriptionTone === 'live' ? 'Live' : (DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom');
                       const isApplied = isFieldApplied('description');
                       const isLiveTab = descriptionTone === 'live';
-                      // No apply controls needed when viewing unmodified live description without AI analysis
-                      if (isLiveTab && isApplied && !lp?.productDescriptions) return null;
+                      // No apply controls needed on Live tab without AI analysis
+                      if (isLiveTab && !lp?.productDescriptions) return null;
                       return isLiveTab && isApplied ? (
                         <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
                           <ShopifyIcon />
@@ -1239,7 +1239,7 @@ export default function ProductResearchTab({
                           onClick={async () => {
                             setApplyingField('description');
                             try {
-                              await onApplyBodyHtml(descriptionHtml);
+                              await onApplyBodyHtml(descriptionHtml, descriptionTone !== 'live');
                             } catch { /* handled by parent */ } finally {
                               setApplyingField(null);
                             }
