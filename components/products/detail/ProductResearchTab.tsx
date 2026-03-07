@@ -1483,8 +1483,8 @@ export default function ProductResearchTab({
               )}
             </div>
 
-            {/* Compact selected color dots */}
-            {formData.colors.length > 0 && !showAllColors && (
+            {/* Shopify color dots (always visible) */}
+            {formData.colors.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                 {formData.colors.map((colorName) => {
                   const opt = colorOptions.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
@@ -1497,7 +1497,7 @@ export default function ProductResearchTab({
                         onColorsAutoApply(next);
                       }}
                       title={`${colorName} (click to remove)`}
-                      className="w-6 h-6 rounded-full border-2 border-violet-400 ring-2 ring-violet-200 transition-all hover:ring-red-300 hover:border-red-400 cursor-pointer"
+                      className="w-6 h-6 rounded-full border-2 border-green-500 ring-2 ring-green-200 transition-all hover:ring-red-300 hover:border-red-400 cursor-pointer"
                       style={{ backgroundColor: opt?.hexCode || '#94a3b8' }}
                     />
                   );
@@ -1535,7 +1535,7 @@ export default function ProductResearchTab({
                       }}
                       className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
                         isSelected
-                          ? 'ring-2 ring-violet-400 border-violet-500'
+                          ? 'ring-2 ring-green-400 border-green-500'
                           : isSuggested
                             ? 'border-amber-400'
                             : 'border-transparent'
@@ -1552,7 +1552,7 @@ export default function ProductResearchTab({
             <button
               type="button"
               onClick={() => setShowAllColors(!showAllColors)}
-              className="text-xs text-violet-500 hover:text-violet-700 transition"
+              className="text-xs text-green-600 hover:text-green-800 transition"
             >
               {showAllColors ? 'Hide palette' : 'Show all colors'}
             </button>
