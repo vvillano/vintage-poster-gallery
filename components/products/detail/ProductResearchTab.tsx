@@ -1497,7 +1497,7 @@ export default function ProductResearchTab({
                         onColorsAutoApply(next);
                       }}
                       title={`${colorName} (click to remove)`}
-                      className="w-6 h-6 rounded-full border-2 border-green-500 ring-2 ring-green-200 transition-all hover:ring-red-300 hover:border-red-400 cursor-pointer"
+                      className="w-6 h-6 rounded-full border-2 border-green-600 ring-2 ring-green-200 transition-all hover:ring-red-300 hover:border-red-400 cursor-pointer"
                       style={{ backgroundColor: opt?.hexCode || '#94a3b8' }}
                     />
                   );
@@ -1535,7 +1535,7 @@ export default function ProductResearchTab({
                       }}
                       className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer border-2 ${
                         isSelected
-                          ? 'ring-2 ring-green-400 border-green-500'
+                          ? 'ring-2 ring-green-200 border-green-600'
                           : isSuggested
                             ? 'border-amber-400'
                             : 'border-transparent'
