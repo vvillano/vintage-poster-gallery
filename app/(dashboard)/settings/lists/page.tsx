@@ -263,6 +263,11 @@ function ManagedListsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [relatedItems, setRelatedItems] = useState<Record<string, ListItem[]>>({});
   const [removingFromPMApp, setRemovingFromPMApp] = useState<number | null>(null);
+  const [artistDuplicates, setArtistDuplicates] = useState<Array<{
+    duplicate: { id: number; name: string; nationality: string | null; birthYear: number | null; verified: boolean; posterCount: number };
+    canonical: { id: number; name: string; aliases: string[]; nationality: string | null; birthYear: number | null; verified: boolean; posterCount: number };
+  }>>([]);
+  const [mergingDupeId, setMergingDupeId] = useState<number | null>(null);
   const editingRowRef = useRef<HTMLDivElement>(null);
 
   const activeConfig = LIST_CONFIGS.find(c => c.key === activeList)!;
@@ -279,6 +284,18 @@ function ManagedListsContent() {
       item.country?.toLowerCase().includes(query)
     );
   });
+
+  // Fetch artist duplicates when artists list is active
+  useEffect(() => {
+    if (activeList !== 'artists') {
+      setArtistDuplicates([]);
+      return;
+    }
+    fetch('/api/artists/duplicates')
+      .then(res => res.ok ? res.json() : { duplicates: [] })
+      .then(data => setArtistDuplicates(data.duplicates || []))
+      .catch(() => {});
+  }, [activeList, items]); // Re-fetch after items change (e.g., after merge)
 
   // Types that support Wikipedia fetching
   const wikipediaEnabledTypes = ['printers', 'publishers', 'artists'];
@@ -460,6 +477,28 @@ function ManagedListsContent() {
       setError(err instanceof Error ? err.message : 'Failed to remove from PM App');
     } finally {
       setRemovingFromPMApp(null);
+    }
+  }
+
+  async function handleMergeArtist(duplicateId: number, canonicalId: number) {
+    setMergingDupeId(duplicateId);
+    try {
+      const res = await fetch('/api/artists/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duplicateId, canonicalId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Merge failed');
+      }
+      // Remove from duplicates list and refresh items
+      setArtistDuplicates(prev => prev.filter(d => d.duplicate.id !== duplicateId));
+      setItems(prev => prev.filter(i => i.id !== duplicateId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to merge');
+    } finally {
+      setMergingDupeId(null);
     }
   }
 
@@ -809,6 +848,49 @@ function ManagedListsContent() {
                     >
                       {saving ? 'Saving...' : 'Save'}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Artist Duplicates */}
+              {activeList === 'artists' && artistDuplicates.length > 0 && (
+                <div className="p-4 border-b border-amber-200 bg-amber-50">
+                  <h3 className="text-sm font-semibold text-amber-800 mb-2">
+                    Duplicate Artists ({artistDuplicates.length})
+                  </h3>
+                  <p className="text-xs text-amber-600 mb-3">
+                    These artists have names that match another artist&apos;s alias. Merging will re-link all posters to the canonical record.
+                  </p>
+                  <div className="space-y-2">
+                    {artistDuplicates.map(({ duplicate, canonical }) => (
+                      <div key={duplicate.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-lg border border-amber-200">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-red-700 line-through">{duplicate.name}</span>
+                            <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                            <span className="text-sm font-medium text-green-700">{canonical.name}</span>
+                            {canonical.verified && (
+                              <span className="text-green-600 text-xs" title="Verified">&#10003;</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {duplicate.posterCount > 0 && (
+                              <span>{duplicate.posterCount} poster{duplicate.posterCount !== 1 ? 's' : ''} will be re-linked</span>
+                            )}
+                            {duplicate.posterCount === 0 && <span>No linked posters</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleMergeArtist(duplicate.id, canonical.id)}
+                          disabled={mergingDupeId === duplicate.id}
+                          className="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {mergingDupeId === duplicate.id ? 'Merging...' : 'Merge'}
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
