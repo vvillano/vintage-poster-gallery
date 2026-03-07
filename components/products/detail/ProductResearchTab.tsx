@@ -1227,6 +1227,8 @@ export default function ProductResearchTab({
                       const currentToneLabel = descriptionTone === 'live' ? 'Live' : (DESCRIPTION_TONES.find((t) => t.id === descriptionTone)?.label || 'Custom');
                       const isApplied = isFieldApplied('description');
                       const isLiveTab = descriptionTone === 'live';
+                      // No apply controls needed when viewing unmodified live description without AI analysis
+                      if (isLiveTab && isApplied && !lp?.productDescriptions) return null;
                       return isLiveTab && isApplied ? (
                         <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
                           <ShopifyIcon />
