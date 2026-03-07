@@ -378,10 +378,15 @@ export default function ProductDetailPage() {
 
     async function reconcileArtist() {
       let canonicalName: string | null = null;
+      let canonicalBio: string | null = null;
+      let isVerified = false;
 
       // Path A: linkedArtist exists — canonical name already known
       if (product!.linkedPoster?.linkedArtist) {
-        canonicalName = product!.linkedPoster.linkedArtist.name;
+        const la = product!.linkedPoster.linkedArtist;
+        canonicalName = la.name;
+        canonicalBio = la.bio;
+        isVerified = la.verified;
       } else {
         // Path B: extract artist name from tag or metafield, search DB
         const artistTag = product!.tags.find(t => t.toLowerCase().startsWith('artist:'));
@@ -402,6 +407,8 @@ export default function ProductDetailPage() {
             const aliasMatch = match.aliases?.some((a: string) => a.toLowerCase() === searchLower);
             if (nameMatch || aliasMatch) {
               canonicalName = match.name;
+              canonicalBio = match.bio || null;
+              isVerified = !!match.verified;
             }
           }
         } catch { return; }
@@ -417,21 +424,38 @@ export default function ProductDetailPage() {
       const metafieldNeedsUpdate = currentMetafield && currentMetafield !== canonicalName;
       const tagNeedsUpdate = !hasCorrectTag && (currentMetafield || currentTags.some(t => t.toLowerCase().startsWith('artist:')));
 
-      if (!tagNeedsUpdate && !metafieldNeedsUpdate) return; // Already correct
+      // Auto-apply bio for verified artists when bio is missing or different
+      const currentBio = product!.metafields.artistBio || '';
+      const bioNeedsUpdate = isVerified && canonicalBio && currentBio !== canonicalBio;
+
+      if (!tagNeedsUpdate && !metafieldNeedsUpdate && !bioNeedsUpdate) return; // Already correct
 
       // Build updated tags
       const updatedTags = currentTags.filter(t => !t.toLowerCase().startsWith('artist:'));
       updatedTags.push(expectedTag);
 
-      // Build PUT payload (single call handles both tags + metafields)
-      const payload: Record<string, unknown> = { tags: updatedTags };
+      // Build PUT payload (single call handles tags + metafields)
+      const metafields: Array<{ namespace: string; key: string; value: string; type: string }> = [];
       if (metafieldNeedsUpdate) {
-        payload.metafields = [{
+        metafields.push({
           namespace: 'jadepuma',
           key: 'artist',
           value: canonicalName,
           type: 'single_line_text_field',
-        }];
+        });
+      }
+      if (bioNeedsUpdate) {
+        metafields.push({
+          namespace: 'jadepuma',
+          key: 'artist_bio',
+          value: canonicalBio!,
+          type: 'multi_line_text_field',
+        });
+      }
+
+      const payload: Record<string, unknown> = { tags: updatedTags };
+      if (metafields.length > 0) {
+        payload.metafields = metafields;
       }
 
       try {
@@ -452,7 +476,11 @@ export default function ProductDetailPage() {
         setProduct(prev => prev ? {
           ...prev,
           tags: updated.tags,
-          metafields: { ...prev.metafields, artist: updated.metafields.artist },
+          metafields: {
+            ...prev.metafields,
+            artist: updated.metafields.artist,
+            artistBio: updated.metafields.artistBio,
+          },
         } : prev);
       } catch { /* silent */ }
     }
@@ -753,7 +781,17 @@ export default function ProductDetailPage() {
       type: 'single_line_text_field',
       displayLabel: 'Artist',
     });
-    // 2. Link poster to artist record (if poster exists)
+    // 2. Auto-apply bio for verified artists
+    if (artist.verified && artist.bio && product.metafields.artistBio !== artist.bio) {
+      await handleApplyMetafield({
+        namespace: 'jadepuma',
+        key: 'artist_bio',
+        value: artist.bio,
+        type: 'multi_line_text_field',
+        displayLabel: 'Artist Bio',
+      });
+    }
+    // 3. Link poster to artist record (if poster exists)
     if (product.linkedPoster?.posterId) {
       try {
         await fetch(`/api/posters/${product.linkedPoster.posterId}/artist-link`, {
@@ -770,7 +808,7 @@ export default function ProductDetailPage() {
         // Non-critical: metafield was already written
       }
     }
-    // 3. Update "Artist: X" tag with canonical name
+    // 4. Update "Artist: X" tag with canonical name
     const canonicalTag = `Artist: ${artist.name}`;
     const updatedTags = formData.tags.filter(t => !t.toLowerCase().startsWith('artist:'));
     updatedTags.push(canonicalTag);
