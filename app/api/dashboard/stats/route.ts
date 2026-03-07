@@ -31,7 +31,7 @@ async function getRecentShopifyProducts(
 ): Promise<{ id: string; title: string; status: string; updatedAt: string; imageUrl: string | null }[]> {
   try {
     const res = await fetch(
-      `https://${shopDomain}/admin/api/${apiVersion}/products.json?limit=5&order=updated_at%20desc&fields=id,title,status,updated_at,image`,
+      `https://${shopDomain}/admin/api/${apiVersion}/products.json?limit=25&order=updated_at%20desc&fields=id,title,status,updated_at,image`,
       { headers: { 'X-Shopify-Access-Token': accessToken } }
     );
     if (!res.ok) return [];
@@ -70,7 +70,7 @@ export async function GET() {
         SELECT id, title, artist, created_at, image_url
         FROM posters
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 25
       `;
       recentResearch = result.rows.map((r) => ({
         id: r.id,

@@ -186,7 +186,7 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Recent Activity</h2>
-          <div className="space-y-1">
+          <div className="space-y-1 max-h-[600px] overflow-y-auto">
             {stats.recentProducts.map((p) => (
               <Link
                 key={`product-${p.id}`}
