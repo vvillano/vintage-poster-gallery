@@ -60,6 +60,7 @@ interface ProductResearchTabProps {
   onApplyTags: (tags: string[]) => Promise<void>;
   onColorsAutoApply: (colors: string[]) => void;
   onCountryAutoApply: (countries: string[]) => void;
+  onMediumAutoApply: (medium: string[]) => void;
   onAnalysisComplete: () => void;
 }
 
@@ -291,6 +292,7 @@ export default function ProductResearchTab({
   onApplyTags,
   onColorsAutoApply,
   onCountryAutoApply,
+  onMediumAutoApply,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -524,6 +526,13 @@ export default function ProductResearchTab({
     setApplyingField(fieldId);
     try {
       await onApplyMetafield(mf);
+      // When applying artist manually, also update the "Artist: X" tag
+      if (fieldId === 'artist-manual' && mf.value) {
+        const canonicalTag = `Artist: ${mf.value}`;
+        const updatedTags = formData.tags.filter(t => !t.toLowerCase().startsWith('artist:'));
+        updatedTags.push(canonicalTag);
+        onApplyTags(updatedTags);
+      }
     } catch {
       // Error handled by parent
     } finally {
@@ -979,17 +988,16 @@ export default function ProductResearchTab({
                             key={opt.name}
                             type="button"
                             onClick={() => {
-                              if (selected) {
-                                onArrayFieldChange('medium', formData.medium.filter((m) => m.toLowerCase() !== opt.name.toLowerCase()));
-                              } else {
-                                onArrayFieldChange('medium', [...formData.medium, opt.name]);
-                              }
+                              const next = selected
+                                ? formData.medium.filter((m) => m.toLowerCase() !== opt.name.toLowerCase())
+                                : [...formData.medium, opt.name];
+                              onMediumAutoApply(next);
                             }}
                             className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
                               selected
-                                ? 'bg-violet-600 text-white'
+                                ? 'bg-green-600 text-white'
                                 : isMatch
-                                  ? 'bg-violet-100 text-violet-700 ring-1 ring-violet-300'
+                                  ? 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100'
                                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                             }`}
                           >
@@ -997,22 +1005,6 @@ export default function ProductResearchTab({
                           </button>
                         );
                       })}
-                    </div>
-                  )}
-                  {formData.medium.length > 0 && (
-                    <div className="mt-1.5">
-                      <ApplyButton
-                        onClick={() => applyMetafield('medium', {
-                          namespace: 'jadepuma',
-                          key: 'medium',
-                          value: JSON.stringify(formData.medium),
-                          type: 'list.single_line_text_field',
-                          displayLabel: 'Medium',
-                        })}
-                        applied={isFieldApplied('medium')}
-                        applying={applyingField === 'medium'}
-                        label="Apply Medium"
-                      />
                     </div>
                   )}
                 </div>

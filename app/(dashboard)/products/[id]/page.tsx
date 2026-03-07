@@ -492,6 +492,29 @@ export default function ProductDetailPage() {
     } catch { /* silent */ }
   }
 
+  async function handleMediumAutoApply(medium: string[]) {
+    setFormData((prev) => ({ ...prev, medium }));
+    setSaveMessage(null);
+    if (!product) return;
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: 'jadepuma',
+            key: 'medium',
+            value: JSON.stringify(medium),
+            type: 'list.single_line_text_field',
+          }],
+        }),
+      });
+      if (!res.ok) return;
+      const updated: ProductDetail = await res.json();
+      setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, medium: updated.metafields.medium } } : prev);
+    } catch { /* silent */ }
+  }
+
   // Direct-write a single metafield to Shopify (follows internal tags pattern)
   const [applyingMetafield, setApplyingMetafield] = useState<string | null>(null);
   // Map metafield keys to formData fields for auto-sync after instant write
@@ -1258,6 +1281,7 @@ export default function ProductDetailPage() {
             onApplyTags={handleApplyTags}
             onColorsAutoApply={handleColorsAutoApply}
             onCountryAutoApply={handleCountryAutoApply}
+            onMediumAutoApply={handleMediumAutoApply}
             onAnalysisComplete={loadProduct}
           />
         )}
