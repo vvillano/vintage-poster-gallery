@@ -580,17 +580,20 @@ export default function ProductResearchTab({
   const [addSourceName, setAddSourceName] = useState('');
   const [addSourceType, setAddSourceType] = useState('poster_dealer');
   const [addSourceSaving, setAddSourceSaving] = useState(false);
+  const [addSourceError, setAddSourceError] = useState<string | null>(null);
   const [recentlyAddedSources, setRecentlyAddedSources] = useState<Set<string>>(new Set());
 
   function startAddSource(cite: { source: string; url: string }) {
     setAddSourceName(cite.source);
     setAddSourceType('poster_dealer');
+    setAddSourceError(null);
     setAddingSource(cite.source);
   }
 
   async function handleSaveSource(cite: { source: string; url: string }) {
     if (!addSourceName.trim()) return;
     setAddSourceSaving(true);
+    setAddSourceError(null);
     try {
       const website = cite.url && cite.url !== '#'
         ? (cite.url.startsWith('http') ? cite.url : `https://${cite.url}`)
@@ -610,8 +613,13 @@ export default function ProductResearchTab({
         setRecentlyAddedSources(prev => new Set([...prev, cite.source]));
         setAddingSource(null);
         setAddSourceName('');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddSourceError(data.message || data.error || `Failed (${res.status})`);
       }
-    } catch { /* silent */ }
+    } catch (err) {
+      setAddSourceError(err instanceof Error ? err.message : 'Network error');
+    }
     finally { setAddSourceSaving(false); }
   }
 
@@ -1540,11 +1548,14 @@ export default function ProductResearchTab({
                               {addSourceSaving ? '...' : 'Save'}
                             </button>
                             <button
-                              onClick={() => setAddingSource(null)}
+                              onClick={() => { setAddingSource(null); setAddSourceError(null); }}
                               className="px-2 py-1 text-slate-400 text-xs hover:text-slate-600"
                             >
                               Cancel
                             </button>
+                            {addSourceError && (
+                              <span className="text-xs text-red-600 ml-1">{addSourceError}</span>
+                            )}
                           </div>
                         )}
                       </div>
