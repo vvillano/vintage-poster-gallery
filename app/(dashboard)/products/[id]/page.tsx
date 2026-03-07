@@ -912,7 +912,7 @@ export default function ProductDetailPage() {
     if (formData.bodyHtml !== (product.bodyHtml || '')) return true;
     if (formData.productType !== (product.productType || '')) return true;
     if (formData.status !== product.status) return true;
-    if (JSON.stringify(formData.tags) !== JSON.stringify(product.tags)) return true;
+    if (JSON.stringify([...formData.tags].sort()) !== JSON.stringify([...product.tags].sort())) return true;
     if (formData.price !== product.price) return true;
     if (formData.compareAtPrice !== (product.compareAtPrice || '')) return true;
     if (formData.sku !== (product.sku || '')) return true;

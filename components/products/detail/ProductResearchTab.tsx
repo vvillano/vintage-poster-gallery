@@ -1007,7 +1007,9 @@ export default function ProductResearchTab({
                   {mediumOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {mediumOptions.map((opt) => {
-                        const selected = formData.medium.some((m) => m.toLowerCase() === opt.name.toLowerCase());
+                        const inMetafield = formData.medium.some((m) => m.toLowerCase() === opt.name.toLowerCase());
+                        const inTags = formData.tags.some((t) => t.toLowerCase() === opt.name.toLowerCase());
+                        const selected = inMetafield || inTags;
                         const isMatch = lp?.printingTechnique
                           ? opt.name.toLowerCase().includes(lp.printingTechnique.toLowerCase())
                             || lp.printingTechnique.toLowerCase().includes(opt.name.toLowerCase())
@@ -1017,7 +1019,7 @@ export default function ProductResearchTab({
                             key={opt.name}
                             type="button"
                             onClick={() => {
-                              const next = selected
+                              const next = inMetafield
                                 ? formData.medium.filter((m) => m.toLowerCase() !== opt.name.toLowerCase())
                                 : [...formData.medium, opt.name];
                               onMediumAutoApply(next);
