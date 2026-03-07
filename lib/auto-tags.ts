@@ -22,6 +22,20 @@ export interface DateTagRule {
 }
 
 /**
+ * Format a size bucket tag name with its inch range.
+ * e.g. "Small" with max=15 -> "Small <15\"", "Medium" with min=16,max=24 -> "Medium 16-24\""
+ */
+function formatSizeTag(name: string, min: number | null, max: number | null): string {
+  if (min == null || min === 0) {
+    return max != null ? `${name} <${max}"` : name;
+  }
+  if (max == null) {
+    return `${name} ${min}"+`;
+  }
+  return `${name} ${min}-${max}"`;
+}
+
+/**
  * Compute which size tags apply given height and width (in inches).
  * Size bucket is based on the larger dimension.
  * "Horizontal" applies when width > height.
@@ -52,7 +66,7 @@ export function computeSizeTags(
       const min = rule.minValue ?? 0;
       const max = rule.maxValue ?? Infinity;
       if (maxDimension >= min && maxDimension <= max) {
-        tags.push(rule.name);
+        tags.push(formatSizeTag(rule.name, rule.minValue, rule.maxValue));
       }
     }
   }
