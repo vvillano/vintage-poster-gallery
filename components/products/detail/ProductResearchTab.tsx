@@ -326,20 +326,26 @@ export default function ProductResearchTab({
   }
 
   // Determine which description tone is currently live in Shopify
-  // Checks both saved edits and original AI text for each tone
+  // Uses startsWith to account for appended metadata (Size, Artist, Condition)
   function getAppliedDescriptionTone(): string | null {
     if (!product.bodyHtml || !lp?.productDescriptions) return null;
     const shopifyNorm = normalizeHtml(product.bodyHtml);
     for (const tone of DESCRIPTION_TONES) {
       // Check saved edit first (user may have modified this tone)
       const savedEdit = descriptionEditsRef.current[tone.id];
-      if (savedEdit && shopifyNorm === normalizeHtml(savedEdit)) {
-        return tone.id;
+      if (savedEdit) {
+        const editNorm = normalizeHtml(savedEdit);
+        if (shopifyNorm === editNorm || shopifyNorm.startsWith(editNorm)) {
+          return tone.id;
+        }
       }
       // Then check original AI text
       const text = lp.productDescriptions[tone.id as keyof typeof lp.productDescriptions];
-      if (text && shopifyNorm === normalizeHtml(convertToHtmlParagraphs(text))) {
-        return tone.id;
+      if (text) {
+        const toneNorm = normalizeHtml(convertToHtmlParagraphs(text));
+        if (shopifyNorm === toneNorm || shopifyNorm.startsWith(toneNorm)) {
+          return tone.id;
+        }
       }
     }
     return null;
@@ -397,7 +403,10 @@ export default function ProductResearchTab({
       }
       case 'description': {
         if (!descriptionHtml || !product.bodyHtml) return false;
-        return normalizeHtml(descriptionHtml) === normalizeHtml(product.bodyHtml);
+        const editorNorm = normalizeHtml(descriptionHtml);
+        const bodyNorm = normalizeHtml(product.bodyHtml);
+        // startsWith accounts for appended metadata (Size, Artist, Condition)
+        return bodyNorm === editorNorm || bodyNorm.startsWith(editorNorm);
       }
       default: return false;
     }
@@ -1270,22 +1279,8 @@ export default function ProductResearchTab({
                 {/* Concise Description metafield */}
                 {lp?.productDescriptions?.concise && (
                   <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <ApplyButton
-                        onClick={() => applyMetafield('concise', {
-                          namespace: 'jadepuma',
-                          key: 'concise_description',
-                          value: lp.productDescriptions!.concise,
-                          type: 'multi_line_text_field',
-                          displayLabel: 'Concise Description',
-                        })}
-                        applied={isFieldApplied('concise')}
-                        applying={applyingField === 'concise'}
-                        label="Apply Concise Description"
-                        appliedLabel="Concise Description"
-                      />
-                    </div>
-                    {product.metafields.conciseDescription && (
+                    {product.metafields.conciseDescription ? (
+                      /* Concise exists in Shopify: show expandable text */
                       <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
                         <button
                           type="button"
@@ -1293,14 +1288,30 @@ export default function ProductResearchTab({
                           className="flex items-center gap-1.5 text-xs text-green-600 font-medium hover:text-green-700 transition-colors"
                         >
                           <ShopifyIcon />
-                          Live Concise Description
+                          Concise Description
                           <svg className={`w-3 h-3 transition-transform ${showLiveConcise ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
                         {showLiveConcise && (
-                          <p className="text-xs text-slate-600 mt-1">{product.metafields.conciseDescription}</p>
+                          <p className="text-xs text-slate-600 mt-1.5">{product.metafields.conciseDescription}</p>
                         )}
+                      </div>
+                    ) : (
+                      /* No concise in Shopify: show Apply button */
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ApplyButton
+                          onClick={() => applyMetafield('concise', {
+                            namespace: 'jadepuma',
+                            key: 'concise_description',
+                            value: lp.productDescriptions!.concise,
+                            type: 'multi_line_text_field',
+                            displayLabel: 'Concise Description',
+                          })}
+                          applied={false}
+                          applying={applyingField === 'concise'}
+                          label="Apply Concise Description"
+                        />
                       </div>
                     )}
                   </div>
