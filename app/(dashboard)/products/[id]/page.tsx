@@ -16,7 +16,7 @@ import AcquisitionSection from '@/components/products/detail/AcquisitionSection'
 import DeleteProductModal from '@/components/products/detail/DeleteProductModal';
 import ProductTabs, { type ProductTab } from '@/components/products/detail/ProductTabs';
 import ProductResearchTab from '@/components/products/detail/ProductResearchTab';
-import { computeAutoTags, parseYear } from '@/lib/auto-tags';
+import { computeAutoTags, computeDateTags, parseYear } from '@/lib/auto-tags';
 import type { SizeTagRule, DateTagRule } from '@/lib/auto-tags';
 
 interface FormData {
@@ -690,6 +690,54 @@ export default function ProductDetailPage() {
         }
       }
       setSaveMessage(`${mf.displayLabel} applied to Shopify`);
+
+      // Update description metadata if artist changed and description contains Artist line
+      if (mf.namespace === 'jadepuma' && mf.key === 'artist' && updated.bodyHtml) {
+        const artistRegex = /<p><strong>Artist:<\/strong>\s*[^<]*<\/p>/i;
+        if (artistRegex.test(updated.bodyHtml)) {
+          const newBodyHtml = updated.bodyHtml.replace(
+            artistRegex,
+            `<p><strong>Artist:</strong> ${mf.value}</p>`
+          );
+          if (newBodyHtml !== updated.bodyHtml) {
+            try {
+              const descRes = await fetch(`/api/shopify/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bodyHtml: newBodyHtml }),
+              });
+              if (descRes.ok) {
+                const descUpdated: ProductDetail = await descRes.json();
+                setProduct((prev) => prev ? { ...prev, bodyHtml: descUpdated.bodyHtml } : prev);
+                setFormData((prev) => ({ ...prev, bodyHtml: descUpdated.bodyHtml || '' }));
+              }
+            } catch { /* non-critical */ }
+          }
+        }
+      }
+
+      // Re-run date auto-tags when year changes: remove old date tags, add new ones
+      if (mf.namespace === 'specs' && mf.key === 'year' && dateTagRules.length > 0) {
+        const oldYear = product ? parseYear(product.metafields.year) : null;
+        const newYear = parseYear(mf.value);
+        if (newYear !== null) {
+          const oldDateTags = oldYear !== null ? computeDateTags(oldYear, dateTagRules) : [];
+          const newDateTags = computeDateTags(newYear, dateTagRules);
+          const oldDateSet = new Set(oldDateTags.map(t => t.toLowerCase()));
+          const newDateSet = new Set(newDateTags.map(t => t.toLowerCase()));
+          // Remove old date tags that no longer apply, then add new ones
+          let updatedTags = formData.tags.filter(t => !oldDateSet.has(t.toLowerCase()) || newDateSet.has(t.toLowerCase()));
+          const existingLower = new Set(updatedTags.map(t => t.toLowerCase()));
+          for (const tag of newDateTags) {
+            if (!existingLower.has(tag.toLowerCase())) {
+              updatedTags.push(tag);
+            }
+          }
+          if (JSON.stringify(updatedTags) !== JSON.stringify(formData.tags)) {
+            handleApplyTags(updatedTags);
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to apply ${mf.displayLabel}`);
       throw err; // Re-throw so caller can track errors
