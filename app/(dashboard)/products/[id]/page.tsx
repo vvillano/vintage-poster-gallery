@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { ProductDetail, ProductUpdatePayload, MetafieldWrite, LinkedArtistRecord } from '@/types/shopify-product-detail';
@@ -243,51 +243,22 @@ export default function ProductDetailPage() {
       .catch(() => {});
   }, [loadProduct]);
 
-  // Auto-detect colors from main image when product loads
+  // 1. Pick up suggestedColors from linked poster (re-runs when product reloads after analysis)
+  const lpSuggestedKey = product?.linkedPoster?.suggestedColors
+    ? JSON.stringify(product.linkedPoster.suggestedColors) : '';
+  useEffect(() => {
+    if (product?.linkedPoster?.suggestedColors?.length) {
+      setSuggestedColors(product.linkedPoster.suggestedColors);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lpSuggestedKey]);
+
+  // 2. Auto-detect colors via API when no suggestions exist yet
   useEffect(() => {
     if (!product) return;
     if (product.images.length === 0) return;
-
-    // Auto-apply suggested colors to Shopify when no colors exist yet
-    function autoApplyColors(colors: string[]) {
-      // Skip if Shopify already has colors
-      const current = product!.metafields.color;
-      if (current) {
-        try {
-          const parsed = JSON.parse(current);
-          if (Array.isArray(parsed) && parsed.length > 0) return;
-        } catch { return; }
-      }
-      // Write directly to Shopify
-      setFormData((prev) => ({ ...prev, colors }));
-      fetch(`/api/shopify/products/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          metafields: [{
-            namespace: 'jadepuma',
-            key: 'color',
-            value: JSON.stringify(colors),
-            type: 'list.single_line_text_field',
-          }],
-        }),
-      })
-        .then((res) => res.ok ? res.json() : null)
-        .then((updated) => {
-          if (updated) {
-            setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, color: updated.metafields.color } } : prev);
-          }
-        })
-        .catch(() => {});
-    }
-
-    // Skip if already have suggestions (from linked poster or previous detection)
-    if (product.linkedPoster?.suggestedColors?.length) {
-      setSuggestedColors(product.linkedPoster.suggestedColors);
-      autoApplyColors(product.linkedPoster.suggestedColors);
-      return;
-    }
     if (suggestedColors.length > 0) return;
+    if (product.linkedPoster?.suggestedColors?.length) return; // handled by effect 1
 
     setSuggestingColors(true);
     fetch(`/api/shopify/products/${id}/suggest-colors`, {
@@ -299,13 +270,58 @@ export default function ProductDetailPage() {
       .then((data) => {
         if (data?.suggestedColors?.length) {
           setSuggestedColors(data.suggestedColors);
-          autoApplyColors(data.suggestedColors);
         }
       })
       .catch(() => {})
       .finally(() => setSuggestingColors(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
+
+  // 3. Auto-apply suggested colors to Shopify when they arrive and no colors exist
+  const colorsAutoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (suggestedColors.length === 0) return;
+    if (!product) return;
+    if (colorsAutoAppliedRef.current) return;
+
+    // Check if Shopify already has colors
+    const currentColor = product.metafields.color;
+    if (currentColor) {
+      try {
+        const parsed = JSON.parse(currentColor);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          colorsAutoAppliedRef.current = true;
+          return;
+        }
+      } catch {
+        colorsAutoAppliedRef.current = true;
+        return;
+      }
+    }
+
+    colorsAutoAppliedRef.current = true;
+    setFormData((prev) => ({ ...prev, colors: suggestedColors }));
+    fetch(`/api/shopify/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        metafields: [{
+          namespace: 'jadepuma',
+          key: 'color',
+          value: JSON.stringify(suggestedColors),
+          type: 'list.single_line_text_field',
+        }],
+      }),
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((updated) => {
+        if (updated) {
+          setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, color: updated.metafields.color } } : prev);
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedColors, product?.id]);
 
   // Merge all shop publications with the product's current published state
   const mergedSalesChannels = useMemo(() => {

@@ -402,7 +402,14 @@ export default function ProductResearchTab({
   // If a tone is already applied to Shopify, start on that tone; if edited, show "live" tab
   const descriptionsJson = lp?.productDescriptions ? JSON.stringify(lp.productDescriptions) : '';
   useEffect(() => {
-    if (!lp?.productDescriptions) return;
+    if (!lp?.productDescriptions) {
+      // No AI descriptions -- show live Shopify description if it exists
+      if (product.bodyHtml && !descriptionHtml) {
+        setDescriptionTone('live');
+        setDescriptionHtml(product.bodyHtml);
+      }
+      return;
+    }
     const descs = lp.productDescriptions;
 
     // Check if any AI tone matches what's live in Shopify
@@ -1149,16 +1156,8 @@ export default function ProductResearchTab({
             </div>
           </ProductDetailSection>
 
-          {/* ── Analysis Results (requires AI analysis) ── */}
-          {hasResults && lp && (
-            <>
-              {/* Talking Points */}
-          {lp.talkingPoints.length > 0 && (
-            <TalkingPointsCard points={lp.talkingPoints} />
-          )}
-
-          {/* Product Descriptions */}
-          {lp.productDescriptions && (
+          {/* ── Product Descriptions (visible when Shopify has description OR AI analysis exists) ── */}
+          {(product.bodyHtml || lp?.productDescriptions) && (
             <ProductDetailSection title="Product Descriptions" defaultOpen>
               <div className="pt-4">
                 {/* Tone pills */}
@@ -1183,11 +1182,11 @@ export default function ProductResearchTab({
                       Live
                     </button>
                   )}
-                  {product.bodyHtml && (
+                  {product.bodyHtml && lp?.productDescriptions && (
                     <div className="w-px bg-slate-200 mx-0.5" />
                   )}
-                  {/* AI tone tabs */}
-                  {DESCRIPTION_TONES.map((tone) => {
+                  {/* AI tone tabs (only when analysis exists) */}
+                  {lp?.productDescriptions && DESCRIPTION_TONES.map((tone) => {
                     const text = lp.productDescriptions![tone.id as keyof typeof lp.productDescriptions];
                     return (
                       <button
@@ -1254,7 +1253,7 @@ export default function ProductResearchTab({
                 )}
 
                 {/* Concise Description metafield */}
-                {lp.productDescriptions.concise && (
+                {lp?.productDescriptions?.concise && (
                   <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <ApplyButton
@@ -1293,6 +1292,14 @@ export default function ProductResearchTab({
                 )}
               </div>
             </ProductDetailSection>
+          )}
+
+          {/* ── Analysis Results (requires AI analysis) ── */}
+          {hasResults && lp && (
+            <>
+              {/* Talking Points */}
+          {lp.talkingPoints.length > 0 && (
+            <TalkingPointsCard points={lp.talkingPoints} />
           )}
 
           {/* Historical Context */}
