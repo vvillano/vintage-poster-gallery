@@ -1010,6 +1010,9 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                               </optgroup>
                               <optgroup label="Research">
                                 <option value="museum">Museum / Institution</option>
+                                <option value="library">Library / Archive</option>
+                                <option value="archive">Digital Archive</option>
+                                <option value="academic">Academic / Journal</option>
                               </optgroup>
                             </select>
                             <button

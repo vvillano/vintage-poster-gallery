@@ -576,10 +576,21 @@ export default function ProductResearchTab({
     return null;
   }
 
-  const [addingDealer, setAddingDealer] = useState<string | null>(null);
+  const [addingSource, setAddingSource] = useState<string | null>(null);
+  const [addSourceName, setAddSourceName] = useState('');
+  const [addSourceType, setAddSourceType] = useState('dealer');
+  const [addSourceSaving, setAddSourceSaving] = useState(false);
+  const [recentlyAddedSources, setRecentlyAddedSources] = useState<Set<string>>(new Set());
 
-  async function handleAddDealer(cite: { source: string; url: string }) {
-    setAddingDealer(cite.source);
+  function startAddSource(cite: { source: string; url: string }) {
+    setAddSourceName(cite.source);
+    setAddSourceType('dealer');
+    setAddingSource(cite.source);
+  }
+
+  async function handleSaveSource(cite: { source: string; url: string }) {
+    if (!addSourceName.trim()) return;
+    setAddSourceSaving(true);
     try {
       const website = cite.url && cite.url !== '#'
         ? (cite.url.startsWith('http') ? cite.url : `https://${cite.url}`)
@@ -588,18 +599,20 @@ export default function ProductResearchTab({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: cite.source,
-          type: 'dealer',
+          name: addSourceName.trim(),
+          type: addSourceType,
           website,
           canResearchAt: true,
         }),
       });
       if (res.ok || res.status === 409) {
-        // 409 = already exists, which is fine
         onSellersChange();
+        setRecentlyAddedSources(prev => new Set([...prev, cite.source]));
+        setAddingSource(null);
+        setAddSourceName('');
       }
     } catch { /* silent */ }
-    finally { setAddingDealer(null); }
+    finally { setAddSourceSaving(false); }
   }
 
   async function handleRunAnalysis() {
@@ -1463,24 +1476,71 @@ export default function ProductResearchTab({
                   return (
                   <div key={i} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-700">{cite.claim}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {cite.source}
                           {cite.url && cite.url !== '#' && (
                             <> &middot; <a href={cite.url.startsWith('http') ? cite.url : `https://${cite.url}`} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
                           )}
-                          {!matchedSeller && cite.source && (
+                          {/* Only show Add Source when URL is available for validation */}
+                          {!matchedSeller && cite.source && cite.url && cite.url !== '#' && !recentlyAddedSources.has(cite.source) && addingSource !== cite.source && (
                             <> &middot; <button
                               type="button"
-                              onClick={() => handleAddDealer(cite)}
-                              disabled={addingDealer === cite.source}
+                              onClick={() => startAddSource(cite)}
                               className="text-amber-600 hover:text-amber-800 font-medium cursor-pointer"
                             >
-                              {addingDealer === cite.source ? 'Adding...' : '+ Add Source'}
+                              + Add Source
                             </button></>
                           )}
+                          {recentlyAddedSources.has(cite.source) && (
+                            <> &middot; <span className="text-green-600 font-medium">Added</span></>
+                          )}
                         </p>
+                        {/* Inline add source form */}
+                        {addingSource === cite.source && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <input
+                              type="text"
+                              value={addSourceName}
+                              onChange={(e) => setAddSourceName(e.target.value)}
+                              placeholder="Source name"
+                              className="px-2 py-1 border border-slate-300 rounded text-xs w-36"
+                              autoFocus
+                            />
+                            <select
+                              value={addSourceType}
+                              onChange={(e) => setAddSourceType(e.target.value)}
+                              className="px-2 py-1 border border-slate-300 rounded text-xs"
+                            >
+                              <optgroup label="Dealers">
+                                <option value="dealer">Dealer</option>
+                                <option value="auction_house">Auction House</option>
+                                <option value="gallery">Gallery</option>
+                                <option value="bookstore">Bookstore</option>
+                              </optgroup>
+                              <optgroup label="Research">
+                                <option value="museum">Museum / Institution</option>
+                                <option value="library">Library / Archive</option>
+                                <option value="archive">Digital Archive</option>
+                                <option value="academic">Academic / Journal</option>
+                              </optgroup>
+                            </select>
+                            <button
+                              onClick={() => handleSaveSource(cite)}
+                              disabled={addSourceSaving || !addSourceName.trim()}
+                              className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:bg-green-300"
+                            >
+                              {addSourceSaving ? '...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={() => setAddingSource(null)}
+                              className="px-2 py-1 text-slate-400 text-xs hover:text-slate-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <ReliabilityBadge level={cite.reliability} />
                     </div>
