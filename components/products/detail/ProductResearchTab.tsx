@@ -62,6 +62,8 @@ interface ProductResearchTabProps {
   onCountryAutoApply: (countries: string[]) => void;
   onMediumAutoApply: (medium: string[]) => void;
   onAnalysisComplete: () => void;
+  sellers: { id: number; name: string; website: string | null }[];
+  onSellersChange: () => void;
 }
 
 function ConfidenceBadge({ level, score, onClick, isOpen }: {
@@ -294,6 +296,8 @@ export default function ProductResearchTab({
   onCountryAutoApply,
   onMediumAutoApply,
   onAnalysisComplete,
+  sellers,
+  onSellersChange,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -551,6 +555,51 @@ export default function ProductResearchTab({
     } finally {
       setApplyingField(null);
     }
+  }
+
+  // Match a citation source against known sellers by name or domain
+  function matchCitationToSeller(cite: { source: string; url: string }) {
+    const sourceLower = cite.source.toLowerCase();
+    const nameMatch = sellers.find(s => s.name.toLowerCase() === sourceLower);
+    if (nameMatch) return nameMatch;
+    if (cite.url) {
+      try {
+        const citeDomain = new URL(cite.url.startsWith('http') ? cite.url : `https://${cite.url}`).hostname.replace('www.', '');
+        return sellers.find(s => {
+          if (!s.website) return false;
+          try {
+            return new URL(s.website.startsWith('http') ? s.website : `https://${s.website}`).hostname.replace('www.', '') === citeDomain;
+          } catch { return false; }
+        }) || null;
+      } catch { /* invalid URL */ }
+    }
+    return null;
+  }
+
+  const [addingDealer, setAddingDealer] = useState<string | null>(null);
+
+  async function handleAddDealer(cite: { source: string; url: string }) {
+    setAddingDealer(cite.source);
+    try {
+      const website = cite.url && cite.url !== '#'
+        ? (cite.url.startsWith('http') ? cite.url : `https://${cite.url}`)
+        : null;
+      const res = await fetch('/api/sellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cite.source,
+          type: 'dealer',
+          website,
+          canResearchAt: true,
+        }),
+      });
+      if (res.ok || res.status === 409) {
+        // 409 = already exists, which is fine
+        onSellersChange();
+      }
+    } catch { /* silent */ }
+    finally { setAddingDealer(null); }
   }
 
   async function handleRunAnalysis() {
@@ -1409,7 +1458,9 @@ export default function ProductResearchTab({
             return filteredCitations.length > 0 ? (
             <ProductDetailSection title="Source Citations" defaultOpen>
               <div className="pt-4 space-y-2">
-                {filteredCitations.map((cite, i) => (
+                {filteredCitations.map((cite, i) => {
+                  const matchedSeller = matchCitationToSeller(cite);
+                  return (
                   <div key={i} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -1419,12 +1470,23 @@ export default function ProductResearchTab({
                           {cite.url && cite.url !== '#' && (
                             <> &middot; <a href={cite.url.startsWith('http') ? cite.url : `https://${cite.url}`} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
                           )}
+                          {!matchedSeller && cite.source && (
+                            <> &middot; <button
+                              type="button"
+                              onClick={() => handleAddDealer(cite)}
+                              disabled={addingDealer === cite.source}
+                              className="text-amber-600 hover:text-amber-800 font-medium cursor-pointer"
+                            >
+                              {addingDealer === cite.source ? 'Adding...' : '+ Add Dealer'}
+                            </button></>
+                          )}
                         </p>
                       </div>
                       <ReliabilityBadge level={cite.reliability} />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ProductDetailSection>
             ) : null;

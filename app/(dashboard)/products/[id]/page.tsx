@@ -68,6 +68,7 @@ export default function ProductDetailPage() {
   const [productTypeOptions, setProductTypeOptions] = useState<{ name: string; defaultConditionText: string | null }[]>([]);
   const [conditionOptions, setConditionOptions] = useState<string[]>([]);
   const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [sellers, setSellers] = useState<{ id: number; name: string; website: string | null }[]>([]);
   const [allPublications, setAllPublications] = useState<{ id: string; name: string }[]>([]);
   const [shopDomain, setShopDomain] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProductTab>('listing');
@@ -241,7 +242,15 @@ export default function ProductDetailPage() {
       .then((res) => res.ok ? res.json() : null)
       .then((data) => { if (data?.shopDomain) setShopDomain(data.shopDomain); })
       .catch(() => {});
+    fetchSellers();
   }, [loadProduct]);
+
+  function fetchSellers() {
+    fetch('/api/sellers?limit=500')
+      .then((res) => res.ok ? res.json() : { items: [] })
+      .then((data) => setSellers((data.items || []).map((s: { id: number; name: string; website?: string | null }) => ({ id: s.id, name: s.name, website: s.website || null }))))
+      .catch(() => {});
+  }
 
   // 1. Pick up suggestedColors from linked poster (re-runs when product reloads after analysis)
   const lpSuggestedKey = product?.linkedPoster?.suggestedColors
@@ -1479,6 +1488,8 @@ export default function ProductDetailPage() {
             onCountryAutoApply={handleCountryAutoApply}
             onMediumAutoApply={handleMediumAutoApply}
             onAnalysisComplete={loadProduct}
+            sellers={sellers}
+            onSellersChange={fetchSellers}
           />
         )}
 
