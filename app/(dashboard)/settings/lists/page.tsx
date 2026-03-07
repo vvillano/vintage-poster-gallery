@@ -266,6 +266,7 @@ function ManagedListsContent() {
   const [artistDuplicates, setArtistDuplicates] = useState<Array<{
     duplicate: { id: number; name: string; nationality: string | null; birthYear: number | null; verified: boolean; posterCount: number };
     canonical: { id: number; name: string; aliases: string[]; nationality: string | null; birthYear: number | null; verified: boolean; posterCount: number };
+    matchType?: string;
   }>>([]);
   const [mergingDupeId, setMergingDupeId] = useState<number | null>(null);
   const editingRowRef = useRef<HTMLDivElement>(null);
@@ -859,10 +860,10 @@ function ManagedListsContent() {
                     Duplicate Artists ({artistDuplicates.length})
                   </h3>
                   <p className="text-xs text-amber-600 mb-3">
-                    These artists have names that match another artist&apos;s alias. Merging will re-link all posters to the canonical record.
+                    These artists have names that match another artist&apos;s alias or are accent variants. Merging will re-link all posters to the canonical record.
                   </p>
                   <div className="space-y-2">
-                    {artistDuplicates.map(({ duplicate, canonical }) => (
+                    {artistDuplicates.map(({ duplicate, canonical, matchType }) => (
                       <div key={duplicate.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-lg border border-amber-200">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -875,11 +876,15 @@ function ManagedListsContent() {
                               <span className="text-green-600 text-xs" title="Verified">&#10003;</span>
                             )}
                           </div>
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {duplicate.posterCount > 0 && (
+                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                            {duplicate.posterCount > 0 ? (
                               <span>{duplicate.posterCount} poster{duplicate.posterCount !== 1 ? 's' : ''} will be re-linked</span>
+                            ) : (
+                              <span>No linked posters</span>
                             )}
-                            {duplicate.posterCount === 0 && <span>No linked posters</span>}
+                            {matchType === 'accent' && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">accent match</span>
+                            )}
                           </div>
                         </div>
                         <button
