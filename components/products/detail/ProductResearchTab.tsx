@@ -578,13 +578,13 @@ export default function ProductResearchTab({
 
   const [addingSource, setAddingSource] = useState<string | null>(null);
   const [addSourceName, setAddSourceName] = useState('');
-  const [addSourceType, setAddSourceType] = useState('dealer');
+  const [addSourceType, setAddSourceType] = useState('poster_dealer');
   const [addSourceSaving, setAddSourceSaving] = useState(false);
   const [recentlyAddedSources, setRecentlyAddedSources] = useState<Set<string>>(new Set());
 
   function startAddSource(cite: { source: string; url: string }) {
     setAddSourceName(cite.source);
-    setAddSourceType('dealer');
+    setAddSourceType('poster_dealer');
     setAddingSource(cite.source);
   }
 
@@ -1514,10 +1514,16 @@ export default function ProductResearchTab({
                               className="px-2 py-1 border border-slate-300 rounded text-xs"
                             >
                               <optgroup label="Dealers">
-                                <option value="dealer">Dealer</option>
+                                <option value="poster_dealer">Poster Dealer</option>
                                 <option value="auction_house">Auction House</option>
                                 <option value="gallery">Gallery</option>
+                                <option value="print_dealer">Print Dealer</option>
+                                <option value="book_dealer">Book Dealer</option>
+                                <option value="map_dealer">Map Dealer</option>
+                                <option value="ephemera_dealer">Ephemera Dealer</option>
+                                <option value="photography_dealer">Photography Dealer</option>
                                 <option value="bookstore">Bookstore</option>
+                                <option value="dealer">Dealer (General)</option>
                               </optgroup>
                               <optgroup label="Research">
                                 <option value="museum">Museum / Institution</option>
