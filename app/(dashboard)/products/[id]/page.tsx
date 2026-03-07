@@ -462,6 +462,36 @@ export default function ProductDetailPage() {
     } catch { /* silent */ }
   }
 
+  async function handleCountryAutoApply(countries: string[]) {
+    setFormData((prev) => ({ ...prev, countryOfOrigin: countries }));
+    setSaveMessage(null);
+    if (!product) return;
+    try {
+      const res = await fetch(`/api/shopify/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metafields: [{
+            namespace: 'jadepuma',
+            key: 'country_of_origin',
+            value: JSON.stringify(countries),
+            type: 'list.single_line_text_field',
+          }],
+        }),
+      });
+      if (!res.ok) return;
+      const updated: ProductDetail = await res.json();
+      let updatedCountries: string[] = [];
+      if (updated.metafields.countryOfOrigin) {
+        try {
+          const parsed = JSON.parse(updated.metafields.countryOfOrigin);
+          if (Array.isArray(parsed)) updatedCountries = parsed;
+        } catch { updatedCountries = [updated.metafields.countryOfOrigin]; }
+      }
+      setProduct((prev) => prev ? { ...prev, metafields: { ...prev.metafields, countryOfOrigin: updated.metafields.countryOfOrigin } } : prev);
+    } catch { /* silent */ }
+  }
+
   // Direct-write a single metafield to Shopify (follows internal tags pattern)
   const [applyingMetafield, setApplyingMetafield] = useState<string | null>(null);
   // Map metafield keys to formData fields for auto-sync after instant write
@@ -1231,6 +1261,7 @@ export default function ProductDetailPage() {
             onApplyArtist={handleApplyArtist}
             onApplyTags={handleApplyTags}
             onColorsAutoApply={handleColorsAutoApply}
+            onCountryAutoApply={handleCountryAutoApply}
             onAnalysisComplete={loadProduct}
           />
         )}

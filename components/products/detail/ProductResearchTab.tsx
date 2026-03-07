@@ -59,6 +59,7 @@ interface ProductResearchTabProps {
   onApplyArtist: (artist: LinkedArtistRecord) => Promise<void>;
   onApplyTags: (tags: string[]) => Promise<void>;
   onColorsAutoApply: (colors: string[]) => void;
+  onCountryAutoApply: (countries: string[]) => void;
   onAnalysisComplete: () => void;
 }
 
@@ -289,6 +290,7 @@ export default function ProductResearchTab({
   onApplyArtist,
   onApplyTags,
   onColorsAutoApply,
+  onCountryAutoApply,
   onAnalysisComplete,
 }: ProductResearchTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -1415,14 +1417,17 @@ export default function ProductResearchTab({
       <ProductDetailSection title="Research Fields" defaultOpen>
         <div className="pt-4 space-y-5">
 
-          {/* Country of Origin */}
+          {/* Country of Origin (auto-apply) */}
           <div>
             <div className="flex items-center gap-2 mb-1">
               <label className="block text-sm font-medium text-slate-700">Country of Origin</label>
               {formData.countryOfOrigin.length > 0 && (
-                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
-                  {formData.countryOfOrigin.length}
-                </span>
+                <>
+                  <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                    {formData.countryOfOrigin.length}
+                  </span>
+                  <span className="text-green-600"><ShopifyIcon /></span>
+                </>
               )}
             </div>
             <div className="px-3 py-2 border border-slate-200 rounded-lg min-h-[38px] flex items-center flex-wrap gap-1.5">
@@ -1433,11 +1438,10 @@ export default function ProductResearchTab({
                     key={country}
                     type="button"
                     onClick={() => {
-                      if (isSelected) {
-                        onArrayFieldChange('countryOfOrigin', formData.countryOfOrigin.filter(c => c.toLowerCase() !== country.toLowerCase()));
-                      } else {
-                        onArrayFieldChange('countryOfOrigin', [...formData.countryOfOrigin, country]);
-                      }
+                      const next = isSelected
+                        ? formData.countryOfOrigin.filter(c => c.toLowerCase() !== country.toLowerCase())
+                        : [...formData.countryOfOrigin, country];
+                      onCountryAutoApply(next);
                     }}
                     className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                       isSelected
@@ -1457,28 +1461,15 @@ export default function ProductResearchTab({
                   </span>
                 ))}
             </div>
-            {formData.countryOfOrigin.length > 0 && (
-              <div className="mt-1.5">
-                <ApplyButton
-                  onClick={() => applyMetafield('country', {
-                    namespace: 'jadepuma',
-                    key: 'country_of_origin',
-                    value: JSON.stringify(formData.countryOfOrigin),
-                    type: 'list.single_line_text_field',
-                    displayLabel: 'Country of Origin',
-                  })}
-                  applied={isFieldApplied('country')}
-                  applying={applyingField === 'country'}
-                  label="Apply Country"
-                />
-              </div>
-            )}
           </div>
 
           {/* Colors (auto-apply) */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <label className="block text-sm font-medium text-slate-700">Colors</label>
+              {formData.colors.length > 0 && (
+                <span className="text-green-600"><ShopifyIcon /></span>
+              )}
               {suggestingColors && (
                 <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
               )}
