@@ -24,6 +24,10 @@ const SELLER_TYPES: { value: SellerType; label: string }[] = [
   { value: 'gallery', label: 'Gallery' },
   { value: 'bookstore', label: 'Bookstore' },
   { value: 'individual', label: 'Individual Seller' },
+  { value: 'museum', label: 'Museum / Institution' },
+  { value: 'library', label: 'Library / Archive' },
+  { value: 'archive', label: 'Digital Archive' },
+  { value: 'academic', label: 'Academic / Journal' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -792,7 +796,7 @@ export default function SellerDatabasePage() {
             disabled={submittingSeller || !sellerFormData.name.trim()}
             className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
           >
-            {submittingSeller ? 'Saving...' : editingSeller ? 'Update Seller' : 'Add Seller'}
+            {submittingSeller ? 'Saving...' : editingSeller ? 'Update Source' : 'Add Source'}
           </button>
           <button
             type="button"
@@ -811,9 +815,9 @@ export default function SellerDatabasePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Seller Database</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Sources</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage sellers (WHO you buy from) - auction houses, dealers, galleries, and individuals.
+            Dealers, auction houses, museums, libraries, and research archives. Both acquisition and research sources.
           </p>
         </div>
         <Link
@@ -847,7 +851,7 @@ export default function SellerDatabasePage() {
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
-            Sellers
+            Sources
             <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">
               {sellers.length}
             </span>
@@ -885,7 +889,7 @@ export default function SellerDatabasePage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search sellers..."
+                  placeholder="Search sources..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                 />
               </div>
@@ -935,13 +939,13 @@ export default function SellerDatabasePage() {
           {!editingSeller && (
             <div className="bg-white border border-slate-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Add New Seller</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Add New Source</h2>
                 {!showSellerForm && (
                   <button
                     onClick={() => setShowSellerForm(true)}
                     className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm"
                   >
-                    + Add Seller
+                    + Add Source
                   </button>
                 )}
               </div>
@@ -956,7 +960,7 @@ export default function SellerDatabasePage() {
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">
-                All Sellers
+                All Sources
                 <span className="ml-2 text-sm font-normal text-slate-500">
                   ({filteredSellers.length} of {sellers.length})
                 </span>
@@ -975,8 +979,8 @@ export default function SellerDatabasePage() {
             ) : filteredSellers.length === 0 ? (
               <p className="text-slate-500 text-center py-8">
                 {sellers.length === 0
-                  ? 'No sellers yet. Click "Add Seller" above.'
-                  : 'No sellers match your filters.'}
+                  ? 'No sources yet. Click "Add Source" above.'
+                  : 'No sources match your filters.'}
               </p>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -1329,16 +1333,16 @@ export default function SellerDatabasePage() {
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-800 mb-2">About the Seller Database</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">About Sources</h3>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>- <strong>Sellers</strong> = WHO you buy from (auction houses, dealers, galleries, individuals)</li>
-          <li>- <strong>Tier 1-2</strong>: Major auction houses and specialized dealers - highest reliability for attribution</li>
+          <li>- <strong>Sources</strong> = WHO you buy from OR research with (dealers, auction houses, museums, libraries, archives)</li>
+          <li>- <strong>Tier 1-2</strong>: Major auction houses, museums, and specialized dealers - highest reliability for attribution</li>
           <li>- <strong>Tier 3-4</strong>: Established and general dealers - good reliability</li>
           <li>- <strong>Tier 5-6</strong>: Newer dealers and individuals - variable reliability</li>
           <li>- <strong>Platform Identities</strong> are usernames on platforms (eBay, Invaluable, etc.)</li>
-          <li>- One seller can have multiple platform identities (same person on different platforms)</li>
-          <li>- Sellers with "Can Research At" have searchable archives for identification research</li>
-          <li>- Search URL templates enable quick seller searches from poster pages</li>
+          <li>- One source can have multiple platform identities (same person on different platforms)</li>
+          <li>- Sources with "Can Research At" have searchable archives for identification research</li>
+          <li>- Search URL templates enable quick source searches from poster pages</li>
         </ul>
       </div>
     </div>

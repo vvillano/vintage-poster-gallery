@@ -1477,7 +1477,7 @@ export default function ProductResearchTab({
                               disabled={addingDealer === cite.source}
                               className="text-amber-600 hover:text-amber-800 font-medium cursor-pointer"
                             >
-                              {addingDealer === cite.source ? 'Adding...' : '+ Add Dealer'}
+                              {addingDealer === cite.source ? 'Adding...' : '+ Add Source'}
                             </button></>
                           )}
                         </p>

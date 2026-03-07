@@ -1,17 +1,22 @@
 /**
- * Seller types for the acquisition tracking system
+ * Source types for the acquisition and research system
  *
- * Sellers = WHO you buy from (auction houses, dealers, galleries, individuals)
- * This replaces the old "dealers" table/types with clearer naming.
+ * Sources = WHO you buy from OR research with
+ * Includes dealers, auction houses, galleries (acquisition)
+ * and museums, libraries, archives (research authorities)
  */
 
-// Seller types - WHO you can buy from
+// Source types - WHO you buy from or research with
 export type SellerType =
   | 'auction_house'
   | 'dealer'        // Generic dealer (posters, books, prints, etc.)
   | 'gallery'
   | 'bookstore'
   | 'individual'    // Private seller
+  | 'museum'        // Museum or cultural institution (MoMA, V&A, etc.)
+  | 'library'       // Library or archive (Library of Congress, etc.)
+  | 'archive'       // Digital archive or research database
+  | 'academic'      // Academic institution or journal
   | 'other';
 
 // Legacy dealer types that map to seller types
@@ -41,7 +46,7 @@ export const LEGACY_TYPE_TO_SELLER_TYPE: Record<LegacyDealerType, SellerType | n
   gallery: 'gallery',
   marketplace: null,    // Not a seller - goes to platforms
   aggregator: null,     // Not a seller - goes to platforms
-  museum: null,         // Not a seller - goes to archive config
+  museum: 'museum',     // Research authority
   reproduction: null,   // Excluded
 };
 
@@ -139,13 +144,17 @@ export const RELIABILITY_TIERS: Record<number, { label: string; description: str
   6: { label: 'Tier 6', description: 'Individual sellers - lower reliability' },
 };
 
-// Seller type labels for UI
+// Source type labels for UI
 export const SELLER_TYPE_LABELS: Record<SellerType, string> = {
   auction_house: 'Auction House',
   dealer: 'Dealer',
   gallery: 'Gallery',
   bookstore: 'Bookstore',
   individual: 'Individual Seller',
+  museum: 'Museum / Institution',
+  library: 'Library / Archive',
+  archive: 'Digital Archive',
+  academic: 'Academic / Journal',
   other: 'Other',
 };
 
@@ -241,8 +250,8 @@ export const SPECIALIZATION_LABELS: Record<SellerSpecialization, string> = {
 };
 
 /**
- * Main Seller interface
- * Represents WHO you buy from
+ * Main Seller/Source interface
+ * Represents WHO you buy from or research with
  */
 export interface Seller {
   id: number;
@@ -382,6 +391,34 @@ export function getDefaultsForSellerType(type: SellerType): Partial<CreateSeller
         attributionWeight: 0.6,
         pricingWeight: 0.6,
         canResearchAt: false,
+      };
+    case 'museum':
+      return {
+        reliabilityTier: 1,
+        attributionWeight: 0.95,
+        pricingWeight: 0.5,
+        canResearchAt: true,
+      };
+    case 'library':
+      return {
+        reliabilityTier: 1,
+        attributionWeight: 0.9,
+        pricingWeight: 0.5,
+        canResearchAt: true,
+      };
+    case 'archive':
+      return {
+        reliabilityTier: 2,
+        attributionWeight: 0.85,
+        pricingWeight: 0.5,
+        canResearchAt: true,
+      };
+    case 'academic':
+      return {
+        reliabilityTier: 2,
+        attributionWeight: 0.9,
+        pricingWeight: 0.5,
+        canResearchAt: true,
       };
     default:
       return {

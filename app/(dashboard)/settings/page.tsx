@@ -24,8 +24,8 @@ export default function SettingsPage() {
       color: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
     },
     {
-      title: 'Sellers',
-      description: 'Manage sellers (WHO you buy from) - auction houses, dealers, galleries, and platform users. Track reliability, specializations, and credentials.',
+      title: 'Sources',
+      description: 'Manage acquisition and research sources: dealers, auction houses, museums, libraries, archives. Track reliability, specializations, and credentials.',
       href: '/settings/sellers',
       icon: '👥',
       color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
