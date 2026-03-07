@@ -676,13 +676,11 @@ export default function ProductResearchTab({
         </div>
       </ProductDetailSection>
 
-      {/* ── Results ── */}
-      {hasResults && lp && (
-        <>
-          {/* Identification */}
-          <ProductDetailSection title="Identification" defaultOpen>
+      {/* ── Identification (always visible) ── */}
+      <ProductDetailSection title="Identification" defaultOpen>
             <div className="pt-4 space-y-4">
               {/* Artist */}
+              {lp?.artist ? (
               <div>
                 <label className="block text-sm font-medium text-slate-500 mb-1">Artist</label>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -858,10 +856,23 @@ export default function ProductResearchTab({
                   </div>
                 )}
               </div>
+              ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-500 mb-1">Artist</label>
+                {product.metafields.artist ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-green-600"><ShopifyIcon /></span>
+                    <span className="text-sm text-slate-700">{product.metafields.artist}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic">Not set in Shopify</p>
+                )}
+              </div>
+              )}
 
-              {/* Manual Artist override */}
+              {/* Manual Artist input */}
               <div className="border-t border-slate-100 pt-3 mt-1">
-                <label className="block text-xs font-medium text-slate-400 mb-1">Artist Override</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">{lp?.artist ? 'Artist Override' : 'Set Artist'}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -896,38 +907,60 @@ export default function ProductResearchTab({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-500 mb-1">Date / Period</label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-slate-800">{lp.estimatedDate || '-'}</span>
-                    {lp.dateConfidence && (
-                      <ConfidenceBadge level={lp.dateConfidence} score={null} />
-                    )}
-                    {extractedYear && (
-                      <ApplyButton
-                        onClick={() => applyMetafield('year', {
-                          namespace: 'specs',
-                          key: 'year',
-                          value: extractedYear,
-                          type: 'single_line_text_field',
-                          displayLabel: 'Year',
-                        })}
-                        applied={isFieldApplied('year')}
-                        applying={applyingField === 'year'}
-                        label={`Apply ${extractedYear}`}
-                      />
-                    )}
-                  </div>
-                  {lp.dateSource && (
-                    <p className="text-xs text-slate-400 mt-1">Source: {lp.dateSource}</p>
+                  {lp ? (
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-slate-800">{lp.estimatedDate || '-'}</span>
+                        {lp.dateConfidence && (
+                          <ConfidenceBadge level={lp.dateConfidence} score={null} />
+                        )}
+                        {extractedYear && (
+                          <ApplyButton
+                            onClick={() => applyMetafield('year', {
+                              namespace: 'specs',
+                              key: 'year',
+                              value: extractedYear,
+                              type: 'single_line_text_field',
+                              displayLabel: 'Year',
+                            })}
+                            applied={isFieldApplied('year')}
+                            applying={applyingField === 'year'}
+                            label={`Apply ${extractedYear}`}
+                          />
+                        )}
+                      </div>
+                      {lp.dateSource && (
+                        <p className="text-xs text-slate-400 mt-1">Source: {lp.dateSource}</p>
+                      )}
+                    </>
+                  ) : product.metafields.year ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-green-600"><ShopifyIcon /></span>
+                      <span className="text-sm text-slate-700">Year: {product.metafields.year}</span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 italic">Not set in Shopify</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 mb-1">Printing Technique</label>
-                  <span className="text-sm text-slate-800">{lp.printingTechnique || '-'}</span>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Medium / Technique</label>
+                  {lp?.printingTechnique ? (
+                    <span className="text-sm text-slate-800">{lp.printingTechnique}</span>
+                  ) : product.metafields.medium ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-green-600"><ShopifyIcon /></span>
+                      <span className="text-sm text-slate-700">
+                        {(() => { try { return JSON.parse(product.metafields.medium).join(', '); } catch { return product.metafields.medium; } })()}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">Not set</span>
+                  )}
                   {mediumOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {mediumOptions.map((opt) => {
                         const selected = formData.medium.some((m) => m.toLowerCase() === opt.name.toLowerCase());
-                        const isMatch = lp.printingTechnique
+                        const isMatch = lp?.printingTechnique
                           ? opt.name.toLowerCase().includes(lp.printingTechnique.toLowerCase())
                             || lp.printingTechnique.toLowerCase().includes(opt.name.toLowerCase())
                           : false;
@@ -977,7 +1010,7 @@ export default function ProductResearchTab({
 
               {/* Manual Year override */}
               <div className="border-t border-slate-100 pt-3 mt-1">
-                <label className="block text-xs font-medium text-slate-400 mb-1">Year Override</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">{lp ? 'Year Override' : 'Set Year'}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -1009,6 +1042,7 @@ export default function ProductResearchTab({
               </div>
 
               {/* Printer / Publisher */}
+              {lp && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-500 mb-1">Printer</label>
@@ -1085,10 +1119,40 @@ export default function ProductResearchTab({
                   </div>
                 </div>
               </div>
+              )}
+              {!lp && (product.metafields.printer || product.metafields.publisher) && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Printer</label>
+                  {product.metafields.printer ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-green-600"><ShopifyIcon /></span>
+                      <span className="text-sm text-slate-700">{product.metafields.printer}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Publisher</label>
+                  {product.metafields.publisher ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-green-600"><ShopifyIcon /></span>
+                      <span className="text-sm text-slate-700">{product.metafields.publisher}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">-</span>
+                  )}
+                </div>
+              </div>
+              )}
             </div>
           </ProductDetailSection>
 
-          {/* Talking Points */}
+          {/* ── Analysis Results (requires AI analysis) ── */}
+          {hasResults && lp && (
+            <>
+              {/* Talking Points */}
           {lp.talkingPoints.length > 0 && (
             <TalkingPointsCard points={lp.talkingPoints} />
           )}
@@ -1604,8 +1668,8 @@ export default function ProductResearchTab({
           </div>
           <h3 className="text-sm font-medium text-violet-700 mb-1">No Analysis Yet</h3>
           <p className="text-xs text-violet-500">
-            Run AI analysis above to get artist identification, date analysis,
-            product descriptions, historical context, and source citations.
+            Run AI analysis above to get detailed identification, product descriptions,
+            historical context, and source citations.
           </p>
         </div>
       )}
