@@ -612,28 +612,19 @@ export default function ProductDetailPage() {
 
   // Direct-write tags to Shopify (tags are a product field, not a metafield)
   async function handleApplyTags(tags: string[]): Promise<void> {
+    setFormData((prev) => ({ ...prev, tags }));
+    setSaveMessage(null);
     if (!product) return;
-    setApplyingMetafield('Tags');
     try {
       const res = await fetch(`/api/shopify/products/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tags }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.details || data.error || 'Failed to apply tags');
-      }
+      if (!res.ok) return;
       const updated: ProductDetail = await res.json();
       setProduct((prev) => prev ? { ...prev, tags: updated.tags } : prev);
-      setFormData((prev) => ({ ...prev, tags: [...updated.tags] }));
-      setSaveMessage('Tags applied to Shopify');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply tags');
-      throw err;
-    } finally {
-      setApplyingMetafield(null);
-    }
+    } catch { /* silent */ }
   }
 
   // Apply artist: write canonical name to Shopify metafield AND link poster.artist_id

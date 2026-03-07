@@ -1423,7 +1423,7 @@ export default function ProductResearchTab({
               <label className="block text-sm font-medium text-slate-700">Country of Origin</label>
               {formData.countryOfOrigin.length > 0 && (
                 <>
-                  <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
                     {formData.countryOfOrigin.length}
                   </span>
                   <span className="text-green-600"><ShopifyIcon /></span>
@@ -1445,7 +1445,7 @@ export default function ProductResearchTab({
                     }}
                     className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-violet-600 text-white'
+                        ? 'bg-green-600 text-white'
                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                     }`}
                   >
@@ -1555,9 +1555,12 @@ export default function ProductResearchTab({
             <div className="flex items-center gap-2 mb-2">
               <label className="block text-sm font-medium text-slate-700">Subject Tags</label>
               {formData.tags.length > 0 && (
-                <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
-                  {formData.tags.length}
-                </span>
+                <>
+                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                    {formData.tags.length}
+                  </span>
+                  <span className="text-green-600"><ShopifyIcon /></span>
+                </>
               )}
             </div>
 
@@ -1607,7 +1610,7 @@ export default function ProductResearchTab({
                 .map((tag) => (
                   <span
                     key={`locked-${tag}`}
-                    className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-slate-400"
+                    className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white bg-green-700"
                     title="Shopify tag (not in managed list)"
                   >
                     {tag}
@@ -1625,15 +1628,14 @@ export default function ProductResearchTab({
                     key={opt.name}
                     type="button"
                     onClick={() => {
-                      if (isSelected) {
-                        onArrayFieldChange('tags', formData.tags.filter(t => t.toLowerCase() !== opt.name.toLowerCase()));
-                      } else {
-                        onArrayFieldChange('tags', [...formData.tags, opt.name]);
-                      }
+                      const next = isSelected
+                        ? formData.tags.filter(t => t.toLowerCase() !== opt.name.toLowerCase())
+                        : [...formData.tags, opt.name];
+                      onApplyTags(next);
                     }}
                     className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-violet-600 text-white'
+                        ? 'bg-green-600 text-white'
                         : isSuggested
                           ? 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100'
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
@@ -1643,18 +1645,6 @@ export default function ProductResearchTab({
                   </button>
                 );
               })}
-            </div>
-
-            <div className="mt-1.5">
-              <ApplyButton
-                onClick={() => {
-                  setApplyingField('tags');
-                  onApplyTags(formData.tags).catch(() => {}).finally(() => setApplyingField(null));
-                }}
-                applied={isFieldApplied('tags')}
-                applying={applyingField === 'tags'}
-                label="Apply Tags"
-              />
             </div>
           </div>
 
