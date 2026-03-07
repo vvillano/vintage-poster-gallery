@@ -1262,6 +1262,8 @@ export default function ProductResearchTab({
                             setApplyingField('description');
                             try {
                               await onApplyBodyHtml(descriptionHtml, descriptionTone !== 'live');
+                              // Clear stale Live tab cache so it loads fresh product.bodyHtml
+                              delete descriptionEditsRef.current['live'];
                             } catch { /* handled by parent */ } finally {
                               setApplyingField(null);
                             }
