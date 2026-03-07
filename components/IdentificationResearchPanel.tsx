@@ -135,7 +135,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
   // Add dealer state
   const [addingDealer, setAddingDealer] = useState<string | null>(null); // domain being added
   const [addDealerName, setAddDealerName] = useState('');
-  const [addDealerType, setAddDealerType] = useState('poster_dealer');
+  const [addDealerType, setAddDealerType] = useState<'dealer' | 'auction_house' | 'platform' | 'research'>('dealer');
   const [addDealerSaving, setAddDealerSaving] = useState(false);
   const [recentlyAddedDomains, setRecentlyAddedDomains] = useState<Set<string>>(new Set());
 
@@ -453,7 +453,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       .replace(/-/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
     setAddDealerName(name);
-    setAddDealerType('poster_dealer');
+    setAddDealerType('dealer');
     setAddingDealer(domain);
   }
 
@@ -465,33 +465,50 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
       setAddDealerSaving(true);
       setError('');
 
-      const res = await fetch('/api/dealers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: addDealerName.trim(),
-          type: addDealerType,
-          website: `https://${addingDealer}`,
-          reliabilityTier: 4, // Default to tier 4 for new discoveries
-          canResearch: true,
-          canPrice: true,
-          canBeSource: true,
-          isActive: true,
-        }),
-      });
+      let res: Response;
+      if (addDealerType === 'platform') {
+        // Platforms go to the platforms table
+        res = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: addDealerName.trim(),
+            url: `https://${addingDealer}`,
+            platformType: 'marketplace',
+            canResearchPrices: true,
+            isAcquisitionPlatform: true,
+          }),
+        });
+      } else {
+        // Dealer, Auction House, Research go to the sellers/dealers table
+        const sellerType = addDealerType === 'research' ? 'archive' : addDealerType;
+        res = await fetch('/api/dealers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: addDealerName.trim(),
+            type: sellerType,
+            website: `https://${addingDealer}`,
+            canResearch: true,
+            canPrice: addDealerType !== 'research',
+            canBeSource: addDealerType !== 'research',
+            isActive: true,
+          }),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok) {
-        // Handle duplicate dealer case with helpful message
+        // Handle duplicate case with helpful message
         if (res.status === 409) {
-          throw new Error(data.message || `Dealer already exists: ${data.existingName}`);
+          throw new Error(data.message || `Already exists: ${data.existingName || addDealerName}`);
         }
-        throw new Error(data.error || 'Failed to add dealer');
+        throw new Error(data.error || 'Failed to add source');
       }
 
       // Mark as added
       setRecentlyAddedDomains(prev => new Set([...prev, addingDealer]));
-      setSuccess(`Added ${addDealerName} to dealer database`);
+      setSuccess(`Added ${addDealerName} to source database`);
       setAddingDealer(null);
       setAddDealerName('');
 
@@ -500,7 +517,7 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
 
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add dealer');
+      setError(err instanceof Error ? err.message : 'Failed to add source');
     } finally {
       setAddDealerSaving(false);
     }
@@ -991,29 +1008,13 @@ export default function IdentificationResearchPanel({ poster, onUpdate }: Identi
                             />
                             <select
                               value={addDealerType}
-                              onChange={(e) => setAddDealerType(e.target.value)}
+                              onChange={(e) => setAddDealerType(e.target.value as typeof addDealerType)}
                               className="px-2 py-1 border border-slate-200 rounded text-xs"
                             >
-                              <optgroup label="Dealers">
-                                <option value="poster_dealer">Poster Dealer</option>
-                                <option value="auction_house">Auction House</option>
-                                <option value="gallery">Gallery</option>
-                                <option value="print_dealer">Print Dealer</option>
-                                <option value="book_dealer">Book Dealer</option>
-                                <option value="map_dealer">Map Dealer</option>
-                                <option value="ephemera_dealer">Ephemera Dealer</option>
-                                <option value="photography_dealer">Photography Dealer</option>
-                              </optgroup>
-                              <optgroup label="Platforms">
-                                <option value="marketplace">Marketplace</option>
-                                <option value="aggregator">Aggregator</option>
-                              </optgroup>
-                              <optgroup label="Research">
-                                <option value="museum">Museum / Institution</option>
-                                <option value="library">Library / Archive</option>
-                                <option value="archive">Digital Archive</option>
-                                <option value="academic">Academic / Journal</option>
-                              </optgroup>
+                              <option value="dealer">Dealer</option>
+                              <option value="auction_house">Auction House</option>
+                              <option value="platform">Platform</option>
+                              <option value="research">Research</option>
                             </select>
                             <button
                               onClick={handleAddDealer}

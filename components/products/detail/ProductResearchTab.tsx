@@ -578,7 +578,7 @@ export default function ProductResearchTab({
 
   const [addingSource, setAddingSource] = useState<string | null>(null);
   const [addSourceName, setAddSourceName] = useState('');
-  const [addSourceType, setAddSourceType] = useState('dealer');
+  const [addSourceType, setAddSourceType] = useState<'dealer' | 'auction_house' | 'platform' | 'research'>('dealer');
   const [addSourceSaving, setAddSourceSaving] = useState(false);
   const [addSourceError, setAddSourceError] = useState<string | null>(null);
   const [recentlyAddedSources, setRecentlyAddedSources] = useState<Set<string>>(new Set());
@@ -590,32 +590,82 @@ export default function ProductResearchTab({
     setAddingSource(cite.source);
   }
 
+  function extractRootDomain(url: string): string {
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const hostname = parsed.hostname.replace(/^www\./, '');
+      return `https://${hostname}`;
+    } catch {
+      return url;
+    }
+  }
+
+  function isValidUrl(url: string): boolean {
+    if (!url || url === '#') return false;
+    // Must contain a dot and no spaces (basic URL check)
+    if (url.includes(' ') && !url.startsWith('http')) return false;
+    try {
+      new URL(url.startsWith('http') ? url : `https://${url}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function handleSaveSource(cite: { source: string; url: string }) {
     if (!addSourceName.trim()) return;
     setAddSourceSaving(true);
     setAddSourceError(null);
     try {
-      const website = cite.url && cite.url !== '#'
-        ? (cite.url.startsWith('http') ? cite.url : `https://${cite.url}`)
+      // Extract root domain for the website field (not the full citation URL)
+      const website = cite.url && isValidUrl(cite.url)
+        ? extractRootDomain(cite.url)
         : null;
-      const res = await fetch('/api/sellers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: addSourceName.trim(),
-          type: addSourceType,
-          website,
-          canResearchAt: true,
-        }),
-      });
-      if (res.ok || res.status === 409) {
-        onSellersChange();
-        setRecentlyAddedSources(prev => new Set([...prev, cite.source]));
-        setAddingSource(null);
-        setAddSourceName('');
+
+      if (addSourceType === 'platform') {
+        // Platforms go to the platforms table
+        const res = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: addSourceName.trim(),
+            url: website,
+            platformType: 'marketplace',
+            canResearchPrices: true,
+            isAcquisitionPlatform: true,
+          }),
+        });
+        if (res.ok || res.status === 409) {
+          onSellersChange();
+          setRecentlyAddedSources(prev => new Set([...prev, cite.source]));
+          setAddingSource(null);
+          setAddSourceName('');
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setAddSourceError(data.message || data.error || `Failed (${res.status})`);
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        setAddSourceError(data.message || data.error || `Failed (${res.status})`);
+        // Dealer, Auction House, Research go to the sellers table
+        const sellerType = addSourceType === 'research' ? 'archive' : addSourceType;
+        const res = await fetch('/api/sellers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: addSourceName.trim(),
+            type: sellerType,
+            website,
+            canResearchAt: true,
+          }),
+        });
+        if (res.ok || res.status === 409) {
+          onSellersChange();
+          setRecentlyAddedSources(prev => new Set([...prev, cite.source]));
+          setAddingSource(null);
+          setAddSourceName('');
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setAddSourceError(data.message || data.error || `Failed (${res.status})`);
+        }
       }
     } catch (err) {
       setAddSourceError(err instanceof Error ? err.message : 'Network error');
@@ -1488,11 +1538,11 @@ export default function ProductResearchTab({
                         <p className="text-sm text-slate-700">{cite.claim}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {cite.source}
-                          {cite.url && cite.url !== '#' && (
+                          {cite.url && isValidUrl(cite.url) && (
                             <> &middot; <a href={cite.url.startsWith('http') ? cite.url : `https://${cite.url}`} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
                           )}
                           {/* Only show Add Source when URL is available for validation */}
-                          {!matchedSeller && cite.source && cite.url && cite.url !== '#' && !recentlyAddedSources.has(cite.source) && addingSource !== cite.source && (
+                          {!matchedSeller && cite.source && cite.url && isValidUrl(cite.url) && !recentlyAddedSources.has(cite.source) && addingSource !== cite.source && (
                             <> &middot; <button
                               type="button"
                               onClick={() => startAddSource(cite)}
@@ -1518,22 +1568,13 @@ export default function ProductResearchTab({
                             />
                             <select
                               value={addSourceType}
-                              onChange={(e) => setAddSourceType(e.target.value)}
+                              onChange={(e) => setAddSourceType(e.target.value as typeof addSourceType)}
                               className="px-2 py-1 border border-slate-300 rounded text-xs"
                             >
-                              <optgroup label="Acquisition">
-                                <option value="dealer">Dealer</option>
-                                <option value="auction_house">Auction House</option>
-                                <option value="gallery">Gallery</option>
-                                <option value="bookstore">Bookstore</option>
-                                <option value="individual">Individual Seller</option>
-                              </optgroup>
-                              <optgroup label="Research">
-                                <option value="museum">Museum / Institution</option>
-                                <option value="library">Library / Archive</option>
-                                <option value="archive">Digital Archive</option>
-                                <option value="academic">Academic / Journal</option>
-                              </optgroup>
+                              <option value="dealer">Dealer</option>
+                              <option value="auction_house">Auction House</option>
+                              <option value="platform">Platform</option>
+                              <option value="research">Research</option>
                             </select>
                             <button
                               onClick={() => handleSaveSource(cite)}

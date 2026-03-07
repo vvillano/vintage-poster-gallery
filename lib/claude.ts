@@ -976,7 +976,7 @@ export interface WebVerificationEvidence {
   dateConsensus?: { value: string; weightedConfidence: number; sources: string[] };
   techniqueConsensus?: { value: string; weightedConfidence: number; sources: string[] };
   knowledgeGraph?: { title?: string; description?: string };
-  topDealerTitles: { title: string; dealerName: string }[];
+  topDealerTitles: { title: string; dealerName: string; url: string }[];
   searchResultCount: number;
 }
 
@@ -1037,7 +1037,7 @@ ${webEvidence.knowledgeGraph?.title ? `### Google Knowledge Graph
 
 ### Top Dealer Listings
 ${webEvidence.topDealerTitles.length > 0
-  ? webEvidence.topDealerTitles.map((d, i) => `${i + 1}. "${d.title}" (${d.dealerName})`).join('\n')
+  ? webEvidence.topDealerTitles.map((d, i) => `${i + 1}. "${d.title}" (${d.dealerName}) - ${d.url}`).join('\n')
   : 'No dealer listings found.'}
 
 ## Rules
@@ -1047,6 +1047,7 @@ ${webEvidence.topDealerTitles.length > 0
 4. Only change fields where web evidence is meaningfully stronger than the AI analysis.
 5. For dates, prefer specific years from dealer catalogs over AI decade estimates.
 6. NEVER use em dashes in any text output. Use commas, semicolons, or separate sentences instead.
+7. For additionalSourceCitations, use the actual URLs from the dealer listings above. Never use placeholder text or descriptions as URLs.
 
 ## Output
 Return JSON with ONLY changed fields (omit fields that stay the same). Always include verificationNotes and fieldsChanged.
@@ -1064,7 +1065,7 @@ Return JSON with ONLY changed fields (omit fields that stay the same). Always in
   "verificationNotes": "Brief explanation of what was verified or changed",
   "fieldsChanged": ["artist", "artistConfidence"],
   "additionalSourceCitations": [
-    { "claim": "Artist attribution", "source": "Dealer Name", "url": "https://...", "reliability": "high" }
+    { "claim": "Artist attribution", "source": "Dealer Name", "url": "https://example.com/specific-listing-page", "reliability": "high" }
   ]
 }
 \`\`\``;
@@ -1156,10 +1157,10 @@ export async function runWebVerification(
   });
 
   // Build web evidence from parsed results
-  const topDealerTitles: { title: string; dealerName: string }[] = [];
+  const topDealerTitles: { title: string; dealerName: string; url: string }[] = [];
   for (const r of searchResponse.results.slice(0, 10)) {
     if (r.isKnownDealer && r.dealerName) {
-      topDealerTitles.push({ title: r.title, dealerName: r.dealerName });
+      topDealerTitles.push({ title: r.title, dealerName: r.dealerName, url: r.url });
     }
   }
 
