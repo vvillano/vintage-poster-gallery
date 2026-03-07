@@ -50,9 +50,16 @@ export async function POST(
             },
             {
               type: 'text',
-              text: `Analyze the dominant colors visible in this image. Select 2-5 colors from this exact list that best represent the primary colors of the main subject. Focus on the artwork or poster itself, not background or framing elements.
+              text: `Select 2-5 colors from the list below that a customer shopping for wall art would use to find this poster.
+Think like an interior designer matching art to a room's color scheme.
+Focus on the artwork itself, not background or framing elements.
 
-AVAILABLE COLORS (only use colors from this list):
+Rules:
+- Choose the MOST SPECIFIC match: use "Navy" not "Blue" for dark blues, "Olive" not "Green" for muted yellow-greens, "Burgundy" not "Red" for dark wine reds, "Gold" not "Yellow" for warm metallic yellows, "Cream" not "White" for warm off-whites, "Tan" not "Brown" for light sandy browns
+- For aged/yellowed paper, use "Cream" or "Tan" only if it is a significant visual element
+- Only use colors from this exact list
+
+AVAILABLE COLORS:
 ${colorList.join(', ')}
 
 Respond with ONLY a JSON array of color names, nothing else. Example: ["Red", "Gold", "Black"]`,

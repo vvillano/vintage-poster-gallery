@@ -590,9 +590,14 @@ AVAILABLE TAGS:
 ${tagList.join(', ')}
 ` : ''}${colorList && colorList.length > 0 ? `
 COLOR SUGGESTIONS:
-Analyze the dominant colors visible in this image and select 2-5 colors from the following list.
-Focus on the PRIMARY colors that define the artwork's visual impact - not background or minor accent colors.
-Only use colors from this exact list - do not suggest colors not in the list.
+Select 2-5 colors from the list below that a customer shopping for wall art would use to find this piece.
+Think like an interior designer matching art to a room's color scheme.
+
+Rules:
+- Focus on the PRIMARY colors that define the artwork's visual character, not tiny accents
+- Choose the MOST SPECIFIC match: use "Navy" not "Blue" for dark blues, "Olive" not "Green" for muted yellow-greens, "Burgundy" not "Red" for dark wine reds, "Gold" not "Yellow" for warm metallic yellows, "Cream" not "White" for warm off-whites, "Tan" not "Brown" for light sandy browns
+- For aged/yellowed paper, use "Cream" or "Tan" only if it is a significant visual element, not just the paper substrate
+- Only use colors from this exact list
 
 AVAILABLE COLORS:
 ${colorList.join(', ')}

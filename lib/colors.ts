@@ -47,6 +47,21 @@ export async function getColorNames(): Promise<string[]> {
 }
 
 /**
+ * Get colors with hex codes (for enhanced AI prompts)
+ */
+export async function getColorsWithHex(): Promise<Array<{ name: string; hexCode: string | null }>> {
+  try {
+    const result = await sql`
+      SELECT name, hex_code FROM colors ORDER BY display_order ASC, name ASC
+    `;
+    return result.rows.map(row => ({ name: row.name, hexCode: row.hex_code }));
+  } catch (error) {
+    console.warn('[getColorsWithHex] Could not fetch colors:', error);
+    return [];
+  }
+}
+
+/**
  * Create a new color
  */
 export async function createColor(name: string, hexCode?: string, displayOrder?: number): Promise<Color> {
