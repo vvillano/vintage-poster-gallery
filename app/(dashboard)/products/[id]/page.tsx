@@ -703,10 +703,12 @@ export default function ProductDetailPage() {
     if (!product) return;
     setApplyingMetafield('Description');
 
-    // Append Size, Artist, Condition when applying AI-generated descriptions
+    // Append Size, Artist, Condition (in order) when applying AI-generated descriptions
+    // Only includes fields that have values; each on its own line with a blank line after the description
     let finalHtml = html;
     if (appendMetadata) {
       const appendParts: string[] = [];
+      // 1. Size
       const height = product.metafields.height;
       const width = product.metafields.width;
       if (height && width) {
@@ -716,9 +718,11 @@ export default function ProductDetailPage() {
       } else if (width) {
         appendParts.push(`<p><strong>Size:</strong> ${width}" W</p>`);
       }
+      // 2. Artist
       if (product.metafields.artist) {
         appendParts.push(`<p><strong>Artist:</strong> ${product.metafields.artist}</p>`);
       }
+      // 3. Condition
       const condition = product.metafields.condition;
       const conditionDetails = product.metafields.conditionDetails;
       if (condition && conditionDetails) {
@@ -727,7 +731,7 @@ export default function ProductDetailPage() {
         appendParts.push(`<p><strong>Condition:</strong> ${condition}</p>`);
       }
       if (appendParts.length > 0) {
-        finalHtml += '\n<br>\n' + appendParts.join('\n');
+        finalHtml += appendParts.join('');
       }
     }
 
