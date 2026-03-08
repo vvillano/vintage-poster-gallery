@@ -1542,7 +1542,20 @@ export default function ProductResearchTab({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-700">{cite.claim}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {cite.source}
+                          {matchedSeller ? (
+                            <a
+                              href={`/settings/sellers?search=${encodeURIComponent(matchedSeller.name)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 font-medium"
+                              title={`${matchedSeller.name} - in source database`}
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                              {cite.source}
+                            </a>
+                          ) : (
+                            <>{cite.source}</>
+                          )}
                           {cite.url && isValidUrl(cite.url) && (
                             <> &middot; <a href={cite.url.startsWith('http') ? cite.url : `https://${cite.url}`} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">Link</a></>
                           )}
