@@ -85,7 +85,7 @@ ADAPT BY TYPE:
 - Antique Prints: Scholarly, provenance-focused, scientific accuracy
 - Illustrations: Witty, culturally observant, narrative freedom
 
-AVOID: Exclamation points, generic phrases ("perfect for your wall"), casual language ("Wow!", "Amazing!"), size/condition details.
+AVOID: Exclamation points, generic phrases ("perfect for your wall"), casual language ("Wow!", "Amazing!"), size/condition details, em dashes. NEVER use em dashes (--) in any text. Use commas, colons, semicolons, parentheses, or separate sentences instead.
 
 EXAMPLES: "marked a turning point in modern design", "turns political graphics into something sharp and unforgettable", "captures the spirit of the era with bold geometric forms"
 `;
@@ -523,7 +523,8 @@ PRINTING TECHNIQUE - Be precise:
 - Look for registration marks, dot patterns, stone texture
 ${initialInfo ? `\nUSER CONTEXT: "${initialInfo}" - validate this against what you see in the image.` : ''}
 ${shopifyContext ? buildShopifyContextSection(shopifyContext, skepticalMode) : ''}
-PRODUCT DESCRIPTIONS: Write 5 versions (each 150-200 words):
+PRODUCT DESCRIPTIONS: Write 5 versions (each 150-200 words).
+CRITICAL: NEVER use em dashes in any description, talking point, or other text output. Replace with commas, colons, semicolons, parentheses, or separate sentences.
 
 IMPORTANT - ARTIST ATTRIBUTION IN DESCRIPTIONS:
 - If artistConfidenceScore >= 80%: Use the artist name directly ("by Leonetto Cappiello", "Cappiello's masterful...")
@@ -555,7 +556,7 @@ TALKING POINTS: Write 6-8 bullet points for in-gallery storytelling. These help 
   * How would people at the time have experienced or used this item?
 - Why collectors find this piece interesting
 - Any fun facts, anecdotes, or surprising details about the artist, subject, or era
-Keep each point 15-30 words - enough context to spark a conversation.
+Keep each point 15-30 words, enough context to spark a conversation. Never use em dashes.
 
 IMPORTANT - ARTIST ATTRIBUTION IN TALKING POINTS:
 - If artistConfidenceScore >= 90%: Use factual statements about the artist ("By Leonetto Cappiello, the father of modern advertising")
